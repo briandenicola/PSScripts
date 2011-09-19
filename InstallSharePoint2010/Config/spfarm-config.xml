@@ -1,0 +1,33 @@
+<SharePoint>
+	<FarmAdministrators>
+		<add group="" />
+		<remove group="" />
+	</FarmAdministrators>
+	<Secure>
+		<AppPoolAccount></AppPoolAccount>
+		<Passphrase></Passphrase>
+	</Secure>
+	<Email>
+		<Outgoing>
+			<address></address>
+			<server></server>
+		</Outgoing>
+	</Email>
+	<ManagedAccounts>
+		<account username="" />
+	</ManagedAccounts>
+	<Logging>
+		<DaysToKeep>28</DaysToKeep>
+		<CutInterval>1440</CutInterval>
+		<Path>d:\Logs\Trace</Path>
+		<MaxDiskSpace>10</MaxDiskSpace>
+	</Logging>
+	<Usage>	
+		<Path>d:\Logs\Usage</Path>
+		<MaxDiskSpace>5</MaxDiskSpace>
+		<Database>WSS_Logging</Database>
+	</Usage>
+	<Databases>
+		<Database name="" port="" instance="" />
+	</Databases>
+</SharePoint>
