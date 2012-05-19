@@ -1,0 +1,79 @@
+<SharePoint>
+	<Farms>
+		<farm name="internal" />
+		<farm name="external" />
+		<farm name="external-c">
+			<server name="BJD-DEV-TST" role="central-admin"/>
+		 </farm>
+		<farm name="services">
+			<server name="ENT-SPW-D02" role="central-admin"/>
+		</farm>
+	</Farms>
+	<Databases>
+		<Database name="GT-EXTERNAL-C-DEV-SQL" port="1433" instance="BJD-DEV-TST" />
+		<Database name="GT-EXTERNAL-DEV-SQL" port="1433" instance="ENT-SPD-D03" />
+		<Database name="GT-INTERNAL-DEV-SQL" port="1433" instance="ENT-SPD-D04" />
+		<Database name="GT-ENTERPRISE-DEV-SQL" port="1433" instance="ENT-SPD-D02 " />
+	</Databases>
+	<BaseConfig>
+		<ScriptsHome>D:\Scripts</ScriptsHome>
+		<UtilsHome>D:\Utils\</UtilsHome>
+		<DeployHome>D:\Deploy\</DeployHome>
+		<SPVersion>SHAREPOINT2010-FEB2012CU-14.0.6117.5002-SLIPSTREAM</SPVersion>
+		<AuditUrl>http://collaboration.gt.com/site/SharePointOperationalUpgrade/</AuditUrl>
+	</BaseConfig>
+	<setup>
+		<master_file_location>\\ent-nas-fs01.us.gt.com\app-ops\Installs</master_file_location>
+		<setup_path>D:\Deploy\SHAREPOINT2010-FEB2012CU-14.0.6117.5002-SLIPSTREAM\InstallFiles\setup.exe</setup_path>
+		<setup_configs>
+			<external>D:\Scripts\InstallSharePoint2010\Configs\SP-Install-Configs\config-internet.xml</external>
+			<external-c>D:\Scripts\InstallSharePoint2010\Configs\SP-Install-Configs\config-internet.xml</external-c>
+			<services>D:\Scripts\InstallSharePoint2010\Configs\SP-Install-Configs\config-internet.xml</services>
+			<internal>D:\Scripts\InstallSharePoint2010\Configs\SP-Install-Configs\config-enterprise.xml</internal>
+		</setup_configs>
+		<databases>
+			<external>GT-EXTERNAL-DEV-SQL</external>
+			<external-c>GT-EXTERNAL-C-DEV-SQL</external-c>
+			<services>GT-INTERNAL-DEV-SQL</services>
+			<internal>GT-ENTERPRISE-DEV-SQL</internal>
+		</databases>
+		<security>
+			<external passphrase="Dev-TEST01" farm_account="USGTAD\worksite" />
+			<external-c passphrase="Dev-TEST01" farm_account="USGTAD\worksite" />
+			<internal passphrase="Dev-TEST01" farm_account="USGTAD\worksite" />
+			<services passphrase="Dev-TEST01" farm_account="USGTAD\worksite" />
+		</security>
+	</setup>
+	<FarmAdministrators>
+		<add group="USGTAD\SA-SharePoint-Ops-SysAdmin" />
+		<remove group="builtin\administrators" />
+	</FarmAdministrators>
+	<Secure>
+		<Passphrase>tRaInl39fjL</Passphrase>
+		<AppPoolAccount name="worksite" farm="external" />
+	</Secure>
+	<Email>
+		<Outgoing>
+			<address>sharepoint.admins@us.gt.com</address>
+			<server>mailhost.us.gt.com</server>
+		</Outgoing>
+	</Email>
+	<ManagedAccounts>
+		<account username="USGTAD\worksite" farm="external" />
+	</ManagedAccounts>
+	<Logging>
+		<DaysToKeep>28</DaysToKeep>
+		<CutInterval>1440</CutInterval>
+		<Path>d:\Logs\Trace</Path>
+		<MaxDiskSpace>10</MaxDiskSpace>
+	</Logging>
+	<Usage>	
+		<Path>d:\Logs\Usage</Path>
+		<MaxDiskSpace>5</MaxDiskSpace>
+		<Database>WSS_Logging</Database>
+	</Usage>
+	<SharedServices/>
+</SharePoint>
+
+
+

@@ -1,0 +1,149 @@
+<SharePoint>
+	<Farms>
+		<farm name="internal">
+			<server name="NDC-SPA-L0203" role="central-admin"/>
+			<server name="NDC-SPW-L0203" role="wfe"/>
+			<server name="NDC-SPW-L0204" role="wfe"/>
+		</farm>
+		<farm name="external">
+			<server name="NDC-SPA-L0201" role="central-admin"/>
+			<server name="NDC-SPW-L0201" role="wfe"/>
+			<server name="NDC-SPW-L0202" role="wfe"/>
+			<server name="NDC-SPA-L0202" role="application"/>
+		 </farm>
+		<farm name="services">
+			<server name="NDC-SPA-L0204" role="central-admin"/>
+			<server name="NDC-SPI-L0201" role="indexer"/>
+			<server name="NDC-SPW-L0205" role="wfe"/>
+			<server name="NDC-SPW-L0206" role="wfe"/>
+		</farm>
+		<farm name="stand-alone"/>
+	</Farms>
+	<Databases>
+		<Database name="TS-ENTERPRISE-TRAIN-SQL-01" port="1443" instance="NDC-SPD-L0201\LAB01" />
+		<Database name="TS-INTERNAL-TRAIN-SQL-01" port="1443" instance="NDC-SPD-L0202\LAB02" />
+		<Database name="TS-EXTERNAL-TRAIN-SQL-01" port="1443" instance="NDC-SPD-L0203\LAB03" />
+	</Databases>
+	<BaseConfig>
+		<ScriptsHome>D:\Scripts</ScriptsHome>
+		<UtilsHome>D:\Utils\</UtilsHome>
+		<DeployHome>D:\Deploy\</DeployHome>
+		<SPVersion>SHAREPOINT2010-FEB2012CU-14.0.6117.5002-SLIPSTREAM</SPVersion>
+		<AuditUrl>http://collaboration.gt.com/site/SharePointOperationalUpgrade/</AuditUrl>
+	</BaseConfig>
+	<setup>
+		<master_file_location>\\ndc-fs-p01\software\SharePoint\Installs\</master_file_location>
+		<setup_path>D:\Deploy\SHAREPOINT2010-FEB2012CU-14.0.6117.5002-SLIPSTREAM\InstallFiles\setup.exe</setup_path>
+		<setup_configs>
+			<external>D:\Scripts\InstallSharePoint2010\config\config-internet.xml</external>
+			<services>D:\Scripts\InstallSharePoint2010\config\config-internet.xml</services>
+			<internal>D:\Scripts\InstallSharePoint2010\config\config-enterprise.xml</internal>
+		</setup_configs>
+		<databases>
+			<external>TS-EXTERNAL-TRAIN-SQL-01</external>
+			<services>TS-ENTERPRISE-TRAIN-SQL-01</services>
+			<internal>TS-INTERNAL-TRAIN-SQL-01</internal>
+		</databases>
+		<security>
+			<external passphrase="tRaInl39fjL" farm_account="USGTAD\svc_shptu_ext_farm" />
+			<internal passphrase="tRaInl39fjL" farm_account="USGTAD\svc_shptu_int_farm" />
+			<services passphrase="tRaInl39fjL" farm_account="USGTAD\svc_shptu_srv_farm" />
+		</security>
+	</setup>
+	<FarmAdministrators>
+		<add group="USGTAD\SA-SharePoint-Ops-SysAdmin" />
+		<remove group="builtin\administrators" />
+	</FarmAdministrators>
+	<Secure>
+		<Passphrase>tRaInl39fjL</Passphrase>
+		<AppPoolAccount name="svc_shptu_ext_farm" farm="external" />
+		<AppPoolAccount name="svc_shptu_int_farm" farm="internal" />
+		<AppPoolAccount name="svc_shptu_srv_farm" farm="services" />
+	</Secure>
+	<Email>
+		<Outgoing>
+			<address>sharepoint.admins@us.gt.com</address>
+			<server>mailhost.us.gt.com</server>
+		</Outgoing>
+	</Email>
+	<ManagedAccounts>
+		<account username="USGTAD\svc_shptu_ext_web" farm="external" />
+		<account username="USGTAD\svc_shptu_int_cea" farm="internal" /> 
+		<account username="USGTAD\svc_shptu_int_tax" farm="internal" /> 
+		<account username="USGTAD\svc_shptu_int_web" farm="internal" />
+		<account username="USGTAD\svc_shptu_srv_app" farm="services" />
+		<account username="USGTAD\svc_shptu_srv_cont" farm="services" />
+		<account username="USGTAD\svc_shptu_srv_srch" farm="services" />
+		<account username="USGTAD\svc_shptu_srv_sync" farm="services" />
+		<account username="USGTAD\svc_shptu_srv_web" farm="services" />
+	</ManagedAccounts>
+	<Logging>
+		<DaysToKeep>28</DaysToKeep>
+		<CutInterval>1440</CutInterval>
+		<Path>d:\Logs\Trace</Path>
+		<MaxDiskSpace>10</MaxDiskSpace>
+	</Logging>
+	<Usage>	
+		<Path>d:\Logs\Usage</Path>
+		<MaxDiskSpace>5</MaxDiskSpace>
+		<Database>WSS_Logging</Database>
+	</Usage>
+	<SharedServices>
+		<Service App="UserProfile">
+			<name>User Profile Service Application</name>
+			<Server name="NDC-SPA-L0204" />
+			<Databases>
+				<database instance="TS-ENTERPRISE-TRAIN-SQL-01" name="SocialDB_001" Type="Social" />
+				<database instance="TS-ENTERPRISE-TRAIN-SQL-01" name="ProfileDB_001" Type="Profile" />
+				<database instance="TS-ENTERPRISE-TRAIN-SQL-01" name="SyncDB_001" Type="Sync" />
+			</Databases>
+			<AppPool name="AppPool - SharePoint User Profile Service Application" account="USGTAD\svc_shptu_srv_sync"/>
+			<MySite>
+				<name>SharePoint - my-training-02.gt.com</name>
+				<databaseName>WSS_Content_MySite</databaseName>
+				<databaseServer>TS-ENTERPRISE-TRAIN-SQL-01</databaseServer>
+				<hostheader>my-training.gt.com</hostheader>
+				<path>personal</path>
+				<apppool account="USGTAD\svc_shptu_srv_sync" />
+			</MySite>
+		</Service>
+		<Service App="EnterpriseSearch">
+			<name>Enterprise Search Service Application</name>
+			<Server name="NDC-SPI-L0201" />
+			<CrawlDatabase instance="TS-ENTERPRISE-TRAIN-SQL-01" name="Search_Crawl_DB" />
+			<AdminDatabase instance="TS-ENTERPRISE-TRAIN-SQL-01" name="Search_Admin_DB" />
+			<SearchAppPool name="AppPool - SharePoint Search Service Application" account="USGTAD\svc_shptu_srv_srch"/>
+			<AdminAppPool name="AppPool - SharePoint Search Service Application" account="USGTAD\svc_shptu_srv_srch"/>
+			<PerformanceLevel>PartlyReduced</PerformanceLevel>
+			<Email>(IT) SharePoint Operations@gt.com</Email>
+			<DefaultContentAccessAccount name="USGTAD\svc_shptu_srv_cont" password="uAt7130sP16" />
+			<SearchAccessAccount name="USGTAD\svc_shptu_srv_cont" password="uAt7130sP16" />
+			<IndexLocation>D:\SharePoint\Index</IndexLocation>
+		</Service>
+		<Service App="Metadata">
+			<name>Managed Metadata Service Application</name>
+			<Servers>
+				<server name="NDC-SPA-L0204" />
+			</Servers>
+			<Databases>
+				<database instance="TS-ENTERPRISE-TRAIN-SQL-01" name="Managed_Metadata" />
+			</Databases>
+			<AppPool name="AppPool - SharePoint Shared Service Application" account="USGTAD\svc_shptu_srv_app"/>
+			<Administrators>USGTAD\svc_shptu_srv_app</Administrators>
+		</Service>
+		<Service App="WebAnalytics">
+			<name>WebAnalytics Service Application</name>
+			<Servers>
+				<server name="NDC-SPA-L0204" />
+			</Servers>
+			<Databases>
+				<database instance="TS-ENTERPRISE-TRAIN-SQL-01" name="WebAnalytis_Reporting" Role="Reporting" />
+				<database instance="TS-ENTERPRISE-TRAIN-SQL-01" name="WebAnalytis_Staging" Role="Staging" />
+			</Databases>
+			<AppPool name="AppPool - SharePoint Shared Service Application" account="USGTAD\svc_shptu_srv_app"/>
+		</Service>
+	</SharedServices>
+</SharePoint>
+
+
+
