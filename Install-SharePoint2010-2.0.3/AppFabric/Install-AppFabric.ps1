@@ -1,3 +1,8 @@
+param(
+	[ValidateSet("HostingServices","CachingService","CacheClient","CacheAdmin","Complete")]
+	[string] $module = "HostingServices"
+)
+
 ImportSystemModules
 Add-WindowsFeature  AS-Web-Support
 Add-WindowsFeature  AS-HTTP-Activation 
@@ -9,7 +14,9 @@ $exe = "WindowsServerAppFabricSetup_x64_6.1.exe"
 $wc = New-Object System.Net.WebClient
 $wc.DownloadFile( $source, (Join-Path $dest $exe) )
 
-&(Join-Path $dest $exe) /install HostingServices
+if( $module -eq "complete" ) { $module = "HostingServices,CachingService,CacheClient" }
+
+&(Join-Path $dest $exe) /install $module
 
 while( (Get-Process | where { $_.ProcessName -eq $exe }))
 { 
