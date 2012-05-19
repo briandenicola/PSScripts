@@ -1,5 +1,5 @@
 ﻿dir (Join-PATH $ENV:SCRIPTS_HOME "Libraries") -filter *.ps1 | % { Write-Host $(Get-Date) " - Sourcing " $_.FullName -foreground green ; . $_.FullName }
-Import-Module (Join-PATH $ENV:SCRIPTS_HOME "Libraries\credentials.psm1")
+dir (Join-PATH $ENV:SCRIPTS_HOME "Libraries") -filter *.psm1 | % { Write-Host $(Get-Date) " - Import Module " $_.FullName -foreground green ; Import-Module $_.FullName }
 
 $MaximumHistoryCount=1024 
 $SCRIPTS = "$HOME\scripts"
