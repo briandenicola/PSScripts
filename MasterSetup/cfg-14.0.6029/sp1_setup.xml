@@ -1,0 +1,10 @@
+<setup>
+	<setup_path>D:\Deploy\SharePoint_Server_2010-SP1-14.0.6029.1000\InstallFiles\setup.exe</setup_path>
+	<config_path>D:\Scripts\InstallSharePoint2010\config\config-internet.xml</config_path>
+	<database>
+		<alias></alias>
+		<instance></instance>
+		<port></port>
+	</database>
+</setup>
+
