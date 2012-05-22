@@ -8,7 +8,7 @@
 	</Package>
 
 	<Logging Type="verbose" Path="%temp%" Template="SharePoint Server Setup(*).log"/>
-	<PIDKEY Value="C63K8-P47HD-JM443-K2VP6-Y3FFQ" />
+	<PIDKEY Value="" />
 	<Display Level="none" CompletionNotice="no" />
 	<Setting Id="SERVERROLE" Value="APPLICATION"/>
 	<Setting Id="USINGUIINSTALLMODE" Value="0"/>

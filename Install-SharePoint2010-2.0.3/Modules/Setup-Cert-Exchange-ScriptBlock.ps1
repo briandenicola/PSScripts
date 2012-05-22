@@ -13,10 +13,10 @@ if( Test-Path ( "\\$RemoteCentralAdmin\D$\Certs" ) )
 	Copy-Item \\$RemoteCentralAdmin\D$\Certs\$RemoteFarmType-STS.cer D:\Certs\
 	
 	$trustCert = Get-PfxCertificate "D:\Certs\$RemoteFarmType-Root.cer"
-	New-SPTrustedRootAuthority "GT-$RemoteFarmType" -Certificate $trustCert
+	New-SPTrustedRootAuthority "RemoteFarm-$RemoteFarmType" -Certificate $trustCert
 	
 	$stsCert = Get-PfxCertificate "D:\Certs\$RemoteFarmType-STS.cer"
-	New-SPTrustedServiceTokenIssuer "GT-$RemoteFarmType" -Certificate $stsCert
+	New-SPTrustedServiceTokenIssuer "RemoteFarm-$RemoteFarmType" -Certificate $stsCert
 }
 else
 {

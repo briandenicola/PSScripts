@@ -1149,51 +1149,6 @@ Function read-RegistryHive
 	return $regPairs
 }
 
-function send-email($s,$b,$to) 
-{
-	$from = "SharePoint.Admins@gt.com";
-	$domain  = "mail.gt.com";
-
-	$mail = new-object System.Net.Mail.MailMessage;
-	
-	for($i=0; $i -lt $to.Length; $i++) {
-		$mail.To.Add($to[$i]);
-	}
-	$mail.From = new-object System.Net.Mail.MailAddress($from);
-
-	$mail.Subject = $s;
-	$mail.Body = $b;
-
-	$smtp = new-object System.Net.Mail.SmtpClient($domain);
-	$smtp.Send($mail);
-
-}
-
-function send-emailwithattachment( [string] $subject, [string] $body, [object] $to, [Object] $attachment  )
-{
-	$from = "spadmin@gt.com";
-	$domain  = "mail.gt.com";
-	
-	$mail = new-object System.Net.Mail.MailMessage
-	
-	for($i=0; $i -lt $to.Length; $i++) {
-		$mail.To.Add($to[$i]);
-	}
-
-	$mail.From = new-object System.Net.Mail.MailAddress($from)
-	$mail.Subject = $subject
-	$mail.Body = $body
-	
-	$attach = New-Object System.Net.Mail.Attachment($attachment)
-	$mail.Attachments.Add($attach)
-
-	$smtp = new-object System.Net.Mail.SmtpClient($domain)
-	$smtp.Send($mail)
-
-	$attach.Dispose()
-	$mail.Dispose()
-}
-
 function log( [string] $txt, [string] $log ) 
 {
 	"[" + (Get-Date).ToString() + "] - " + $txt | Out-File $log -Append -Encoding ASCII 

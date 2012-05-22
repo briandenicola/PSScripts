@@ -20,17 +20,6 @@ $auditTypes['EditContentType'] = 160
 $auditTypes['SearchSiteContent'] = 8192
 $auditTypes['UserSecurity'] = 256
 
-function get-SharePointServersWS()
-{
-	return(	get-SPListViaWebService -Url http://collaboration.gt.com/site/SharePointOperationalUpgrade/ -list Servers  | Select SystemName, Farm, Environment)
-}
-
-function get-SharePointCentralAdmins()
-{
-	return(	get-SPListViaWebService -Url http://collaboration.gt.com/site/SharePointOperationalUpgrade/ -list Servers -view "{EEF9045D-9F62-4945-8630-5B1C5B478310}" | Select SystemName, Farm, Environment, "Central Admin Address" )
-}
-
-
 function get-LatestLog()
 {
 	begin {
@@ -51,19 +40,6 @@ function get-LatestLog()
 function get-SharePointSolutions()
 {
 	return (Get-SPFarm | Select -Expand Solutions | Select Name, Deployed, DeployedWebApplications, DeployedServers, ContainsGlobalAssembly, ContainsCasPolicy, SolutionId, LastOperationEndTime)
-}
-
-function get-SharePointServers( [String] $env )
-{
-	$OU = "OU=SharePoint,OU=Servers,DC=us,DC=gt,DC=com"
-	if( -not [String]::IsNullOrEmpty($env) )
-	{
-		$OU = "OU=$env,"  + $OU
-	}
-		
-	$servers = dsquery computer $OU | % { $_.Split(",")[0].TrimStart("`"CN=") }
-	
-	return $servers
 }
 
 function get-WebServiceURL( [String] $url )

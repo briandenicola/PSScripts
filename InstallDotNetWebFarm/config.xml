@@ -1,0 +1,28 @@
+﻿<IISSites>
+	<WebFarm name="GTFarmD01" environment="DEV">
+		<Servers>
+			<Server>ENT-WEB-F01D02</Server>
+		</Servers>
+	</WebFarm>
+	<Site name="FileOpening" url="Fileopening-dev.gt.com" port="80">	
+		<path>D:\Web\FileOpening</path>
+		<AppPool name="FileOpening" user="USGTAD\svc_custom_app" pass="vh48QYS4HY" version="v2.0" />
+		<SSL enable="true" subject="*.gt.com" pfx="\\ent-nas-fs01.us.gt.com\app-ops\Certs\GT-CA-Certs\gt.com_wildcard\gtcom.pfx" pass="abc123" />
+		<AdditionalCommands>
+			<command name="Set-WebConfigurationProperty" parameters=" -filter /system.webServer/security/authentication/windowsAuthentication -name enabled -value true -PSPath IIS:\ -location FileOpening" />
+			<command name="Set-WebConfigurationProperty" parameters=" -filter /system.webServer/security/authentication/AnonymousAuthentication -name enabled -value false -PSPath IIS:\ -location FileOpening" />
+		</AdditionalCommands>
+	</Site>
+	<Site name="ProfitabilityTool" url="pricingtool-dev.gtus.com" port="80">	
+		<path>D:\Web\ProfitabilityTool</path>
+		<AppPool name="ProfitabilityTool" user="USGTAD\svc_custom_app" pass="vh48QYS4HY" version="v2.0" />
+		<SSL enable="false" pfx="to_path_to_pfx_file" pass="abc123" />
+		<AdditionalCommands>
+			<command name="New-WebBinding" parameters=" -Name ProfitabilityTool -Port 80 -HostHeader profitabilitytool-dev.gtus.com" />
+			<command name="New-WebBinding" parameters=" -Name ProfitabilityTool -Port 80 -HostHeader gtpt-dev.gtus.com" />
+			<command name="Set-WebConfigurationProperty" parameters=" -filter /system.webServer/security/authentication/windowsAuthentication -name enabled -value true -PSPath IIS:\ -location ProfitabilityTool" />
+			<command name="Set-WebConfigurationProperty" parameters=" -filter /system.webServer/security/authentication/AnonymousAuthentication -name enabled -value false -PSPath IIS:\ -location ProfitabilityTool" />
+			<command name="Add-WebConfiguration" parameters=" -filter /system.webServer/defaultDocument/files -PSPath IIS:\Sites\ProfitabilityTool -value AppFrame.aspx" />
+		</AdditionalCommands>
+	</Site>
+</IISSites>
