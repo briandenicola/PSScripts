@@ -6,16 +6,20 @@ param(
 	$operation = "all"
 )
 
-function CopyFiles
+$source = ""
+$dest = ""
+$url = ""
+$scripts_home = "D:\Scripts\"
+$utils_home = "D:\Utils\"
+
+function Copy-Files
 {
-	$source = "\\ent-nas-fs01.us.gt.com\app-ops\Installs\SharePoint2010-Utils-Scripts"
-	#Copy Files 
-	xcopy /e/v/f/s (Join-Path $source "Scripts") D:\Scripts\
-	xcopy /e/v/f/s (Join-Path $source "Utils") D:\Utils\
-	xcopy /e/v/f/s (Join-Path $source "EnterpriseLibrary3.1") D:\Deploy\EL3.1\
+	xcopy /e/v/f/s (Join-Path $source "Scripts") $scripts_home
+	xcopy /e/v/f/s (Join-Path $source "Utils") $utils_home
+	xcopy /e/v/f/s (Join-Path $source "EnterpriseLibrary3.1") (Join-Path $dest "EL3.1")
 }
 
-function BaseSetup
+function Setup-BaseSystem
 {
 	#Setup Sysem
 	Disable-InternetExplorerESC
@@ -26,47 +30,38 @@ function BaseSetup
 	Enable-WSManCredSSP -role client -delegate * -Force
 
 	cscript.exe //H:cscript
-	setx -m SCRIPTS_HOME D:\Scripts
+	setx -m SCRIPTS_HOME $scripts_home
 
 	New-Item -Path "HKLM:SOFTWARE\Policies\Microsoft\Windows NT\" -Name "Reliability" 
 	New-ItemProperty -Path "HKLM:SOFTWARE\Policies\Microsoft\Windows NT\Reliability" -Name "ShutdownReasonOn" -Value "0" -PropertyType dword
 }
 
-function IISSetup
+function Setup-IIS
 {
-	#Install IIS, .NET4, SQL Client, and WebDeploy
-	cd  D:\Scripts\iis\iis7.5_install\
-	D:\Scripts\iis\iis7.5_install\install_and_config_iis7.ps1
+	cd (Joint-Path $scripts_home "iis\iis7.5_install")
+	.\install_and_config_iis7.ps1
 }
 
-
-function dotnetSetup
+function Setup-DotNet
 {
-
-	#Install .Net Apps
-	D:\Utils\WebPI\Webpi_installer.exe
-	D:\utils\WebPI\WebpiCmdLine.exe /Products:MVC3 /accepteula /SuppressReboot 
-	D:\utils\WebPI\WebpiCmdLine.exe /Products:NETFramework4 /accepteula /SuppressReboot 
-	D:\Utils\WebPI\WebpiCmdLine.exe /Products:WebFarmFrameworkv2 /AcceptEula /SuppressReboot
+	&$utils_home\WebPI\Webpi_installer.exe
+	&$utils_home\WebPI\WebpiCmdLine.exe /Products:MVC3 /accepteula /SuppressReboot 
+	&$utils_home\WebPI\WebpiCmdLine.exe /Products:NETFramework4 /accepteula /SuppressReboot 
+	&$utils_home\WebPI\WebpiCmdLine.exe /Products:WebFarmFrameworkv2 /accepteula /SuppressReboot
+	
 	Stop-Process (Get-Process "WebPlatformInstaller").Id
 	C:\Windows\Microsoft.NET\Framework64\v4.0.30319\aspnet_regiis.exe -iru
 
-	#Install Enterprise Library to GAC
-	cd D:\Deploy\EL3.1
-	D:\Deploy\EL3.1\deploy_to_gac.bat
+	cd (Join-Path $dest "EL3.1")
+	.\deploy_to_gac.bat
 		
-	#Install GT Files to GAC
-
-	#Record system
 	#Source library files now that they are copied over. Will need them by later functions
 	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1")
 	audit-Servers -Servers . | % {
-		$url = "http://collaboration.gt.com/site/SharePointOperationalUpgrade/applicationsupport/default.aspx"
 		WriteTo-SPListViaWebService -url $url -list AppServers -Item $(Convert-ObjectToHash $_) -TitleField SystemName 
 	} 
 }
-
 
 function main
 {	
@@ -82,10 +77,10 @@ function main
 	$log = "D:\Logs\System-Setup-" + $ENV:COMPUTERNAME + "-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log"
 	&{Trap{continue};Start-Transcript -Append -Path $log}
 
-	if( $operation -eq "all" -or $operation -eq "copy") { CopyFiles; $operation = "all" }
-	if( $operation -eq "all" -or $operation -eq "base") { BaseSetup; $operation = "all" }
-	if( $operation -eq "all" -or $operation -eq "iis") { IISSetup; $operation = "all" }
-	if( $operation -eq "all" -or $operation -eq "dotnet") { dotnetSetup; $operation = "all" }
+	if( $operation -eq "all" -or $operation -eq "copy") { Copy-Files; $operation = "all" }
+	if( $operation -eq "all" -or $operation -eq "base") { Setup-BaseSystem; $operation = "all" }
+	if( $operation -eq "all" -or $operation -eq "iis") { Setup-IIS; $operation = "all" }
+	if( $operation -eq "all" -or $operation -eq "dotnet") { Setup-DotNet; $operation = "all" }
 	
 	Stop-Transcript
 	

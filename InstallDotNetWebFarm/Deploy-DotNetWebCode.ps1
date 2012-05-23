@@ -146,7 +146,6 @@ function main()
 		
 		if( -not $silent ) { Pause }
 		
-		
 		$deploy = New-Object PSObject -Property @{
 			Title = "Automated .NET Deployment for - " + $dst_url
 			Application = "59;#Custom .NET Application"
