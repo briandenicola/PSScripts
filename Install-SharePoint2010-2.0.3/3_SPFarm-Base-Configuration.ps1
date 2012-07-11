@@ -139,7 +139,7 @@ function Config-StateService()
 function Config-SecureStore()
 {
 	Get-SPServiceInstance | where { $_.TypeName -eq "Secure Store Service" -and $_.Server.Address.Contains("SPA") } | Start-SPServiceInstance
-	$sharePoint_service_apppool = New-SPServiceApplicationPool -name "AppPool - SharePoint Web Service Application" -account $cfg.SharePoint.Secure.AppPoolAccount.Name
+	$sharePoint_service_apppool = New-SPServiceApplicationPool -name "AppPool - SharePoint Web Service Application" -account $cfg.SharePoint.Secure.AppPoolAccount
 	$secure_store = New-SPSecureStoreServiceApplication -Name "Secure Store Service" -ApplicationPool $sharePoint_service_apppool -DatabaseName "Secure_Store_Service_DB" -AuditingEnabled:$true -AuditLogMaxSize 30 -Sharing:$false -PartitionMode:$true 
 	$proxy = New-SPSecureStoreServiceApplicationProxy -Name "Secure Store Service Proxy" -ServiceApplication $secure_store -DefaultProxyGroup 
 	Update-SPSecureStoreMasterKey -ServiceApplicationProxy $proxy -Passphrase $cfg.SharePoint.Secure.Passphrase
@@ -200,7 +200,8 @@ function Deploy-PDF( [String[]] $servers )
 	$e.SetAttribute("EditText", "Bluebeam PDF Revu" )
 	$e.SetAttribute("OpenControl", "Revu.Launcher" )
 	
-	$doc_xml.DocIcons.ByExtension.AppendChild($e)
+	$ref = $doc_xml.DocIcons.ByExtension.Mapping | where { $_.Key -eq "png" }
+	$doc_xml.DocIcons.ByExtension.InsertBefore($e, $ref)
 	$doc_xml.Save( "$deploy_home\DOCICON.XML" )
 		
 	$wc = New-Object System.Net.WebClient
