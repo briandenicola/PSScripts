@@ -150,8 +150,6 @@ function SharePointSetup
 	
 	New-ItemProperty -Path "HKLM:SYSTEM\CurrentControlSet\Control\Lsa" -PropertyType dword -Name "DisableLoopbackCheck" -Value "1"
 	
-	#cacls D:\Web\default_site /E /G IIS_IUSRS:R /T
-
 	#Record system
 	audit-Servers -Servers . | % { WriteTo-SPListViaWebService -url $global:audit_url -list Servers -Item $(Convert-ObjectToHash $_) -TitleField SystemName } 
 }

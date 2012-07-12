@@ -12,11 +12,6 @@ $global:server_type = $null
 
 function Get-FarmType
 {
-	#Determine Farm and Server Type
-	#foreach( $farm in @("services", "external", "internal") )
-	#{
-	#	$cfg.SharePoint.Farms.$farm.Server | ? { $_.Name -eq $ENV:COMPUTERNAME  } | % { $global:farm_type = $farm; $global:server_type = $_.Role }
-	#}
 	$xpath = "/SharePoint/Farms/farm/server[@name='" + $ENV:COMPUTERNAME + "']"
 	$global:farm_type = (Select-Xml -xpath $xpath  $cfg | Select @{Name="Farm";Expression={$_.Node.ParentNode.name}}).Farm
 	
@@ -138,7 +133,7 @@ function Config-StateService()
 
 function Config-SecureStore()
 {
-	Get-SPServiceInstance | where { $_.TypeName -eq "Secure Store Service" -and $_.Server.Address.Contains("SPA") } | Start-SPServiceInstance
+	Get-SPServiceInstance | where { $_.TypeName -eq "Secure Store Service" } | Start-SPServiceInstance
 	$sharePoint_service_apppool = New-SPServiceApplicationPool -name "AppPool - SharePoint Web Service Application" -account $cfg.SharePoint.Secure.AppPoolAccount
 	$secure_store = New-SPSecureStoreServiceApplication -Name "Secure Store Service" -ApplicationPool $sharePoint_service_apppool -DatabaseName "Secure_Store_Service_DB" -AuditingEnabled:$true -AuditLogMaxSize 30 -Sharing:$false -PartitionMode:$true 
 	$proxy = New-SPSecureStoreServiceApplicationProxy -Name "Secure Store Service Proxy" -ServiceApplication $secure_store -DefaultProxyGroup 

@@ -125,13 +125,7 @@ function ConfigureServicesOnServer_ServicesFarm([String] $env)
 }
 
 function main()
-{
-	#foreach( $farm in @("services", "external", "internal") )
-	#{
-	#	$cfg.SharePoint.Farms.$farm.Server | ? { $_.Name -eq $ENV:COMPUTERNAME  } | % {  $global:farm_type = $farm }
-	#
-	#}
-	
+{	
 	$xpath = "/SharePoint/Farms/farm/server[@name='" + $ENV:COMPUTERNAME + "']"
 	$global:farm_type = (Select-Xml -xpath $xpath  $cfg | Select @{Name="Farm";Expression={$_.Node.ParentNode.name}}).Farm
 	
