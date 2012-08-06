@@ -1,11 +1,19 @@
-### Brian Denicola
+### Brian Denicola	
 ### brian.x.denicola@jpmchase.com
 ### 
 
-$smtp_server = ""
-$smtp_address = ""
-
-function New-PSWindow { Invoke-item "$pshome\powershell.exe" }
+function New-PSWindow 
+{ 
+	param( 
+		[switch] $noprofile
+	)
+	
+	if($noprofile) { 
+		cmd.exe /c start powershell.exe -NoProfile
+	} else {
+		cmd.exe /c start powershell.exe 
+	}
+}
 
 function Change-ServiceAccount
 {
@@ -57,7 +65,6 @@ function Install-MSMQ
     Import-module ServerManager
     Get-WindowsFeature | ? { $_.Name -match "MSMQ" } | % { Add-WIndowsFeature $_.Name }
 }
-
 function Get-Url 
 {
     [CmdletBinding(SupportsShouldProcess=$true)]
@@ -115,7 +122,16 @@ function Get-Url
 		{
 			$ans = Read-Host "Do you wish to see the contents of the request (y/n) - "
 			if( $ans -eq "y" ) {
-				$ResultFile = Join-Path $ENV:TEMP ($url.Trim("http://").Split("/")[0] + "-" + $Server + ".html")
+				$url_split = $url.Split("/")
+				if( $url_split[$url_split.Length - 1].Contains(".") ) 
+				{ 
+					$file_name =  $url_split[$url_split.Length - 1]
+				} 
+				else
+				{
+					$file_name = $server + ".html"
+				}
+				$ResultFile = Join-Path $ENV:TEMP ($url.Trim("http://").Split("/")[0] + "-" + $file_name)
 				$reader.ReadToEnd() | Out-File -Encoding ascii $ResultFile
 				&$ResultFile
 				
@@ -170,14 +186,35 @@ function Get-Uptime {
 
 function Get-TopProcesses
 {
-	Get-WmiObject Win32_PerfFormattedData_PerfProc_Process | `
-  		where-object{ $_.Name -ne "_Total" -and $_.Name -ne "Idle"} | `
-  		Sort-Object PercentProcessorTime -Descending | `
-  		select -First 5 | `
-  		Format-Table Name,IDProcess,PercentProcessorTime -AutoSize
- }
+	param(
+        [string] $computer = $env:COMPUTERNAME,
+        [int] $threshold = 5
+    )
+ 
+    # Test connection to computer
+    if( !(Test-Connection -Destination $computer -Count 1) ){
+        throw "Could not connect to :: $computer"
+    }
+ 
+    # Get all the processes
+    $processes = Get-WmiObject -ComputerName $computer -Class Win32_PerfFormattedData_PerfProc_Process -Property Name, PercentProcessorTime
+  
+    $items = @()
+    foreach( $process in ($processes | where { $_.Name -ne "Idle"  -and $_.Name -ne "_Total" }) )
+	{
+        if( $process.PercentProcessorTime -ge $threshold )
+		{
+            $items += (New-Object PSObject -Property @{
+				Name = $process.Name
+				CPU = $process.PercentProcessorTime
+			})
+        }
+    }
+  
+    return ( $items | Sort-Object -Property CPU -Descending)
+}
 
-function Get-ScheduledTasks([string] $server) 
+function get-ScheduledTasks([string] $server) 
 {
 	$tasks = @()
 	
@@ -403,7 +440,10 @@ function Get-WindowsUpdateConfig
 } 
 
 function Get-SystemGAC( [string[]] $servers )
-{	
+{
+	#$PSEXEC = "d:\Users\US32784\utils\psexec.exe"
+	#$cmd = "$PSEXEC \\$server -c $GACUTIL /l"
+	
 	$s = New-PSSession -Computer $servers
 	Invoke-Command -Session $s -ScriptBlock {
 		$gac = @()
@@ -1061,7 +1101,7 @@ function Compare-HashTable ( [HashTable] $src, [HashTable] $dst,[Object] $head  
 	}
 }
 
-function Ping-Multiple 
+function ping-multiple 
 {
 	begin {
 		$replies = @()
@@ -1086,7 +1126,7 @@ function Ping-Multiple
 	}
 }
 
-function Ping ( [string] $computer ) 
+function ping ( [string] $computer ) 
 {
 	$timeout=120
 	$ping = new-object System.Net.NetworkInformation.Ping 
@@ -1101,7 +1141,7 @@ function Ping ( [string] $computer )
 	}  
 }
 
-Function Read-RegistryHive 
+Function read-RegistryHive 
 {
 	param(
 		[string[]] $servers,
@@ -1137,10 +1177,10 @@ Function Read-RegistryHive
 	return $regPairs
 }
 
-function Send-Email($s,$b,$to) 
+function send-email($s,$b,$to) 
 {
-	$from = $smtp_server
-	$domain  = $smtp_address
+	$from = "SharePoint.Admins@gt.com";
+	$domain  = "mail.gt.com";
 
 	$mail = new-object System.Net.Mail.MailMessage;
 	
@@ -1157,10 +1197,10 @@ function Send-Email($s,$b,$to)
 
 }
 
-function Send-EmailWithAttachment( [string] $subject, [string] $body, [object] $to, [Object] $attachment  )
+function send-emailwithattachment( [string] $subject, [string] $body, [object] $to, [Object] $attachment  )
 {
-	$from = $smtp_server
-	$domain  = $smtp_address
+	$from = "spadmin@gt.com";
+	$domain  = "mail.gt.com";
 	
 	$mail = new-object System.Net.Mail.MailMessage
 	
@@ -1187,7 +1227,7 @@ function log( [string] $txt, [string] $log )
 	"[" + (Get-Date).ToString() + "] - " + $txt | Out-File $log -Append -Encoding ASCII 
 }
 
-function Get-Hash1 
+function get-hash1 
 {
 	param(
     	    [string] $file = $(throw 'a filename is required'),
@@ -1204,7 +1244,7 @@ function Get-Hash1
 
 }
 
-function Get-FileVersion() 
+function get-fileVersion() 
 {
 	begin{
 		$info = @()
@@ -1225,7 +1265,7 @@ function Get-FileVersion()
 # Author: William Stacey (http://www.codeplex.com/PsObject/WorkItem/View.aspx?WorkItemId=8521)
 # Created: 02/22/2007
 # Modified: Brian Denicola - removed looping
-function Get-Tail([string]$path = $(throw "Path name must be specified."), [int]$count = 10)
+function get-tail([string]$path = $(throw "Path name must be specified."), [int]$count = 10)
 {
 	if ( $count -lt 1 ) {$(throw "Count must be greater than 1.")}
 
@@ -1244,7 +1284,7 @@ function Get-Tail([string]$path = $(throw "Path name must be specified."), [int]
 }
 
 
-function Get-TailByBytes([string]$path = $(throw "Path name must be specified."), [int]$bytes)
+function get-tailByBytes([string]$path = $(throw "Path name must be specified."), [int]$bytes)
 {
 	$tail = @()
 
@@ -1265,7 +1305,7 @@ function Get-TailByBytes([string]$path = $(throw "Path name must be specified.")
 	return $tail
 }
 
-function Get-FileSize ( [string] $path ) 
+function get-fileSize ( [string] $path ) 
 {
 	$reader = new-object System.IO.FileStream $path, ([io.filemode]::Open), ([io.fileaccess]::Read), ([io.fileshare]::ReadWrite)
 	$len = $reader.Length
@@ -1273,7 +1313,7 @@ function Get-FileSize ( [string] $path )
 	return $len
 }
 
-function Flatten( [string[]] $txt, [string] $startString)
+function  flatten( [string[]] $txt, [string] $startString)
 {
 	$rtnVal=@()
 	$tmp=""

@@ -28,7 +28,7 @@ function main
 	$farm = $cfg.IISSites.WebFarm.Name
 	$env = $cfg.IISSites.WebFarm.Environment
 	
-	$webFarm = Get-WebFam -WebFarm $farm
+	$webFarm = Get-WebFarm -WebFarm $farm
 	if( $webFarm -eq $null )
 	{
 		log -txt ( "Creating WebFarm " + $farm )	

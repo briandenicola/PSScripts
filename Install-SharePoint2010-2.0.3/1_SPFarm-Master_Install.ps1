@@ -68,9 +68,11 @@ function Unzip-File
 
 function CopyFiles
 {
-	#Copy Files 
+	
 	xcopy /e/v/f/s "$global:source\SharePoint2010-Utils-Scripts\Scripts" "$global:scripts_home\"
 	xcopy /e/v/f/s "$global:source\SharePoint2010-Utils-Scripts\Utils" "$global:utils_home\"
+		
+	#Copy Files 
 	xcopy /e/v/f/s "$global:source\SharePoint2010-Utils-Scripts\EnterpriseLibrary4.1" "$global:$deploy_home\EL4.1\"
 	xcopy /e/v/f/s "$global:source\SharePoint2010-Utils-Scripts\ReportViewers" "$global:deploy_home\ReportViewers\"
 	copy "$global:source\$sp_version.zip" $global:deploy_home
@@ -92,6 +94,12 @@ function BaseSetup
 	New-Item -Path "HKLM:SOFTWARE\Policies\Microsoft\Windows NT\" -Name "Reliability" 
 	New-ItemProperty -Path "HKLM:SOFTWARE\Policies\Microsoft\Windows NT\Reliability" -Name "ShutdownReasonOn" -Value "0" -PropertyType dword
 	
+	if( -not ( $cfg.SharePoint.BaseConfig.HouseKeeping.Name -eq $null ) )
+	{
+		$house_keeping = $cfg.SharePoint.BaseConfig.HouseKeeping
+		$creds = Get-Credential ( $ENV:USERDOMAIN + "\" + $house_keeping.user)
+		schtasks /Create /TN $house_keeping.Name /RU $house_keeping.user /RP $creds.GetNetworkCredential().Password /SC $house_keeping.Schedule /ST $house_keeping.start_time /TR $house_keeping.process /NP
+	}
 }
 
 function IISSetup
@@ -150,6 +158,8 @@ function SharePointSetup
 	
 	New-ItemProperty -Path "HKLM:SYSTEM\CurrentControlSet\Control\Lsa" -PropertyType dword -Name "DisableLoopbackCheck" -Value "1"
 	
+	#cacls D:\Web\default_site /E /G IIS_IUSRS:R /T
+
 	#Record system
 	audit-Servers -Servers . | % { WriteTo-SPListViaWebService -url $global:audit_url -list Servers -Item $(Convert-ObjectToHash $_) -TitleField SystemName } 
 }

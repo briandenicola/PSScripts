@@ -1,0 +1,860 @@
+<XML ID="Microsoft Search Thesaurus">
+<thesaurus xmlns="x-schema:tsSchema.xml">
+<diacritics_sensitive>0</diacritics_sensitive>
+<expansion>
+	<sub>01</sub>
+	<sub>1</sub>
+</expansion>
+<expansion>
+	<sub>02</sub>
+	<sub>2</sub>
+</expansion>
+<expansion>
+	<sub>03</sub>
+	<sub>3</sub>
+</expansion>
+<expansion>
+	<sub>04</sub>
+	<sub>4</sub>
+</expansion>
+<expansion>
+	<sub>05</sub>
+	<sub>5</sub>
+</expansion>
+<expansion>
+	<sub>06</sub>
+	<sub>6</sub>
+</expansion>
+<expansion>
+	<sub>07</sub>
+	<sub>7</sub>
+</expansion>
+<expansion>
+	<sub>08</sub>
+	<sub>8</sub>
+</expansion>
+<expansion>
+	<sub>09</sub>
+	<sub>9</sub>
+</expansion>
+<expansion>
+	<sub>ASC 740</sub>
+	<sub>Accounting for income taxes</sub>
+	<sub>FAS109</sub>
+	<sub>FAS 109</sub>
+	<sub>SFAS 109</sub>
+	<sub>SFAS109</sub>
+	<sub>tax provision</sub>
+	<sub>tax provisions</sub>
+</expansion>
+<expansion>
+	<sub>BlueBeam</sub>
+	<sub>Blue Beam</sub>
+	<sub>Blue-Beam</sub>
+	<sub>PDF Revu</sub>
+</expansion>
+<expansion>
+	<sub>calendar</sub>
+	<sub>schedule</sub>
+</expansion>
+<expansion>
+	<sub>CBC</sub>
+	<sub>Compensation and Benefits</sub>
+	<sub>Comp and Benefits</sub>
+</expansion>
+<expansion>
+	<sub>checklist</sub>
+	<sub>check list</sub>
+	<sub>check-list</sub>
+</expansion>
+<expansion>
+	<sub>ClientSpace</sub>
+	<sub>Client Space</sub>
+</expansion>
+<expansion>
+	<sub>Closeout</sub>
+	<sub>Close out</sub>
+	<sub>close-out</sub>
+</expansion>
+<expansion>
+	<sub>dashboard</sub>
+	<sub>dash board</sub>
+	<sub>dash-board</sub>
+</expansion>
+<expansion>
+	<sub>Data Processing</sub>
+	<sub>DP</sub>
+</expansion>
+<expansion>
+	<sub>DPAD</sub>
+	<sub>Section 199</sub>
+	<sub>Sec. 199</sub>
+	<sub>Domestic Production Activities Deduction</sub>
+	<sub>D-PAD</sub>
+</expansion>
+<expansion>
+	<sub>eCopy</sub>
+	<sub>e-Copy</sub>
+	<sub>copier</sub>
+</expansion>
+<expansion>
+	<sub>e-file</sub>
+	<sub>efile</sub>
+	<sub>e file</sub>
+</expansion>
+<expansion>
+	<sub>email</sub>
+	<sub>e mail</sub>
+	<sub>e-mail</sub>
+</expansion>
+<expansion>
+	<sub>EMP</sub>
+	<sub>Engagement Management Process</sub>
+</expansion>
+<expansion>
+	<sub>firmwide</sub>
+	<sub>firm wide</sub>
+	<sub>firm-wide</sub>
+</expansion>
+<expansion>
+	<sub>Flowchart</sub>
+	<sub>flow chart</sub>
+</expansion>
+<expansion>
+	<sub>Form 1</sub>
+	<sub>Form1</sub>
+	<sub>Form-1</sub>
+</expansion>
+<expansion>
+	<sub>FPB</sub>
+	<sub>Firm Practice Bulletin</sub>
+</expansion>
+<expansion>
+	<sub>FWP</sub>
+	<sub>Family Wealth Planning</sub>
+	<sub>Private Wealth Services</sub>
+	<sub>PWS</sub>
+</expansion>
+<expansion>
+	<sub>GoSystem</sub>
+	<sub>GoSystems</sub>
+	<sub>Go System</sub>
+	<sub>Go Systems</sub>
+</expansion>
+<expansion>
+	<sub>Guidesheet</sub>
+	<sub>Guide sheet</sub>
+</expansion>
+<expansion>
+	<sub>learning</sub>
+	<sub>training</sub>
+</expansion>
+<expansion>
+	<sub>M Package</sub>
+	<sub>M-Package</sub>
+	<sub>Mpackage</sub>
+	<sub>M Pkg</sub>
+	<sub>Mpkg</sub>
+</expansion>
+<expansion>
+	<sub>NextPage</sub>
+	<sub>Next Page</sub>
+	<sub>NP</sub>
+</expansion>
+<expansion>
+	<sub>NFP</sub>
+	<sub>Not-For-Profit</sub>
+	<sub>Not For Profit</sub>
+	<sub>nonprofit</sub>
+	<sub>non-profit</sub>
+</expansion>
+<expansion>
+	<sub>Professional Practice Bulletin</sub>
+	<sub>PPB</sub>
+</expansion>
+<expansion>
+	<sub>PWS</sub>
+	<sub>Private Wealth Services</sub>
+	<sub>Family Wealth Planning</sub>
+	<sub>FWP</sub>
+</expansion>
+<expansion>
+	<sub>Quick Start Card</sub>
+	<sub>QSC</sub>
+</expansion>
+<expansion>
+	<sub>RIA</sub>
+	<sub>Checkpoint</sub>
+</expansion>
+<expansion>
+	<sub>SAS70</sub>
+	<sub>Statement on Auditing Standards No. 70</sub>
+	<sub>SAS 70</sub>
+</expansion>
+<expansion>
+	<sub>StaffTrak</sub>
+	<sub>Staff Trak</sub>
+	<sub>Staff Track</sub>
+	<sub>StaffTrack</sub>
+</expansion>
+<expansion>
+	<sub>StorageSpace</sub>
+	<sub>Storage Space</sub>
+</expansion>
+<expansion>
+	<sub>Tax Practice Bulletin</sub>
+	<sub>TPB</sub>
+</expansion>
+<expansion>
+	<sub>TeamSpace</sub>
+	<sub>Team Space</sub>
+</expansion>
+<expansion>
+	<sub>VendorSpace</sub>
+	<sub>Vendor Space</sub>
+</expansion>
+<expansion>
+	<sub>webcast</sub>
+	<sub>web cast</sub>
+	<sub>web-cast</sub>
+</expansion>
+<expansion>
+	<sub>white paper</sub>
+	<sub>Whitepaper</sub>
+	<sub>white-paper</sub>
+</expansion>
+<expansion>
+	<sub>WNTO</sub>
+	<sub>National Tax Office</sub>
+	<sub>NTO</sub>
+	<sub>Washington National Tax Office</sub>
+</expansion>
+<expansion>
+	<sub>Airplane</sub>
+	<sub>Aeroplane</sub>
+</expansion>
+<expansion>
+	<sub>Aluminum</sub>
+	<sub>Aluminium</sub>
+</expansion>
+<expansion>
+	<sub>Apartment</sub>
+	<sub>Flat</sub>
+</expansion>
+<expansion>
+	<sub>Appetizer</sub>
+	<sub>Entree</sub>
+	<sub>Starter</sub>
+</expansion>
+<expansion>
+	<sub>Archeology</sub>
+	<sub>Archaeology</sub>
+</expansion>
+<expansion>
+	<sub>Babysitter</sub>
+	<sub>Minder</sub>
+</expansion>
+<expansion>
+	<sub>Baked Potato</sub>
+	<sub>Jacket Potato</sub>
+</expansion>
+<expansion>
+	<sub>Bathroom</sub>
+	<sub>Loo</sub>
+	<sub>Toilet</sub>
+</expansion>
+<expansion>
+	<sub>Band-Aid</sub>
+	<sub>Elastoplast</sub>
+</expansion>
+<expansion>
+	<sub>Bank Teller</sub>
+	<sub>Cashier</sub>
+</expansion>
+<expansion>
+	<sub>Bedspread</sub>
+	<sub>Duvet</sub>
+</expansion>
+<expansion>
+	<sub>Billion</sub>
+	<sub>Trillion</sub>
+</expansion>
+<expansion>
+	<sub>Bleachers</sub>
+	<sub>Terrace</sub>
+</expansion>
+<expansion>
+	<sub>Braces</sub>
+	<sub>Brace</sub>
+</expansion>
+<expansion>
+	<sub>Call</sub>
+	<sub>Ring</sub>
+</expansion>
+<expansion>
+	<sub>Cafeteria</sub>
+	<sub>Refectory</sub>
+</expansion>
+<expansion>
+	<sub>Can</sub>
+	<sub>Tin</sub>
+</expansion>
+<expansion>
+	<sub>Candy</sub>
+	<sub>Sweets</sub>
+</expansion>
+<expansion>
+	<sub>Catalog</sub>
+	<sub>Catalogue</sub>
+</expansion>
+<expansion>
+	<sub>Cents</sub>
+	<sub>Pence</sub>
+</expansion>
+<expansion>
+	<sub>Chapstick</sub>
+	<sub>Lip Balm</sub>
+</expansion>
+<expansion>
+	<sub>Check</sub>
+	<sub>Cheque</sub>
+</expansion>
+<expansion>
+	<sub>Checkers</sub>
+	<sub>Draughts</sub>
+</expansion>
+<expansion>
+	<sub>Chips</sub>
+	<sub>Crisps</sub>
+</expansion>
+<expansion>
+	<sub>Cigarette</sub>
+	<sub>Fag</sub>
+</expansion>
+<expansion>
+	<sub>Closet</sub>
+	<sub>Wardrobe </sub>
+</expansion>
+<expansion>
+	<sub>Clumsy</sub>
+	<sub>Cackhanded</sub>
+</expansion>
+<expansion>
+	<sub>Collect Call</sub>
+	<sub>Reverse Charge Call</sub>
+</expansion>
+<expansion>
+	<sub>Color</sub>
+	<sub>Colour</sub>
+</expansion>
+<expansion>
+	<sub>Cookie</sub>
+	<sub>Biscuit</sub>
+</expansion>
+<expansion>
+	<sub>Cotton Candy</sub>
+	<sub>Candy Floss</sub>
+</expansion>
+<expansion>
+	<sub>Commercial</sub>
+	<sub>Advertisment</sub>
+</expansion>
+<expansion>
+	<sub>Cracker</sub>
+	<sub>Savoury biscuit</sub>
+</expansion>
+<expansion>
+	<sub>Crib</sub>
+	<sub>Cot</sub>
+</expansion>
+<expansion>
+	<sub>Cross Walk</sub>
+	<sub>Zebra Crossing</sub>
+	<sub>Pedestrian Crossing</sub>
+</expansion>
+<expansion>
+	<sub>Crossing Gaurd</sub>
+	<sub>Lollipop Man</sub>
+</expansion>
+<expansion>
+	<sub>Cupcake</sub>
+	<sub>Fairy Cake</sub>
+</expansion>
+<expansion>
+	<sub>Curb</sub>
+	<sub>Kerb</sub>
+</expansion>
+<expansion>
+	<sub>Dessert</sub>
+	<sub>Afters</sub>
+	<sub>Pudding</sub>
+</expansion>
+<expansion>
+	<sub>Detour</sub>
+	<sub>Diversion</sub>
+</expansion>
+<expansion>
+	<sub>Diaper</sub>
+	<sub>Napkin</sub>
+	<sub>Nappy</sub>
+</expansion>
+<expansion>
+	<sub>Dollar Bill</sub>
+	<sub>Note</sub>
+</expansion>
+<expansion>
+	<sub>Drugstore</sub>
+	<sub>Chemist</sub>
+</expansion>
+<expansion>
+	<sub>Duplex</sub>
+	<sub>Semi-Detached House</sub>
+</expansion>
+<expansion>
+	<sub>Eggplant</sub>
+	<sub>Aubergine</sub>
+</expansion>
+<expansion>
+	<sub>Elevator</sub>
+	<sub>Lift</sub>
+</expansion>
+<expansion>
+	<sub>Emergency Room</sub>
+	<sub>Casualty</sub>
+</expansion>
+<expansion>
+	<sub>Eraser</sub>
+	<sub>Rubber</sub>
+</expansion>
+<expansion>
+	<sub>Expensive</sub>
+	<sub>Dear</sub>
+</expansion>
+<expansion>
+	<sub>Faucet</sub>
+	<sub>Tap</sub>
+</expansion>
+<expansion>
+	<sub>Favorite</sub>
+	<sub>Favourite</sub>
+</expansion>
+<expansion>
+	<sub>Fire Department</sub>
+	<sub>Fire Brigade</sub>
+</expansion>
+<expansion>
+	<sub>Flashlight</sub>
+	<sub>Torch</sub>
+</expansion>
+<expansion>
+	<sub>Freeway</sub>
+	<sub>Highway</sub>
+	<sub>Interstate</sub>
+	<sub>Motorway</sub>
+	<sub>Carriageway</sub>
+</expansion>
+<expansion>
+	<sub>Garbage Man</sub>
+	<sub>Dustman</sub>
+</expansion>
+<expansion>
+	<sub>Garter Belt</sub>
+	<sub>Suspenders</sub>
+</expansion>
+<expansion>
+	<sub>Glue</sub>
+	<sub>Gum</sub>
+</expansion>
+<expansion>
+	<sub>Gasoline</sub>
+	<sub>Petrol</sub>
+</expansion>
+<expansion>
+	<sub>Gizzards</sub>
+	<sub>Offal</sub>
+</expansion>
+<expansion>
+	<sub>Golashes</sub>
+	<sub>Wellingtons</sub>
+	<sub>Wellies</sub>
+</expansion>
+<expansion>
+	<sub>Gray</sub>
+	<sub>Grey</sub>
+</expansion>
+<expansion>
+	<sub>Gutter</sub>
+	<sub>Gully</sub>
+</expansion>
+<expansion>
+	<sub>Hamburger Bun</sub>
+	<sub>Bap</sub>
+</expansion>
+<expansion>
+	<sub>Honor</sub>
+	<sub>Honour</sub>
+</expansion>
+<expansion>
+	<sub>Hood</sub>
+	<sub>Bonnet</sub>
+</expansion>
+<expansion>
+	<sub>Horny</sub>
+	<sub>Randy</sub>
+</expansion>
+<expansion>
+	<sub>House</sub>
+	<sub>Bungalow</sub>
+</expansion>
+<expansion>
+	<sub>Humor</sub>
+	<sub>Humour</sub>
+</expansion>
+<expansion>
+	<sub>Hungry</sub>
+	<sub>Peckish</sub>
+</expansion>
+<expansion>
+	<sub>Jail</sub>
+	<sub>Gaol</sub>
+</expansion>
+<expansion>
+	<sub>Jello</sub>
+	<sub>Jelly</sub>
+</expansion>
+<expansion>
+	<sub>Jelly</sub>
+	<sub>Jam</sub>
+</expansion>
+<expansion>
+	<sub>Jewelry</sub>
+	<sub>Jewellery</sub>
+</expansion>
+<expansion>
+	<sub>Kiss</sub>
+	<sub>Snog</sub>
+</expansion>
+<expansion>
+	<sub>Ladybug</sub>
+	<sub>Ladybird</sub>
+</expansion>
+<expansion>
+	<sub>Line</sub>
+	<sub>Queue</sub>
+</expansion>
+<expansion>
+	<sub>Living Room</sub>
+	<sub>Lounge</sub>
+</expansion>
+<expansion>
+	<sub>Lawyer</sub>
+	<sub>Barrister</sub>
+	<sub>Solicitor</sub>
+</expansion>
+<expansion>
+	<sub>Leash</sub>
+	<sub>Lead</sub>
+</expansion>
+<expansion>
+	<sub>Licens Plate</sub>
+	<sub>Number Plate</sub>
+</expansion>
+<expansion>
+	<sub>Liquor store</sub>
+	<sub>Off License</sub>
+	<sub>Offy</sub>
+</expansion>
+<expansion>
+	<sub>Mail</sub>
+	<sub>Post</sub>
+</expansion>
+<expansion>
+	<sub>Mailbox</sub>
+	<sub>Postbox</sub>
+</expansion>
+<expansion>
+	<sub>Mail Carrier</sub>
+	<sub>Postman</sub>
+	<sub>Posty</sub>
+</expansion>
+<expansion>
+	<sub>Maneuver</sub>
+	<sub>Manoeuvre</sub>
+</expansion>
+<expansion>
+	<sub>Math</sub>
+	<sub>Maths</sub>
+</expansion>
+<expansion>
+	<sub>Mold</sub>
+	<sub>Mould</sub>
+</expansion>
+<expansion>
+	<sub>Movie</sub>
+	<sub>Film</sub>
+</expansion>
+<expansion>
+	<sub>Movie Theater</sub>
+	<sub>Cinema</sub>
+</expansion>
+<expansion>
+	<sub>Napkin</sub>
+	<sub>Serviette</sub>
+</expansion>
+<expansion>
+	<sub>Nudist</sub>
+	<sub>Naturist</sub>
+</expansion>
+<expansion>
+	<sub>On Ramp</sub>
+	<sub>Off Ramp</sub>
+	<sub>Slip Road</sub>
+</expansion>
+<expansion>
+	<sub>Oven</sub>
+	<sub>Cooker</sub>
+</expansion>
+<expansion>
+	<sub>Overalls</sub>
+	<sub>Dungarees</sub>
+</expansion>
+<expansion>
+	<sub>Overpass</sub>
+	<sub>Flyover</sub>
+</expansion>
+<expansion>
+	<sub>Pacifier</sub>
+	<sub>Dummy</sub>
+</expansion>
+<expansion>
+	<sub>Pants</sub>
+	<sub>Trousers</sub>
+</expansion>
+<expansion>
+	<sub>Paper Towel</sub>
+	<sub>Kitchen towel</sub>
+	<sub>Kitchen Paper</sub>
+</expansion>
+<expansion>
+	<sub>Parade</sub>
+	<sub>Carnival</sub>
+</expansion>
+<expansion>
+	<sub>Parking Lot</sub>
+	<sub>Car Park</sub>
+</expansion>
+<expansion>
+	<sub>Pharmacist</sub>
+	<sub>Chemist</sub>
+</expansion>
+<expansion>
+	<sub>Picnic Basket</sub>
+	<sub>Picnic Hamper</sub>
+</expansion>
+<expansion>
+	<sub>Pie Crust</sub>
+	<sub>Pastry Base</sub>
+</expansion>
+<expansion>
+	<sub>Plastic Wrap</sub>
+	<sub>Clingfilm</sub>
+</expansion>
+<expansion>
+	<sub>Private school</sub>
+	<sub>Public school</sub>
+</expansion>
+<expansion>
+	<sub>Public School</sub>
+	<sub>State school</sub>
+</expansion>
+<expansion>
+	<sub>Pajamas</sub>
+	<sub>Pyjamas</sub>
+</expansion>
+<expansion>
+	<sub>Raincoat</sub>
+	<sub>Mackintosh</sub>
+</expansion>
+<expansion>
+	<sub>Realtor</sub>
+	<sub>Estate Agent</sub>
+</expansion>
+<expansion>
+	<sub>Rent</sub>
+	<sub>Hire</sub>
+</expansion>
+<expansion>
+	<sub>Robe</sub>
+	<sub>Dressing Gown</sub>
+</expansion>
+<expansion>
+	<sub>Sand Box</sub>
+	<sub>Sand Pit</sub>
+</expansion>
+<expansion>
+	<sub>Sandwich</sub>
+	<sub>Butty</sub>
+	<sub>Sarny</sub>
+</expansion>
+<expansion>
+	<sub>Santa Clause</sub>
+	<sub>Father Christmas</sub>
+</expansion>
+<expansion>
+	<sub>Sell</sub>
+	<sub>Flog</sub>
+</expansion>
+<expansion>
+	<sub>Shopping Cart</sub>
+	<sub>Shopping Basket</sub>
+	<sub>Trolley</sub>
+</expansion>
+<expansion>
+	<sub>Sidewalk</sub>
+	<sub>Pavement</sub>
+</expansion>
+<expansion>
+	<sub>Sir</sub>
+	<sub>Squire</sub>
+	<sub>Guv'nor</sub>
+</expansion>
+<expansion>
+	<sub>Sneakers</sub>
+	<sub>Trainers</sub>
+	<sub>Plimsolls</sub>
+	<sub>Pumps</sub>
+</expansion>
+<expansion>
+	<sub>Soccer</sub>
+	<sub>Football</sub>
+</expansion>
+<expansion>
+	<sub>Spelled</sub>
+	<sub>Spelt</sub>
+</expansion>
+<expansion>
+	<sub>Stroller</sub>
+	<sub>Pram</sub>
+	<sub>Pushchair</sub>
+</expansion>
+<expansion>
+	<sub>Styrofoam</sub>
+	<sub>Polystyrene</sub>
+</expansion>
+<expansion>
+	<sub>Suspenders</sub>
+	<sub>Braces</sub>
+</expansion>
+<expansion>
+	<sub>Sweater</sub>
+	<sub>Pullover</sub>
+	<sub>Jumper</sub>
+</expansion>
+<expansion>
+	<sub>Take-Out</sub>
+	<sub>Take-Away</sub>
+</expansion>
+<expansion>
+	<sub>Talk Show</sub>
+	<sub>Chat Show</sub>
+</expansion>
+<expansion>
+	<sub>Traffic Jam</sub>
+	<sub>Tailback</sub>
+</expansion>
+<expansion>
+	<sub>Thumb Tack</sub>
+	<sub>Drawing Pin</sub>
+</expansion>
+<expansion>
+	<sub>Tic Tac Toe</sub>
+	<sub>Naughts and Crosses</sub>
+</expansion>
+<expansion>
+	<sub>Tire</sub>
+	<sub>Tyre</sub>
+</expansion>
+<expansion>
+	<sub>Toothpick</sub>
+	<sub>Cocktail Stick</sub>
+</expansion>
+<expansion>
+	<sub>Track Housing</sub>
+	<sub>Housing Estate</sub>
+</expansion>
+<expansion>
+	<sub>Trailor</sub>
+	<sub>Caravan</sub>
+</expansion>
+<expansion>
+	<sub>Trash</sub>
+	<sub>Rubbish</sub>
+</expansion>
+<expansion>
+	<sub>Trash Can</sub>
+	<sub>Bin</sub>
+	<sub>Dustbin</sub>
+</expansion>
+<expansion>
+	<sub>Truck</sub>
+	<sub>Lorry</sub>
+</expansion>
+<expansion>
+	<sub>Trunk</sub>
+	<sub>Boot</sub>
+</expansion>
+<expansion>
+	<sub>Tuxedo</sub>
+	<sub>Dinner Jacket</sub>
+</expansion>
+<expansion>
+	<sub>Umbrella</sub>
+	<sub>Brolly</sub>
+</expansion>
+<expansion>
+	<sub>Undershirt</sub>
+	<sub>Vest</sub>
+</expansion>
+<expansion>
+	<sub>Underwear</sub>
+	<sub>Pants</sub>
+	<sub>knickers</sub>
+</expansion>
+<expansion>
+	<sub>Vacation</sub>
+	<sub>Holiday</sub>
+</expansion>
+<expansion>
+	<sub>Vest</sub>
+	<sub>Waistcoat</sub>
+</expansion>
+<expansion>
+	<sub>Wallet</sub>
+	<sub>Purse</sub>
+</expansion>
+<expansion>
+	<sub>Washcloth</sub>
+	<sub>Flannel</sub>
+</expansion>
+<expansion>
+	<sub>Windshield</sub>
+	<sub>Windscreen</sub>
+</expansion>
+<expansion>
+	<sub>Yard</sub>
+	<sub>Garden</sub>
+</expansion>
+<expansion>
+	<sub>Zee</sub>
+	<sub>Zed</sub>
+</expansion>
+<expansion>
+	<sub>Zip Code</sub>
+	<sub>Post Code</sub>
+</expansion>
+<expansion>
+	<sub>Zucchin</sub>
+	<sub>Courgette</sub>
+</expansion>
+</thesaurus>
+</XML>

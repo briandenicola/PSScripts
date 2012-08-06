@@ -128,10 +128,23 @@ function Get-StartedServices
 	}
 }
 
-function Set-DeveloperDashboard( [string] $level, [Boolean] $enabled )
+function Set-DeveloperDashboard
 {
+	param (
+		[Parameter(Mandatory=$true)]
+		[ValidateSet("on", "off")]
+		[string] $state
+	)
+	
 	$dash =[Microsoft.SharePoint.Administration.SPWebService]::ContentService.DeveloperDashboardSettings
-	$dash.DisplayLevel = $level
-	$dash.TraceEnabled = $true
+	
+	if( $state -eq "on" ) {
+		$dash.DisplayLevel = [Microsoft.SharePoint.Administration.SPDeveloperDashboardLevel]::OnDemand
+		$dash.TraceEnabled = $true
+	} 
+	else {
+		$dash.DisplayLevel = [Microsoft.SharePoint.Administration.SPDeveloperDashboardLevel]::Off
+		$dash.TraceEnabled = $false
+	}
 	$dash.Update()
 }

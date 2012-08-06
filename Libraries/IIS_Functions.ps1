@@ -22,6 +22,19 @@ function Create-WebFarm
 		$creds = Get-Credential 
 	}
 	
+	$servers = @()
+	$servers += $members
+	$servers += $primary
+	
+	$servers | % {
+		$user = $creds.UserName.Split("\")[1] 
+		if( -not ( Get-LocalAdmins -Computer $_ | ? { $_ -imatch $user } ) )
+		{
+			Write-Host "Adding $user to " $_
+			Add-LocalAdmin -Computer $_ -Group $user
+		}
+	}
+	
 	New-WebFarm -WebFarm $name -Credentials $creds -Enabled -EnableProvisioning 
 	New-Server -WebFarm $name -Address $primary -Enabled -IsPrimary
 	Add-ServersToWebFarm -name $name -members $members
@@ -322,4 +335,102 @@ function Set-IISLogging
 	Set-ItemProperty "IIS:\Sites\$site" -name LogFile.Directory -value $path
 	Set-ItemProperty "IIS:\Sites\$site" -name LogFile.logFormat.name -value "W3C"	
 	Set-ItemProperty "IIS:\Sites\$site" -name LogFile.logExtFileFlags -value 131023
+}
+
+$global:netfx = @{
+	"1.1x86" = "C:\WINDOWS\Microsoft.NET\Framework\v1.1.4322\CONFIG\machine.config"; 
+    "2.0x86" = "C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727\CONFIG\machine.config";
+	"4.0x86" = "C:\WINDOWS\Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config";
+	"2.0x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v2.0.50727\CONFIG\machine.config";
+	"4.0x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
+}
+
+function Generate-MachineKey 
+{
+	param (
+		[int] $keylen
+	) 
+	
+	$buff = new-object "System.Byte[]" $keylen
+	$rnd = new-object System.Security.Cryptography.RNGCryptoServiceProvider
+	$rnd.GetBytes($buff)
+	$result = [String]::Empty
+	
+	for( $i=0; $i -lt $keylen; $i++)
+	{
+		$result += [System.String]::Format("{0:X2}",$buff[$i])
+	}
+	
+	return $result
+}
+
+function Set-MachineKey 
+{
+	param(
+		[string] $version = "2.0x64",
+		[string] $validationKey,
+		[string] $decryptionKey,
+		[string] $validation
+	) 
+	
+    Write-Host "Setting machineKey for $version"
+    $currentDate = (Get-Date).tostring("mmddyyyyhhmms") 
+    $machineConfig = $netfx[$version]
+        
+    if( Test-Path $machineConfig )
+	{
+        $xml = [xml] ( Get-Content $machineConfig )
+        $xml.Save( $machineConfig + "." + $currentDate )
+        $root = $xml.get_DocumentElement()
+        $system_web = $root.system.web
+
+        if ( $system_web.machineKey -eq $nul )
+		{ 
+        	$machineKey = $xml.CreateElement("machineKey") 
+        	$a = $system_web.AppendChild($machineKey)
+        }
+		
+        $system_web.SelectSingleNode("machineKey").SetAttribute("validationKey","$validationKey")
+        $system_web.SelectSingleNode("machineKey").SetAttribute("decryptionKey","$decryptionKey")
+        $system_web.SelectSingleNode("machineKey").SetAttribute("validation","$validation")
+       
+		$xml.Save( $machineConfig )
+    }
+    else
+	{
+		Write-Host "$version is not installed on this machine" -Fore yellow 
+	}
+}
+
+function Get-MachineKey 
+{
+	param (
+		[string] $version = "2.0x64"
+	)
+	
+    Write-Host "Getting machineKey for $version"
+    $machineConfig = $netfx[$version]
+    
+    if( Test-Path $machineConfig )
+	{ 
+        $machineConfig = $netfx.Get_Item( $version )
+        $xml = [xml]( Get-Content $machineConfig )
+        $root = $xml.get_DocumentElement()
+        $system_web = $root.system.web
+
+        if ($system_web.machineKey -eq $nul)
+		{ 
+        	Write-Host "machineKey is null for $version" -fore red
+        }
+        else 
+		{
+            Write-Host "Validation Key: $($system_web.SelectSingleNode("machineKey").GetAttribute("validationKey"))" -Fore green
+    	    Write-Host "Decryption Key: $($system_web.SelectSingleNode("machineKey").GetAttribute("decryptionKey"))" -Fore green
+            Write-Host "Validation: $($system_web.SelectSingleNode("machineKey").GetAttribute("validation"))" -Fore green
+        }
+    }
+    else 
+	{ 
+		Write-Host "$version is not installed on this machine" -Fore yellow 
+	}
 }

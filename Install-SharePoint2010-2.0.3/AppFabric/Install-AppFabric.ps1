@@ -13,7 +13,7 @@ Add-WindowsFeature  AS-Web-Support
 Add-WindowsFeature  AS-HTTP-Activation 
 
 $source = "http://download.microsoft.com/download/1/A/D/1ADC8F3E-4446-4D31-9B2B-9B4578934A22/WindowsServerAppFabricSetup_x64_6.1.exe"
-$dest = "D:\Temp"
+$dest = "D:\Deploy"
 $exe = "WindowsServerAppFabricSetup_x64_6.1.exe"
 
 if( -not ( Test-Path (Join-Path $dest $exe) ) )

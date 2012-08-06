@@ -1,43 +1,36 @@
-### Brian Denicola
+### Brian Denicola	
 ### brian.x.denicola@jpmchase.com
 ### 
 
-function New-PSWindow { Invoke-item "$pshome\powershell.exe" }
-
-#######
-#http://technet.microsoft.com/en-us/library/ee649098.aspx
-function CheckFor-PendingReboot
-{
-
-  	$baseKey = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey("LocalMachine", $ENV:COMPUTERNAME)
-	$key = $baseKey.OpenSubKey("Software\Microsoft\Windows\CurrentVersion\Component Based Servicing\")
-   	$subkeys = $key.GetSubKeyNames()
-   	$key.Close()
-   	$baseKey.Close()
-
-   	if ($subkeys | Where {$_ -eq "RebootPending"}) 
-   	{
-    	return $true	
-    } 
-   	return $false
-}
-
-#######
-#Modified from SharePoint 2010 Administration with Powershell
-function Add-RunOnceTask
-{
-	param(
-		[string] $name,
-		[string] $command
+function New-PSWindow 
+{ 
+	param( 
+		[switch] $noprofile
 	)
-
-	New-ItemProperty "HKLM:SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" -Name $name -PropertyType string
-	Set-ItemProperty "HKLM:SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" -Name $name -Value $command
-
+	
+	if($noprofile) { 
+		cmd.exe /c start powershell.exe -NoProfile
+	} else {
+		cmd.exe /c start powershell.exe 
+	}
 }
 
-#####
-#http://stackoverflow.com/questions/9368305/disable-ie-security-on-windows-server-via-powershell
+function Change-ServiceAccount
+{
+	param (
+		[string] $account,
+		[string] $password,
+		[string] $service,
+		[string] $computer = "localhost"
+	)
+	
+	$svc=gwmi win32_service -computername $computer | ? { $_.Name -eq $service }
+	
+	$svc.StopService()
+	$svc.change($null,$null,$null,$null,$null,$null,$account,$password,$null,$null,$null)
+	$svc.StartService()
+}
+
 function Disable-InternetExplorerESC 
 {
     $AdminKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}"
@@ -66,6 +59,11 @@ function Add-GacItem([string] $path)
 {
 	d:\utils\gacutil.exe /i $path
     	
+}
+function Install-MSMQ
+{
+    Import-module ServerManager
+    Get-WindowsFeature | ? { $_.Name -match "MSMQ" } | % { Add-WIndowsFeature $_.Name }
 }
 function Get-Url 
 {
@@ -124,7 +122,16 @@ function Get-Url
 		{
 			$ans = Read-Host "Do you wish to see the contents of the request (y/n) - "
 			if( $ans -eq "y" ) {
-				$ResultFile = Join-Path $ENV:TEMP ($url.Trim("http://").Split("/")[0] + "-" + $Server + ".html")
+				$url_split = $url.Split("/")
+				if( $url_split[$url_split.Length - 1].Contains(".") ) 
+				{ 
+					$file_name =  $url_split[$url_split.Length - 1]
+				} 
+				else
+				{
+					$file_name = $server + ".html"
+				}
+				$ResultFile = Join-Path $ENV:TEMP ($url.Trim("http://").Split("/")[0] + "-" + $file_name)
 				$reader.ReadToEnd() | Out-File -Encoding ascii $ResultFile
 				&$ResultFile
 				
@@ -179,12 +186,33 @@ function Get-Uptime {
 
 function Get-TopProcesses
 {
-	Get-WmiObject Win32_PerfFormattedData_PerfProc_Process | `
-  		where-object{ $_.Name -ne "_Total" -and $_.Name -ne "Idle"} | `
-  		Sort-Object PercentProcessorTime -Descending | `
-  		select -First 5 | `
-  		Format-Table Name,IDProcess,PercentProcessorTime -AutoSize
- }
+	param(
+        [string] $computer = $env:COMPUTERNAME,
+        [int] $threshold = 5
+    )
+ 
+    # Test connection to computer
+    if( !(Test-Connection -Destination $computer -Count 1) ){
+        throw "Could not connect to :: $computer"
+    }
+ 
+    # Get all the processes
+    $processes = Get-WmiObject -ComputerName $computer -Class Win32_PerfFormattedData_PerfProc_Process -Property Name, PercentProcessorTime
+  
+    $items = @()
+    foreach( $process in ($processes | where { $_.Name -ne "Idle"  -and $_.Name -ne "_Total" }) )
+	{
+        if( $process.PercentProcessorTime -ge $threshold )
+		{
+            $items += (New-Object PSObject -Property @{
+				Name = $process.Name
+				CPU = $process.PercentProcessorTime
+			})
+        }
+    }
+  
+    return ( $items | Sort-Object -Property CPU -Descending)
+}
 
 function get-ScheduledTasks([string] $server) 
 {
@@ -1147,6 +1175,51 @@ Function read-RegistryHive
 	
 	}
 	return $regPairs
+}
+
+function send-email($s,$b,$to) 
+{
+	$from = "SharePoint.Admins@gt.com";
+	$domain  = "mail.gt.com";
+
+	$mail = new-object System.Net.Mail.MailMessage;
+	
+	for($i=0; $i -lt $to.Length; $i++) {
+		$mail.To.Add($to[$i]);
+	}
+	$mail.From = new-object System.Net.Mail.MailAddress($from);
+
+	$mail.Subject = $s;
+	$mail.Body = $b;
+
+	$smtp = new-object System.Net.Mail.SmtpClient($domain);
+	$smtp.Send($mail);
+
+}
+
+function send-emailwithattachment( [string] $subject, [string] $body, [object] $to, [Object] $attachment  )
+{
+	$from = "spadmin@gt.com";
+	$domain  = "mail.gt.com";
+	
+	$mail = new-object System.Net.Mail.MailMessage
+	
+	for($i=0; $i -lt $to.Length; $i++) {
+		$mail.To.Add($to[$i]);
+	}
+
+	$mail.From = new-object System.Net.Mail.MailAddress($from)
+	$mail.Subject = $subject
+	$mail.Body = $body
+	
+	$attach = New-Object System.Net.Mail.Attachment($attachment)
+	$mail.Attachments.Add($attach)
+
+	$smtp = new-object System.Net.Mail.SmtpClient($domain)
+	$smtp.Send($mail)
+
+	$attach.Dispose()
+	$mail.Dispose()
 }
 
 function log( [string] $txt, [string] $log ) 
