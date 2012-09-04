@@ -10,13 +10,31 @@ Add-PSSnapin Microsoft.SharePoint.PowerShell –EA SilentlyContinue
 $global:farm_type = $null
 $global:server_type = $null
 
+function Get-SharePointApplicationPool
+{
+	param (
+		[string] $name,
+		[string] $account
+	
+	)
+	
+	Write-Host "[$(Get-Date)] - Attempting to Get Service Application Pool " $name
+ 	$pool = Get-SPServiceApplicationPool $name
+	if( $pool -eq $nul )
+	{
+		Write-Host "[$(Get-Date)] - Could not find Application Pool - " $name " - therefore creating new pool"
+		if ( (Get-SPManagedAccount | where { $_.UserName -eq $account } ) -eq $nul )
+		{
+			$cred = Get-Credential $account
+			New-SPManagedAccount $cred -verbose
+		}
+		$pool = New-SPServiceApplicationPool -name $name -account $account
+	}
+	return $pool
+}
+
 function Get-FarmType
 {
-	#Determine Farm and Server Type
-	#foreach( $farm in @("services", "external", "internal") )
-	#{
-	#	$cfg.SharePoint.Farms.$farm.Server | ? { $_.Name -eq $ENV:COMPUTERNAME  } | % { $global:farm_type = $farm; $global:server_type = $_.Role }
-	#}
 	$xpath = "/SharePoint/Farms/farm/server[@name='" + $ENV:COMPUTERNAME + "']"
 	$global:farm_type = (Select-Xml -xpath $xpath  $cfg | Select @{Name="Farm";Expression={$_.Node.ParentNode.name}}).Farm
 	
@@ -30,9 +48,8 @@ function Get-FarmType
 	}
 }
 
-function Config-FarmAdministrators() 
+function Config-FarmAdministrators 
 {
-	
 	$web = Get-SPWeb ("http://" + $env:COMPUTERNAME + ":10000")
 
 	$farm_admins = $web.SiteGroups["Farm Administrators"]
@@ -59,7 +76,7 @@ function Config-FarmAdministrators()
 	
 }
 
-function Config-ManagedAccounts() 
+function Config-ManagedAccounts
 {
 	$cfg.SharePoint.managedaccounts.account | where { $_.farm -match $global:farm_type } | % { 
 		$cred = Get-Credential $_.username
@@ -67,7 +84,7 @@ function Config-ManagedAccounts()
 	}
 }
 
-function Config-Logging([String[]] $servers) 
+function Config-Logging( [String[]] $servers ) 
 {
 	foreach( $server in $servers )
 	{
@@ -91,7 +108,7 @@ function Config-Logging([String[]] $servers)
 	
 }
 
-function Config-Usage([String[]] $servers) 
+function Config-Usage( [String[]] $servers ) 
 {
 	foreach( $server in $servers )
 	{
@@ -122,27 +139,52 @@ function Config-Usage([String[]] $servers)
 	Write-Host "************************************************************************"  -foreground green
 }
 
-function Config-OutgoingEmail()
+function Config-OutgoingEmail
 {
 	$central_admin = Get-SPwebApplication -includecentraladministration | where {$_.IsAdministrationWebApplication}
  	$central_admin.UpdateMailSettings($cfg.SharePoint.Email.Outgoing.Server, $cfg.SharePoint.Email.Outgoing.Address, $cfg.SharePoint.Email.Outgoing.Address, 65001)
 }
 
-function Config-StateService()
+function Config-WebServiceAppPool
 {
-	$serviceApp = New-SPStateServiceApplication -Name "State Service Application" 
-	New-SPStateServiceDatabase -Name "SharePoint State Service" -ServiceApplication $serviceApp
-	New-SPStateServiceApplicationProxy -Name "State Service Application Proxy" -ServiceApplication $serviceApp -DefaultProxyGroup
+	Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name -account $cfg.SharePoint.Services.AppPoolAccount
+}
+
+function Config-StateService
+{
+	$app_name = "State Service Application" 
+	$app = New-SPStateServiceApplication -Name $app_name 
+	New-SPStateServiceDatabase -Name "SharePoint State Service" -ServiceApplication $app
+	New-SPStateServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app -DefaultProxyGroup
 	Enable-SPSessionStateService -DefaultProvision
 }
 
-function Config-SecureStore()
+function Config-SecureStore
 {
-	Get-SPServiceInstance | where { $_.TypeName -eq "Secure Store Service" -and $_.Server.Address.Contains("SPA") } | Start-SPServiceInstance
-	$sharePoint_service_apppool = New-SPServiceApplicationPool -name "AppPool - SharePoint Web Service Application" -account $cfg.SharePoint.Secure.AppPoolAccount
-	$secure_store = New-SPSecureStoreServiceApplication -Name "Secure Store Service" -ApplicationPool $sharePoint_service_apppool -DatabaseName "Secure_Store_Service_DB" -AuditingEnabled:$true -AuditLogMaxSize 30 -Sharing:$false -PartitionMode:$true 
-	$proxy = New-SPSecureStoreServiceApplicationProxy -Name "Secure Store Service Proxy" -ServiceApplication $secure_store -DefaultProxyGroup 
+	$app_name = "Secure Store Service"
+	$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
+	$app = New-SPSecureStoreServiceApplication -Name $app_name -ApplicationPool $sharePoint_service_apppool -DatabaseName "Secure_Store_Service_DB" 
+	$app | Set-SPSecureStoreServiceApplication -AuditingEnabled:$true -AuditLogMaxSize 30 -Sharing:$false -PartitionMode:$true 
+	$proxy = New-SPSecureStoreServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app -DefaultProxyGroup 
 	Update-SPSecureStoreMasterKey -ServiceApplicationProxy $proxy -Passphrase $cfg.SharePoint.Secure.Passphrase
+}
+
+function Config-AccessWebServices
+{
+	$app_name = "Access Service Application"
+	$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
+	$app = New-SPAccessServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name -Default
+	$app | Set-SPAccessServiceApplication -ApplicationLogMaxSize 1500 -CacheTimeout 150
+	$proxy = New-SPAccessServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app -DefaultProxyGroup 
+}
+
+function Config-VisioWebServices
+{
+	$app_name = "Visio Service Application"
+	$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
+	$app = New-SPVisioServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name -Default
+	$app | Set-SPVisioServiceApplication -MaxRecalcDuration 60 -MaxDiagramCacheAge 5 -MaxDiagramSize 5 -MinDiagramCacheAge 60
+	$proxy = New-SPVisioServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app -DefaultProxyGroup 
 }
 
 function Config-InitialPublishing
@@ -290,6 +332,11 @@ function main()
 	Write-Host "--------------------------------------------"
 	
 	Write-Host "--------------------------------------------"
+	Write-Host "Configure Web Services Application Pool"
+	Config-WebServiceAppPool
+	Write-Host "--------------------------------------------"
+	
+	Write-Host "--------------------------------------------"
 	Write-Host "Configure State Service"
 	Config-StateService
 	Write-Host "--------------------------------------------"
@@ -297,6 +344,16 @@ function main()
 	Write-Host "--------------------------------------------"
 	Write-Host "Configure Secure Store"
 	Config-SecureStore
+	Write-Host "--------------------------------------------"
+
+	Write-Host "--------------------------------------------"
+	Write-Host "Configure Access Web Services"
+	Config-AccessWebServices
+	Write-Host "--------------------------------------------"
+	
+	Write-Host "--------------------------------------------"
+	Write-Host "Configure Visio Web Service"
+	Config-VisioWebServices
 	Write-Host "--------------------------------------------"
 	
 	Write-Host "--------------------------------------------"

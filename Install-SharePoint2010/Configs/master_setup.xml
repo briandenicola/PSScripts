@@ -51,8 +51,10 @@
 		<add group="EXAMPLE\SharePoint-SysAdmins" />
 		<remove group="builtin\administrators" />
 	</FarmAdministrators>
-	<Secure>
+	<Services>
+		<Name>AppPool - SharePoint Web Service Application</name>
 		<AppPoolAccount></AppPoolAccount>
+	<Secure>
 		<Passphrase></Passphrase>
 	</Secure>
 	<Email>
