@@ -16,7 +16,6 @@
 			<server name="" role="indexer"/>
 			<server name="" role="wfe"/>
 		</farm>
-		<farm name="stand-alone"/>
 	</Farms>
 	<Databases>
 		<Database name="" port="" instance="" />

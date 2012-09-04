@@ -5,7 +5,7 @@
 	[string] $config = ".\config\master_setup.xml"
 )
 
-Add-PSSnapin Microsoft.SharePoint.PowerShell –EA SilentlyContinue
+Add-PSSnapin Microsoft.SharePoint.PowerShell -EA SilentlyContinue
 
 $global:farm_type = $null
 $global:server_type = $null
@@ -162,9 +162,9 @@ function Config-StateService
 function Config-SecureStore
 {
 	$app_name = "Secure Store Service"
+	$db_name = "Secure_Store_Service_DB"
 	$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
-	$app = New-SPSecureStoreServiceApplication -Name $app_name -ApplicationPool $sharePoint_service_apppool -DatabaseName "Secure_Store_Service_DB" 
-	$app | Set-SPSecureStoreServiceApplication -AuditingEnabled:$true -AuditLogMaxSize 30 -Sharing:$false -PartitionMode:$true 
+	$app = New-SPSecureStoreServiceApplication -Name $app_name -ApplicationPool $sharePoint_service_apppool -DatabaseName $db_name -AuditingEnabled:$true -AuditLogMaxSize 30 -Sharing:$false -PartitionMode:$true 
 	$proxy = New-SPSecureStoreServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app -DefaultProxyGroup 
 	Update-SPSecureStoreMasterKey -ServiceApplicationProxy $proxy -Passphrase $cfg.SharePoint.Secure.Passphrase
 }
@@ -173,18 +173,17 @@ function Config-AccessWebServices
 {
 	$app_name = "Access Service Application"
 	$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
-	$app = New-SPAccessServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name -Default
-	$app | Set-SPAccessServiceApplication -ApplicationLogMaxSize 1500 -CacheTimeout 150
-	$proxy = New-SPAccessServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app -DefaultProxyGroup 
+	$app = New-SPAccessServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name 
+	$app | Set-SPAccessServiceApplication -ApplicationLogSizeMax 1500 -CacheTimeout 150
 }
 
 function Config-VisioWebServices
 {
 	$app_name = "Visio Service Application"
 	$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
-	$app = New-SPVisioServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name -Default
-	$app | Set-SPVisioServiceApplication -MaxRecalcDuration 60 -MaxDiagramCacheAge 5 -MaxDiagramSize 5 -MinDiagramCacheAge 60
-	$proxy = New-SPVisioServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app -DefaultProxyGroup 
+	$app = New-SPVisioServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name
+	$app | Set-SPVisioPerformance -MaxRecalcDuration 60 -MaxDiagramCacheAge 60 -MaxDiagramSize 5 -MinDiagramCacheAge 5
+	$proxy = New-SPVisioServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app.Name  
 }
 
 function Config-InitialPublishing
@@ -225,37 +224,43 @@ function Deploy-PDF( [String[]] $servers )
 		return
 	}
 	
-	$deploy_home = "D:\Deploy\BlueBeam"
-	$pdf_icon = "$deploy_home\icpdf.gif"
-	$pdf_url = "http://www.bluebeam.com/web07/us/support/articles/images/icpdf.gif"
-	
-	mkdir $deploy_home
-	copy "$global:source\SharePoint2010-Utils-Scripts\GT.US.ECM.BlueBeam.wsp" $deploy_home
-	cd  ( Join-Path $ENV:SCRIPTS_HOME "DeploySharePointSolutions")
-	.\deploy_sharepoint_solutions.ps1 -deploy $deploy_home
-
-	$doc_xml = [xml] ( gc "$ENV:COMMONPROGRAMFILES\Microsoft Shared\web server extensions\14\TEMPLATE\XML\DOCICON.XML" )
-
-	$e = $doc_xml.CreateElement("Mapping")
-	$e.SetAttribute("Key", "pdf")
-	$e.SetAttribute("Value", "icpdf.gif")
-	$e.SetAttribute("EditText", "Bluebeam PDF Revu" )
-	$e.SetAttribute("OpenControl", "Revu.Launcher" )
-	
-	$ref = $doc_xml.DocIcons.ByExtension.Mapping | where { $_.Key -eq "png" }
-	$doc_xml.DocIcons.ByExtension.InsertBefore($e, $ref)
-	$doc_xml.Save( "$deploy_home\DOCICON.XML" )
+	if( (Test-Path "$global:source\SharePoint2010-Utils-Scripts\GT.US.ECM.BlueBeam.wsp") ) {
+		$deploy_home = "D:\Deploy\BlueBeam"
+		$pdf_icon = "$deploy_home\icpdf.gif"
+		$pdf_url = "http://www.bluebeam.com/web07/us/support/articles/images/icpdf.gif"
 		
-	$wc = New-Object System.Net.WebClient
-	$wc.DownloadFile( $pdf_url, $pdf_icon )
+		mkdir $deploy_home
+		copy "$global:source\SharePoint2010-Utils-Scripts\GT.US.ECM.BlueBeam.wsp" $deploy_home
+		cd  ( Join-Path $ENV:SCRIPTS_HOME "DeploySharePointSolutions")
+		.\deploy_sharepoint_solutions.ps1 -deploy $deploy_home
 
-	foreach( $server in $servers )
-	{
-		copy $pdf_icon "\\$server\c$\Program Files\Common Files\Microsoft Shared\Web Server Extensions\14\TEMPLATE\IMAGES\." -Verbose
-		move "\\$server\c$\Program Files\Common Files\Microsoft Shared\Web Server Extensions\14\TEMPLATE\XML\DOCICON.XML" "\\$server\c$\Program Files\Common Files\Microsoft Shared\Web Server Extensions\14\TEMPLATE\XML\DOCICON.XML.org" -Verbose
-		copy "$deploy_home\DOCICON.XML" "\\$server\c$\Program Files\Common Files\Microsoft Shared\Web Server Extensions\14\TEMPLATE\XML\DOCICON.XML"
+		$doc_xml = [xml] ( gc "$ENV:COMMONPROGRAMFILES\Microsoft Shared\web server extensions\14\TEMPLATE\XML\DOCICON.XML" )
+
+		$e = $doc_xml.CreateElement("Mapping")
+		$e.SetAttribute("Key", "pdf")
+		$e.SetAttribute("Value", "icpdf.gif")
+		$e.SetAttribute("EditText", "Bluebeam PDF Revu" )
+		$e.SetAttribute("OpenControl", "Revu.Launcher" )
+		
+		$ref = $doc_xml.DocIcons.ByExtension.Mapping | where { $_.Key -eq "png" }
+		$doc_xml.DocIcons.ByExtension.InsertBefore($e, $ref)
+		$doc_xml.Save( "$deploy_home\DOCICON.XML" )
+			
+		$wc = New-Object System.Net.WebClient
+		$wc.DownloadFile( $pdf_url, $pdf_icon )
+
+		foreach( $server in $servers )
+		{
+			copy $pdf_icon "\\$server\c$\Program Files\Common Files\Microsoft Shared\Web Server Extensions\14\TEMPLATE\IMAGES\." -Verbose
+			move "\\$server\c$\Program Files\Common Files\Microsoft Shared\Web Server Extensions\14\TEMPLATE\XML\DOCICON.XML" "\\$server\c$\Program Files\Common Files\Microsoft Shared\Web Server Extensions\14\TEMPLATE\XML\DOCICON.XML.org" -Verbose
+			copy "$deploy_home\DOCICON.XML" "\\$server\c$\Program Files\Common Files\Microsoft Shared\Web Server Extensions\14\TEMPLATE\XML\DOCICON.XML"
+		}
+	}
+	else {
+		Write-Host "Could not find $global:source\SharePoint2010-Utils-Scripts\GT.US.ECM.BlueBeam.wsp"
 	}
 }
+
 
 $FixTaxonomyBug = {
 	$TaxonomyPickerControl = "$env:CommonProgramFiles\Microsoft Shared\Web Server Extensions\14\TEMPLATE\CONTROLTEMPLATES\TaxonomyPicker.ascx" 
@@ -271,17 +276,22 @@ $sb = {
 
 	$deploy_home = "D:\Deploy"
 
-	copy "$source\SharePoint2010AdministrationToolkit.exe" $deploy_home -Verbose
-	&"$deploy_home\SharePoint2010AdministrationToolkit.exe" /quiet /norestart 
-	Sleep 5
+	if( (Test-Path "$source\SharePoint2010AdministrationToolkit.exe"  ) ) {
+		copy "$source\SharePoint2010AdministrationToolkit.exe" $deploy_home -Verbose
+		&"$deploy_home\SharePoint2010AdministrationToolkit.exe" /quiet /norestart 
+		Sleep 5
 	
-	if( -not (Test-Path "C:\Program Files\Microsoft\SharePoint 2010 Administration Toolkit\SPDIAG.exe") )
-	{
-		Write-Host "SharePoint2010AdministrationToolkit install failed on " $ENV:COMPUTERNAME
-	}
-	else
-	{
-		Write-Host "SharePoint2010AdministrationToolkit install succeeded on " $ENV:COMPUTERNAME
+		if( -not (Test-Path "C:\Program Files\Microsoft\SharePoint 2010 Administration Toolkit\SPDIAG.exe") )
+		{
+			Write-Host "SharePoint2010AdministrationToolkit install failed on " $ENV:COMPUTERNAME
+		}
+		else
+		{
+			Write-Host "SharePoint2010AdministrationToolkit install succeeded on " $ENV:COMPUTERNAME
+		}
+	} 
+	else {
+		Write-Host "Could not find $source\SharePoint2010AdministrationToolkit.exe" 
 	}
 }
 

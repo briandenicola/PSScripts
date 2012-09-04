@@ -137,9 +137,7 @@ function SharePointSetup
 	cd "$global:scripts_home\InstallSharePoint2010"
 	if( CheckFor-PendingReboot )
 	{
-		#$config = Join-Path $PWD.Path "Configs\master_setup.xml"
-		
-		$script = "cd $global:scripts_home\InstallSharePoint2010;"
+		$script = "cd $global:scripts_home\Install-SharePoint2010;"
 		$script += Join-Path $PWD.Path "1_SPFarm-Master_Install.ps1"
 		$script += " -operation sharepoint-install -config $config"
 		
@@ -170,7 +168,7 @@ function FarmSetup
 	$pass = $cfg.SharePoint.setup.security.$global:farm_type.passphrase
 	$account = $cfg.SharePoint.setup.security.$global:farm_type.farm_account
 	
-	cd "$global:scripts_home\InstallSharePoint2010"
+	cd "$global:scripts_home\Install-SharePoint2010"
 	if( $global:server_type -eq "central-admin" )
 	{	
 		.\Modules\Create-SharePointFarm.ps1 -db $db -passphrase $pass -account $account

@@ -63,7 +63,7 @@ function ConfigureServicesOnServer_WFE([String] $env)
 		Write-Host "Working on " $server.name
 		if( $server.name -ne $null -and (Get-SPServer -Identity $server.name -ErrorAction SilentlyContinue) -ne $null)
 		{	
-				foreach( $start_app in @("Microsoft SharePoint Foundation Sandboxed Code Service", "Word Automation Services", "Claims to Windows Token Service", "Secure Store Service", "Acces Database Service", "Visio Graphics Service") )
+				foreach( $start_app in @("Microsoft SharePoint Foundation Sandboxed Code Service", "Word Automation Services", "Claims to Windows Token Service", "Secure Store Service", "Access Database Service", "Visio Graphics Service") )
 				{
 					$Guid = Get-SPServiceInstance -Server $server.name  | where {$_.TypeName -eq $start_app} | Select -Expand Id
 					Start-SPServiceInstance -Identity $Guid
