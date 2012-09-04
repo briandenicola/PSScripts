@@ -52,8 +52,9 @@
 		<remove group="builtin\administrators" />
 	</FarmAdministrators>
 	<Services>
-		<Name>AppPool - SharePoint Web Service Application</name>
+		<Name>AppPool - SharePoint Web Service Application</Name>
 		<AppPoolAccount></AppPoolAccount>
+    </Services>
 	<Secure>
 		<Passphrase></Passphrase>
 	</Secure>
