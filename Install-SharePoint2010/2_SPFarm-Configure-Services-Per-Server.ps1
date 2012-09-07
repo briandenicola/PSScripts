@@ -14,7 +14,7 @@ function ConfigureServicesOnServer_CentralAdmin([String] $env)
 		Write-Host "Working on " $server.name
 		if( $server.name -ne $null -and (Get-SPServer -Identity $server.name -ErrorAction SilentlyContinue) -ne $null)
 		{	
-				foreach( $start_app in @("Microsoft SharePoint Foundation Incoming E-Mail","Microsoft SharePoint Foundation Web Application","Application Registry Service", "Business Data Connectivity Service", "Claims to Windows Token Service", "Document Conversions Load Balancer Service",  "Document Conversions Launcher Service") )
+				foreach( $start_app in @("Microsoft SharePoint Foundation Incoming E-Mail","Microsoft SharePoint Foundation Web Application","Application Registry Service", "Business Data Connectivity Service", "Claims to Windows Token Service", "Document Conversions Load Balancer Service",  "Document Conversions Launcher Service", "Access Database Service", "Visio Graphics Service") )
 				{
 					$Guid = Get-SPServiceInstance -Server $server.name  | where {$_.TypeName -eq $start_app} | Select -Expand Id
 					Start-SPServiceInstance -Identity $Guid
