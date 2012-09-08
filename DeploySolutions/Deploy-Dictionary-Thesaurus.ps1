@@ -1,4 +1,4 @@
-[CmdletBinding(SupportsShouldProcess=$true)]
+﻿[CmdletBinding(SupportsShouldProcess=$true)]
 param (
 	[Parameter(Mandatory=$true)]
 	[string] $file,
@@ -8,7 +8,7 @@ param (
 	[string] $deploy 
 )
 
-Add-PSSnapin Microsoft.SharePoint.PowerShell -erroraction SilentlyContinue
+Add-PSSnapin Microsoft.SharePoint.PowerShell –erroraction SilentlyContinue
 
 $now = $(Get-Date).ToString("yyyyMMddhhmmss")
 
