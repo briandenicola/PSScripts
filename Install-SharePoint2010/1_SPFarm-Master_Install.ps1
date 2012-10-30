@@ -105,7 +105,7 @@ function BaseSetup
 function IISSetup
 {
 	#Install IIS, .NET4, SQL Client, and WebDeploy
-	cd  "$global:scripts_home\iis\iis7.5_install\"
+	cd  "$global:scripts_home\iis\install\"
 	.\install_and_config_iis7.ps1
 	
 	&"$global:utils_home\WebPI\WebpiCmdLine.exe" /Products:NETFramework4 /accepteula /SuppressReboot 
@@ -137,7 +137,9 @@ function SharePointSetup
 	cd "$global:scripts_home\InstallSharePoint2010"
 	if( CheckFor-PendingReboot )
 	{
-		$script = "cd $global:scripts_home\Install-SharePoint2010;"
+		#$config = Join-Path $PWD.Path "Configs\master_setup.xml"
+		
+		$script = "cd $global:scripts_home\InstallSharePoint2010;"
 		$script += Join-Path $PWD.Path "1_SPFarm-Master_Install.ps1"
 		$script += " -operation sharepoint-install -config $config"
 		
@@ -168,7 +170,7 @@ function FarmSetup
 	$pass = $cfg.SharePoint.setup.security.$global:farm_type.passphrase
 	$account = $cfg.SharePoint.setup.security.$global:farm_type.farm_account
 	
-	cd "$global:scripts_home\Install-SharePoint2010"
+	cd "$global:scripts_home\InstallSharePoint2010"
 	if( $global:server_type -eq "central-admin" )
 	{	
 		.\Modules\Create-SharePointFarm.ps1 -db $db -passphrase $pass -account $account

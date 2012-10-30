@@ -9,7 +9,7 @@ param (
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1")
 
 Set-Variable -Name audit_ssl_script -Value "D:\Scripts\SSL\query_ssl_certificates.ps1" -Option Constant
-Set-Variable -Name audit_iis_script -Value "D:\Scripts\IIS\IIS6\Get-IISInfo.ps1" -Option Constant
+Set-Variable -Name audit_iis_script -Value "D:\Scripts\IIS\Get-IISInfo.ps1" -Option Constant
 
 function log( [string] $txt ) 
 {

@@ -38,8 +38,8 @@ function BaseSetup
 function IISSetup
 {
 	#Install IIS, .NET4, SQL Client, and WebDeploy
-	cd  D:\Scripts\iis\iis7.5_install\
-	D:\Scripts\iis\iis7.5_install\install_and_config_iis7.ps1
+	cd  D:\Scripts\iis\install\
+	D:\Scripts\iis\install\install_and_config_iis7.ps1
 }
 
 

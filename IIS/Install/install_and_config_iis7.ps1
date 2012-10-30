@@ -10,7 +10,7 @@ Set-Variable -Option Constant -Name iis_dir -Value "$Drive\IIS"
 Set-Variable -Option Constant -Name web_dir -Value "$Drive\Web\default_site"
 Set-Variable -Option Constant -Name log_dir -Value "$Drive\Logs"
 
-Set-Variable -Option Constant -Name iis_modules -Value ".\modules_to_install.txt"
+Set-Variable -Option Constant -Name iis_modules -Value ".\modules_to_install_common.txt"
 Set-Variable -Option Constant -Name logFile -Value "$ENV:Temp\iis_install-$now.log"
 
 Set-Variable -Option Constant -Name logFlags -Value "Date, Time, ClientIP, UserName, ServerIP, Method, UriStem, UriQuery, HttpStatus, BytesSent, BytesRecv, TimeTaken"
