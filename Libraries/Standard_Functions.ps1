@@ -15,6 +15,15 @@ function New-PSWindow
 	}
 }
 
+function Get-WindowsServices
+{
+	param (
+		[string] $computer
+	)
+	
+	Get-wmiobject win32_service -computer $computer | Select Name,Startname
+}
+
 function Change-ServiceAccount
 {
 	param (
@@ -133,7 +142,14 @@ function Get-Url
 				}
 				$ResultFile = Join-Path $ENV:TEMP ($url.Trim("http://").Split("/")[0] + "-" + $file_name)
 				$reader.ReadToEnd() | Out-File -Encoding ascii $ResultFile
-				&$ResultFile
+				
+				if( (dir $ResultFile).Extension -match "html|aspx" ) {
+					$ie = new-object -comobject "InternetExplorer.Application"  
+					$ie.visible = $true  
+					$ie.navigate($ResultFile)
+				} else { 
+					&$ResultFile
+				}
 				
 				Start-Sleep 10
 				
@@ -146,6 +162,61 @@ function Get-Url
 		Write-Error ("The request failed with the following WebException - " + $_.Exception.ToString() )
 	}
     
+}
+
+function Get-JsonRequest 
+{
+	[CmdletBinding(SupportsShouldProcess=$true)]
+    param(
+        [string] $url,
+	    [ValidateSet("NTLM", "BASIC", "NONE")]
+        [string] $AuthType = "NTLM",
+    	[int] $timeout = 8,
+        [string] $Server,
+        [Management.Automation.PSCredential] $creds
+    )
+    
+	$request = [System.Net.HttpWebRequest]::Create($url)
+    $request.Method = "GET"
+    $request.Timeout = $timeout * 1000
+    $request.AllowAutoRedirect = $false
+    $request.ContentType = "application/x-www-form-urlencoded"
+    $request.UserAgent = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0; .NET CLR 1.1.4322)"
+	$request.Accept = "application/json;odata=verbose"
+	
+	if ($AuthType -eq "BASIC") {
+        $network_creds = $creds.GetNetworkCredential()
+        $auth = "Basic " + [Convert]::ToBase64String([Text.Encoding]::Default.GetBytes($network_creds.UserName + ":" + $network_creds.Password))
+        $request.Headers.Add("Authorization", $auth)
+        $request.Credentials = $network_creds
+        $request.PreAuthenticate = $true
+    }
+    elseif( $AuthType -eq "NTLM" ) {
+        $request.Credentials =  [System.Net.CredentialCache]::DefaultCredentials
+    }
+       
+    if( $Server -ne [String]::Empty ) {
+		$request.Proxy = new-object -typename System.Net.WebProxy -argumentlist $Server
+    }
+    
+    Write-Verbose ("[{0}][REQUEST] Getting $url ..." -f $(Get-Date))
+	try {
+		$timing_request = Measure-Command { $response = $request.GetResponse() }
+		$stream = $response.GetResponseStream()
+		$reader = New-Object System.IO.StreamReader($stream)
+		
+		Write-Verbose ("[{0}][REPLY] Server = {1} " -f $(Get-Date), $response.Server)
+		Write-Verbose ("[{0}][REPLY] Status Code = {1} {2} . . ." -f $(Get-Date), $response.StatusCode, $response.StatusDescription)
+		Write-Verbose ("[{0}][REPLY] Content Type = {1} . . ." -f $(Get-Date), $response.ContentType)
+		Write-Verbose ("[{0}][REPLY] Content Length = {1} . . ." -f $(Get-Date), $response.ContentLength)
+		Write-Verbose ("[{0}][REPLY] Total Time = {1} . . ." -f $(Get-Date), $timing_request.TotalSeconds)
+
+		return ( $reader.ReadToEnd() | ConvertFrom-Json )
+	}
+	catch [System.Net.WebException] {
+		Write-Error ("The request failed with the following WebException - " + $_.Exception.ToString() )
+	}
+	
 }
 
 function Get-Clipboard{
@@ -772,7 +843,7 @@ function audit-Server( [String] $server )
 		$xml = "<System name=`"$($this.SystemName)`">`n"
 		$xml += "<Application name=`"$($this.Application)`" env=`"$($this.Environment)`" />`n"
 		$xml += "<Domain>$($this.Domain)</Domain>`n"
-		$xml += "<Type>$($this.Type1)</Type>`n"
+		$xml += "<Type>$($this.Model)</Type>`n"
 		$xml += "<SerialNumber>$($this.SerialNumber)</SerialNumber>`n"
 		$xml += "<Processor>$($this.Processor)</Processor>`n"
 		$xml += "<Memory>$($this.Memory)</Memory>`n"
@@ -803,7 +874,7 @@ function audit-Server( [String] $server )
 		} else { 
 			$drives = [string]::join("|", $this.Drives)
 		}
-		$model = $this.Type1.Replace(",","")
+		$model = $this.Model.Replace(",","")
 		
 		$csv = "$($this.SystemName),$ips,$($this.Application),$($this.Environment),$($this.Domain),$Model,$($this.SerialNumber),$cpu,"
 		$csv += "$($this.Memory),$os, $drives`n"
@@ -821,7 +892,7 @@ function audit-Server( [String] $server )
 	
 	$audit | add-member -type NoteProperty -name SystemName -Value $computer.Name
 	$audit | add-member -type NoteProperty -name Domain -Value $computer.Domain		
-	$audit | add-member -type NoteProperty -name Type1 -Value ($computer.Manufacturer + " " + $computer.Model.TrimEnd())
+	$audit | add-member -type NoteProperty -name Model -Value ($computer.Manufacturer + " " + $computer.Model.TrimEnd())
 	$audit | add-member -type NoteProperty -name Processor -Value ($computer.NumberOfProcessors.toString() + " x " + ($cpu/1024).toString("#####.#") + " GHz")
 	$audit | add-member -type NoteProperty -name Memory -Value ($computer.TotalPhysicalMemory/1gb).tostring("#####.#")
 	$audit | add-member -type NoteProperty -name SerialNumber -Value ($bios.SerialNumber.TrimEnd())
@@ -1358,3 +1429,118 @@ function BulkWrite-ToSQLDatabase([Object] $table)
     $bulkCopy.DestinationTableName = $TableName
     $bulkCopy.WriteToServer($table)		
 }
+
+function is64bit() 
+{    
+	if ([IntPtr].Size -eq 4) 
+	{ 
+		return $false 
+	}    
+	else 
+	{ 
+		return $true 
+	}
+}
+function Set-Record
+{
+	param(
+	[string] $Title = $(throw 'Title is required'),
+	[string] $Description = $(throw 'Description is required')
+	)
+	$obj = New-Object PSObject -Property @{
+			Title = $Title
+			User = $ENV:USERNAME
+			Description = $Description
+		}
+	WriteTo-SPListViaWebService -url $url -list $list -Item $(Convert-ObjectToHash $obj) -TitleField Title
+}
+function Kill-Process
+{
+param ( [int] $p ) 
+	Stop-Process -id $p -force
+}
+function Disable-InternetExplorerESC {
+    $AdminKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}"
+    $UserKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A8-37EF-4b3f-8CFC-4F3A74704073}"
+    Set-ItemProperty -Path $AdminKey -Name "IsInstalled" -Value 0
+    Set-ItemProperty -Path $UserKey -Name "IsInstalled" -Value 0
+    Stop-Process -Name Explorer
+    Write-Host "IE Enhanced Security Configuration (ESC) has been disabled." -ForegroundColor Green
+}
+
+function Enable-InternetExplorerESC {
+    $AdminKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}"
+    $UserKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A8-37EF-4b3f-8CFC-4F3A74704073}"
+    Set-ItemProperty -Path $AdminKey -Name "IsInstalled" -Value 1
+    Set-ItemProperty -Path $UserKey -Name "IsInstalled" -Value 1
+    Stop-Process -Name Explorer
+    Write-Host "IE Enhanced Security Configuration (ESC) has been enabled." -ForegroundColor Green
+}
+
+function Disable-UserAccessControl {
+    Set-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 00000000
+    Write-Host "User Access Control (UAC) has been disabled." -ForegroundColor Green   
+}
+function Add-UsersToServer {
+param
+(
+[String[]] $servers = $(throw ' You must input at least one server'),
+[string] $username = $(throw ' You must enter a username to check for')
+)
+$creds = Get-Credential -Credential $username
+$user = $creds.UserName.Split("\")[1]
+Foreach ( $server in $servers)
+{
+ if( -not ( Get-LocalAdmins -Computer $server | ? { $_ -imatch $user } ) )
+		{
+			Write-Host "Adding $user to " $_
+			Add-LocalAdmin -Computer $_ -Group $user
+		}
+else
+		{
+			Write-Host "$user already exists"
+		}
+}
+
+}
+function SendEmail {
+    #param($strTo, $strFrom, $strSubject, $strBody, $smtpServer)
+    param($To, $From, $Subject, $Body, $smtpServer)
+    $msg = new-object Net.Mail.MailMessage
+    $smtp = new-object Net.Mail.SmtpClient($smtpServer)
+    $msg.From = $From
+    $msg.To.Add($To)
+    $msg.Subject = $Subject
+    $msg.IsBodyHtml = 1
+    $msg.Body = $Body
+    $smtp.Send($msg)
+    }
+
+
+    function SendEmail-attachment
+	{
+	#param($strTo, $strFrom, $strSubject, $strBody, $smtpServer)
+    param(
+    $To,
+    $From,
+    $Subject,
+    $Body,
+    $smtpServer,
+    [string []] $files
+    )
+    $msg = new-object Net.Mail.MailMessage
+    $smtp = new-object Net.Mail.SmtpClient($smtpServer)
+    $msg.From = $From
+    $msg.To.Add($To)
+    $msg.Subject = $Subject
+    $msg.IsBodyHtml = 1
+    $msg.Body = $Body
+	Foreach ($file in $files)
+    {
+    $att = new-object Net.Mail.Attachment($file)
+    $msg.Attachments.Add($att)
+    }
+    $smtp.Send($msg)
+    }
+	
+
