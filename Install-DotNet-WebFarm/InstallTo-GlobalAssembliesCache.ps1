@@ -8,26 +8,38 @@ param(
 
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 
-$gac_out_file = ".\gac_install_record.log"
+$now = $(Get-Date).ToString("yyyyMMddhhmmss")
+$gac_out_file = ".\gac_install-$now.log"
 
+$assemblies = @()
 function main()
 {
 	$publish = New-Object System.EnterpriseServices.Internal.Publish
 
 	foreach( $file in (Get-ChildItem $dir -include *.dll -recurse) ) 
 	{
-		$assembly = $file.FullName
-		$fileHash = get-hash1 $assembly
-		
-		Write-Verbose "Installing: $assembly"
-		  
-		if ( [System.Reflection.Assembly]::LoadFile( $assembly ).GetName().GetPublicKey().Length -eq 0 )
-		{
-		  throw "The assembly '$assembly' must be strongly signed."
-		}
-		
-		"{0},{1},{2},{3},{4}" -f $(Get-Date), $file.Name, $file.LastWriteTime, $file.VersionInfo.ProductVersion, $fileHash | out-file -append -encoding ascii $gac_out_file    
-		$publish.GacInstall( $assembly )
+        try { 
+            $assembly = $file.FullName
+            Write-Verbose "Installing: $assembly"
+            
+            $publish.GacInstall( $assembly )
+            
+            $assemblies += (New-Object PSObject -Property @{
+              Name = $file.Name
+              Assembly = $assembly
+		      Hash = get-hash1 $assembly
+              LastWriteTime = $file.LastWriteTime
+              Version =  $file.VersionInfo.ProductVersion
+            })
+            
+        }
+        catch { 
+            "The assembly '$assembly' must be strongly signed."
+        }
 	}
+    
+    $assemblies | Export-CSV -NoTypeInformation -Encoding Ascii $gac_out_file   
+    
+    return $assemblies
 }
 main

@@ -1,6 +1,12 @@
-### Brian Denicola	
-### brian.x.denicola@jpmchase.com
-### 
+#Variables
+[void] [Reflection.Assembly]::LoadWithPartialName("System.Security")
+
+$domain_controller = "ad.sharepoint.test"
+$from = "admin@sharepoint.test"
+$domain  = "mail.sharepoint.test"
+
+$AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
+$AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
 
 function New-PSWindow 
 { 
@@ -49,6 +55,7 @@ function Disable-InternetExplorerESC
     Stop-Process -Name Explorer
     Write-Host "IE Enhanced Security Configuration (ESC) has been disabled." -ForegroundColor Green
 }
+
 function Enable-InternetExplorerESC 
 {
     $AdminKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}"
@@ -58,22 +65,19 @@ function Enable-InternetExplorerESC
     Stop-Process -Name Explorer
     Write-Host "IE Enhanced Security Configuration (ESC) has been enabled." -ForegroundColor Green
 }
+
 function Disable-UserAccessControl
 {
     Set-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 00000000
     Write-Host "User Access Control (UAC) has been disabled." -ForegroundColor Green    
-} 
-#####
-function Add-GacItem([string] $path) 
-{
-	d:\utils\gacutil.exe /i $path
-    	
 }
+ 
 function Install-MSMQ
 {
     Import-module ServerManager
     Get-WindowsFeature | ? { $_.Name -match "MSMQ" } | % { Add-WIndowsFeature $_.Name }
 }
+
 function Get-Url 
 {
     [CmdletBinding(SupportsShouldProcess=$true)]
@@ -219,11 +223,13 @@ function Get-JsonRequest
 	
 }
 
-function Get-Clipboard{
+function Get-Clipboard 
+{
 	PowerShell -NoProfile -STA -Command { Add-Type -Assembly PresentationCore; [Windows.Clipboard]::GetText() }
 }
 
-function Set-Clipboard{
+function Set-Clipboard 
+{
  	Param(
 		[Parameter(ValueFromPipeline = $true)]
 		[object[]] $inputObject
@@ -246,7 +252,8 @@ function Set-Clipboard{
 	}
 }
 
-function Get-Uptime {
+function Get-Uptime 
+{
 	param($computer)
 	
 	$lastboottime = (Get-WmiObject -Class Win32_OperatingSystem -computername $computer).LastBootUpTime
@@ -285,7 +292,7 @@ function Get-TopProcesses
     return ( $items | Sort-Object -Property CPU -Descending)
 }
 
-function get-ScheduledTasks([string] $server) 
+function Get-ScheduledTasks([string] $server) 
 {
 	$tasks = @()
 	
@@ -334,8 +341,8 @@ function Import-PfxCertificate
  	$store.close()    
  } 
  
- function Remove-Certificate 
- {
+function Remove-Certificate 
+{
  	param(
 		[String] $subject,
 		[String] $certRootStore = "LocalMachine",
@@ -374,17 +381,12 @@ function Export-Certificate
 	[System.IO.File]::WriteAllBytes($file , $bytes)
 }
 
-# ===================================================================================
-# Func: Pause
-# Desc: Wait for user to press a key - normally used after an error has occured
-# ===================================================================================mmc
-Function Pause
+function pause
 {
 	#From http://www.microsoft.com/technet/scriptcenter/resources/pstips/jan08/pstip0118.mspx
 	Write-Host "Press any key to exit..."
 	$null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
-
 
 function Get-PreviousMonthRange
 {
@@ -480,8 +482,7 @@ function Gen-Passwords
 	return $passwords
 }
 
-### http://www.databasejournal.com/img/2007/11/CreateServerAlias_ps1.txh
-function Create-SQL2K5Alias( [string] $instance, [int] $port, [string] $alias)
+function Create-SQL2K5Alias( [string] $instance, [int] $port, [string] $alias )
 {
 	[reflection.assembly]::LoadWithPartialName("Microsoft.SqlServer.Smo")
 	$objComputer=New-Object Microsoft.SqlServer.Management.Smo.Wmi.ManagedComputer "."
@@ -495,11 +496,8 @@ function Create-SQL2K5Alias( [string] $instance, [int] $port, [string] $alias)
 	$newalias.Create()
 }
 
-$AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
-$AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
 function Get-WindowsUpdateConfig
 {
-
 	$AUSettings = (New-Object -com "Microsoft.Update.AutoUpdate").Settings
 
 	$AUObj = New-Object -TypeName System.Object
@@ -511,31 +509,27 @@ function Get-WindowsUpdateConfig
 } 
 
 function Get-SystemGAC( [string[]] $servers )
-{
-	#$PSEXEC = "d:\Users\US32784\utils\psexec.exe"
-	#$cmd = "$PSEXEC \\$server -c $GACUTIL /l"
-	
+{	
 	$s = New-PSSession -Computer $servers
 	Invoke-Command -Session $s -ScriptBlock {
-		$gac = @()
-		
-		d:\Utils\gacutil.exe /l | where { $_ -like "*Culture*" } | Sort | %  {
-			$assembly = New-Object PSObject
-			
-			$entry = $_.Split(",")
-			$assembly | Add-Member -MemberType NoteProperty -Name DllName -Value $entry[0].Trim()
-		
-			$entry | where { $_.Contains("=") } | % {
-				$details = $_.Split("=")
-				$assembly | Add-Member -MemberType NoteProperty -Name $details[0].Trim() -Value $details[1].Trim()
-			}
-			$gac += $assembly
-		}
-		
-		return $gac
-				
-	}
+		$assemblies = @()
+		$dlls = Get-ChildItem -Path C:\windows\assembly -Filter *.dll -Recurse
 
+		foreach ($assembly in $dlls)
+		{
+			$assembly = [Reflection.Assembly]::ReflectionOnlyLoadFrom($Assembly.FullName)
+			if ($assembly -is [System.Reflection.Assembly]) {
+				$assemblies += (New-Object PSObject -Property @{
+					FullName = $assembly.FullName
+					Module = $assembly.ManifestModule
+					RunTime = $assembly.ImageRuntimeVersion
+					Location = $assembly.Location
+					Computer = $ENV:ComputerName	
+				})
+			}
+		}
+		return $assemblies
+	}
 }
 
 function Get-GoogleGraph([HashTable] $ht, [String] $title, [String] $size="750x350", [string] $file="chart.png",  [switch] $invoke)
@@ -572,8 +566,6 @@ function Get-GoogleGraph([HashTable] $ht, [String] $title, [String] $size="750x3
     if( $invoke ) { Invoke-Item $DownLoadFile } else { return $DownLoadFile	 }
 }
 
-# Some code copied with permission from Steve Schofield 
-# http://weblogs.asp.net/steveschofield/archive/2009/01/08/list-local-administrators-on-a-machine-using-powershell-adsi.aspx 
 function Get-LocalAdmins( [string] $computer )
 {
 	$adsi  = [ADSI]("WinNT://" + $computer + ",computer") 
@@ -594,14 +586,12 @@ function Get-LocalGroup( [string] $computer,[string] $Group )
 
 function Add-ToLocalGroup( [string] $computer, [string] $LocalGroup, [string] $DomainGroup )
 {
-    $domain_controller = "ent-dc-d04"
     $aslocalGroup = [ADSI]"WinNT://$computer/$LocalGroup,group"
     $aslocalGroup.Add("WinNT://$domain_controller/$DomainGroup,group")
 }
 
 function Add-LocalAdmin( [string] $computer, [string] $Group )
 {
-	$domain_controller = "ent-dc-d04"
     $localGroup = [ADSI]"WinNT://$computer/Administrators,group"
     $localGroup.Add("WinNT://$domain_controller/$Group,group")
 }
@@ -624,7 +614,6 @@ function Get-WindowsDiskSpace
 		return $DiskSpace
 	}
 }
-
 
 function Convert-ObjectToHash( [Object] $obj )
 {
@@ -687,14 +676,13 @@ function Get-MSMQQueues([String] $Server)
 		
 }
 
-function Get-FrameworkVersion ([Object] $virtual_dir)
+function Get-FrameworkVersion ([Object] $virtual_dir )
 {
 	$maps = $virtual_dir | Select ScriptMaps
 	$version = $maps.ScriptMaps | Select -Uniq -Expand ScriptProcessor | where { $_.ToLower().Contains("microsoft.net") } | Select -First 1
 	
 	return $version 
 }
-
 
 function Audit-IISServers([String[]] $Servers )
 {
@@ -703,54 +691,8 @@ function Audit-IISServers([String[]] $Servers )
 	Set-Variable -Option Constant -Name AppPoolQuery -Value "Select * from IIsApplicationPoolSetting"
 	Set-Variable -Name iisAudit -Value @()
 	
-	$xmlScriptBlock = {
-		$xml += "<Site server=`"$($this.ServerName)`" name=`"$($this.Name)`">`n"
-		$xml += "<LogDirectory>$($this.LogFileDirectory)</LogDirectory>`n"
-		$xml += "<HostHeaders>`n"
-		$this.HostHeaders | where { [String]::IsNullOrEmpty($_.HostName) -eq $false } | % {
-			$xml += "`t<HostHeader name=`"$($_.HostName)`" ip=`"$($_.IP)`" port=`"$($_.Port)`" />`n"
-		}
-		$xml += "</HostHeaders>`n"
-		$xml += "<VirtualDirectories>`n"
-		$this.VirtualDirectories | % { 
-			$xml += "<VirtualDirectory name=`"$($_.Name)`" >`n"
-			$xml += "`t<Path>$($_.Path)</Path>`n"
-			$xml += "`t<AppFriendlyName>$($_.AppFriendlyName)</AppFriendlyName>`n"
-			$xml += "`t<DotNetFrameworkVersion>$($_.DotNetFrameworkVersion)</DotNetFrameworkVersion>`n"
-			$xml += "`t<DefaultDocuments>$($_.DefaultDocuments)</DefaultDocuments>`n"
-			$xml += "`t<AppPoolName>$($_.AppPoolName)</AppPoolName>`n"
-			$xml += "`t<AppPoolAccount>$($_.AppPoolAccount)</AppPoolAccount>`n"
-			$xml += "`t<AnonymousUserName>$($_.AnonymousUserName)</AnonymousUserName>`n"
-			$xml += "`t<AccessPermissions>$($_.AccessPermissions)</AccessPermissions>`n"
-			$xml += "`t<Authentication>$($_.Authentication)</Authentication>`n"
-			$xml += "`t<AuthenticationProviders>$($_.AuthenticationProviders)</AuthenticationProviders>`n"
-			$xml += "</VirtualDirectory>`n"
-		}
-		
-		$xml += "</VirtualDirectories>`n"
-		$xml += "</Site>"
-		
-		$xml
-	}
-	
-	$csvScriptBlock = {
-		$csv=$nul
-		$Server = $this.ServerName
-		$SiteName = $this.Name
-		$LogFileDirectory = $this.LogFileDirectory
-		$this.VirtualDirectories | % {
-			$DefaultDocs = $_.DefaultDocuments.Replace(",",";")
-			$csv += "$Server,$SiteName,$LogFileDirectory,$($_.Name),$($_.Path),$($_.AppFriendlyName),"
-			$csv += "$DefaultDocs,$($_.AppPoolName),$($_.AppPoolAccount),$($_.AnonymousUserName),"
-			$csv += "$($_.AccessPermissions),$($_.Authentication),$($_.AuthenticationProviders)`n"
-		}
-		
-		$csv
-	
-	}
-	
-	$Servers | % { 
-		$Server = $_
+	foreach( $server in $Servers ) 
+	{ 
 		Write-Progress -activity "Querying Server" -status "Currently querying $Server . . . "
 		if( ping( $Server ) ) 
 		{
@@ -822,8 +764,6 @@ function Audit-IISServers([String[]] $Servers )
 					$VirtualDirectories += $VirtualDirectory 
 				}
 				$audit | add-member -type NoteProperty -name VirtualDirectories -Value $VirtualDirectories
-				$audit | Add-Member -type ScriptMethod -Name toXML -Value $xmlScriptBlock
-				$audit | Add-Member -type ScriptMethod -Name toCSV -Value $csvScriptBlock
 			
 				$iisAudit += $audit
 			}
@@ -836,52 +776,8 @@ function Audit-IISServers([String[]] $Servers )
 	return $iisAudit
 }
 
-function audit-Server( [String] $server )
+function Audit-Server( [String] $server )
 {
-	
-	$xmlScriptBlock = {
-		$xml = "<System name=`"$($this.SystemName)`">`n"
-		$xml += "<Application name=`"$($this.Application)`" env=`"$($this.Environment)`" />`n"
-		$xml += "<Domain>$($this.Domain)</Domain>`n"
-		$xml += "<Type>$($this.Model)</Type>`n"
-		$xml += "<SerialNumber>$($this.SerialNumber)</SerialNumber>`n"
-		$xml += "<Processor>$($this.Processor)</Processor>`n"
-		$xml += "<Memory>$($this.Memory)</Memory>`n"
-		$xml += "<IPAddresses>`n"
-		$this.IPAddresses | % {
-			$xml += "`t<IPAddress>$_</IPAddress>`n"
-		}
-		$xml += "</IPAddresses>`n"
-		$xml += "<LocalStorage>`n"
-		$this.Drives | % { 
-			$xml += "`t<Disk drive=`"$($_.DeviceId)`" size=`"$($_.TotalSpace)`" free=`"$($_.FreeSpace)`" />`n"
-		}
-		$xml += "</LocalStorage>`n"
-		$xml += "<OperatingSystem>`n"
-		$xml += "`t<version>$($this.OperatingSystem)</version>`n"
-		$xml += "</OperatingSystem>`n"
-		$xml += "</System>"
-		
-		$xml
-	}
-	
-	$csvScriptBlock = {
-		$ips += [string]::join( "|", $this.IPAddresses )
-		$cpu = $this.Processor
-		$os = $this.OperatingSystem.Replace(",","")
-		if( $this.Drives.Count -eq $null ) {
-			$drives = $this.Drives  
-		} else { 
-			$drives = [string]::join("|", $this.Drives)
-		}
-		$model = $this.Model.Replace(",","")
-		
-		$csv = "$($this.SystemName),$ips,$($this.Application),$($this.Environment),$($this.Domain),$Model,$($this.SerialNumber),$cpu,"
-		$csv += "$($this.Memory),$os, $drives`n"
-	
-		$csv
-	}
-
 	$audit = New-Object System.Object
 	$computer = Get-WmiObject Win32_ComputerSystem -ComputerName $server
 	$os = Get-WmiObject Win32_OperatingSystem -ComputerName $server
@@ -911,7 +807,7 @@ function audit-Server( [String] $server )
 	return $audit
 }
 
-function audit-Servers([String[]] $Servers, [String] $app, [String] $env)
+function Audit-Servers([String[]] $Servers, [String] $app, [String] $env)
 {
 	begin {
 		$ErrorActionPreference = "silentlycontinue"
@@ -968,8 +864,6 @@ function Create-WindowsService([string[]] $Servers, [string] $Path, [string] $Se
 	return( $result | Format-List )
 }
 
-function Get-EventViewer2003( [String] $server, [String[]] $evtlogs, [String] $filter = $nul) 
-{
 	set-variable -option constant -name eventqueryScript -Value "cscript //NoLogo $ENV:WINDIR\system32\eventquery.vbs /S {0} /L {1} /V /FO List {2}"
 	$logs = @()
 	
@@ -1003,8 +897,6 @@ function Get-EventViewer2003( [String] $server, [String[]] $evtlogs, [String] $f
 	}
 	
 	return $logs	
-}
-
 function sed () 
 {
 	param (
@@ -1045,30 +937,6 @@ function Get-LoadedModules()
 	}
 }
 
-function Get-GroupMembership ([String[]] $Groups)
-{
-	begin {
-		$GroupMembership = @()
-	}
-	process {
-		if( -not [String]::IsNullorEmpty($_) ) { $Groups = $_ }
-		$Groups | % {
-			$users = dsquery group -name "$_" | dsget group -members | % {
-				if( -not [String]::IsNullorEmpty($_) ) { $_.Split("=")[1].Split(",")[0] }
-			}	
-			
-			$group = new-object System.Object
-			$group | add-member -type NoteProperty -name GroupName -value $_
-			$group | add-member -type NoteProperty -name Users -value $users
-			
-			$GroupMembership += $group
-		}
-	}
-	end {
-		return $GroupMembership
-	}
-}
-
 function nslookup ( [string] $name )
 {
  	$ns = nslookup.exe $name 2>$null
@@ -1080,18 +948,7 @@ function nslookup ( [string] $name )
 	}
 }
 
-##################################################################################################
-## Rijndael symmetric key encryption ... with no passes on the key. Very lazy.
-## USAGE:
-## $encrypted = Encrypt-String "Oisin Grehan is a genius" "P@ssw0rd"
-## Decrypt-String $encrypted "P@ssw0rd"
-##
-## You can choose to return an array by passing -arrayOutput to Encrypt-String
-## I chose to use Base64 encoded strings because they're easier to save ...
-##
 ## http://poshcode.org/116
-##
-[void] [Reflection.Assembly]::LoadWithPartialName("System.Security")
 function Encrypt-String($String, $Passphrase, $salt="My Voice is my P455W0RD!", $init="Yet another key", [switch]$arrayOutput)
 {
    $r = new-Object System.Security.Cryptography.RijndaelManaged
@@ -1141,9 +998,6 @@ function Decrypt-String($Encrypted, $Passphrase, $salt="My Voice is my P455W0RD!
    $ms.Close()
    $r.Clear()
 }
-#End AES Encryption/Decryption Block
-#Reference - http://poshcode.org/116
-##################################################################################################
 
 function Encode-String( $strEncode ) 
 {
@@ -1172,7 +1026,7 @@ function Compare-HashTable ( [HashTable] $src, [HashTable] $dst,[Object] $head  
 	}
 }
 
-function ping-multiple 
+function Ping-Multiple 
 {
 	begin {
 		$replies = @()
@@ -1212,7 +1066,7 @@ function ping ( [string] $computer )
 	}  
 }
 
-Function read-RegistryHive 
+Function Read-RegistryHive 
 {
 	param(
 		[string[]] $servers,
@@ -1248,11 +1102,8 @@ Function read-RegistryHive
 	return $regPairs
 }
 
-function send-email($s,$b,$to) 
+function Send-Email($s,$b,$to) 
 {
-	$from = "SharePoint.Admins@gt.com";
-	$domain  = "mail.gt.com";
-
 	$mail = new-object System.Net.Mail.MailMessage;
 	
 	for($i=0; $i -lt $to.Length; $i++) {
@@ -1268,11 +1119,8 @@ function send-email($s,$b,$to)
 
 }
 
-function send-emailwithattachment( [string] $subject, [string] $body, [object] $to, [Object] $attachment  )
-{
-	$from = "spadmin@gt.com";
-	$domain  = "mail.gt.com";
-	
+function Send-EmailWithAttachment( [string] $subject, [string] $body, [object] $to, [Object] $attachment  )
+{	
 	$mail = new-object System.Net.Mail.MailMessage
 	
 	for($i=0; $i -lt $to.Length; $i++) {
@@ -1298,10 +1146,10 @@ function log( [string] $txt, [string] $log )
 	"[" + (Get-Date).ToString() + "] - " + $txt | Out-File $log -Append -Encoding ASCII 
 }
 
-function get-hash1 
+function Get-Hash1 
 {
 	param(
-    	    [string] $file = $(throw 'a filename is required'),
+		[string] $file = $(throw 'a filename is required'),
 	    [string] $algorithm = 'sha256'
 	)
 
@@ -1312,10 +1160,9 @@ function get-hash1
 	$fileStream.Close()
 	
 	return ( ([system.bitconverter]::tostring($hash)).Replace("-","") )
-
 }
 
-function get-fileVersion() 
+function Get-FileVersion() 
 {
 	begin{
 		$info = @()
@@ -1333,10 +1180,7 @@ function get-fileVersion()
 	}
 }
 
-# Author: William Stacey (http://www.codeplex.com/PsObject/WorkItem/View.aspx?WorkItemId=8521)
-# Created: 02/22/2007
-# Modified: Brian Denicola - removed looping
-function get-tail([string]$path = $(throw "Path name must be specified."), [int]$count = 10)
+function Get-Tail([string]$path = $(throw "Path name must be specified."), [int]$count = 10)
 {
 	if ( $count -lt 1 ) {$(throw "Count must be greater than 1.")}
 
@@ -1354,8 +1198,7 @@ function get-tail([string]$path = $(throw "Path name must be specified."), [int]
   	}
 }
 
-
-function get-tailByBytes([string]$path = $(throw "Path name must be specified."), [int]$bytes)
+function Get-TailByBytes([string]$path = $(throw "Path name must be specified."), [int]$bytes)
 {
 	$tail = @()
 
@@ -1376,7 +1219,7 @@ function get-tailByBytes([string]$path = $(throw "Path name must be specified.")
 	return $tail
 }
 
-function get-fileSize ( [string] $path ) 
+function Get-FileSize ( [string] $path ) 
 {
 	$reader = new-object System.IO.FileStream $path, ([io.filemode]::Open), ([io.fileaccess]::Read), ([io.fileshare]::ReadWrite)
 	$len = $reader.Length
@@ -1430,7 +1273,7 @@ function BulkWrite-ToSQLDatabase([Object] $table)
     $bulkCopy.WriteToServer($table)		
 }
 
-function is64bit() 
+function Is-64Bit() 
 {    
 	if ([IntPtr].Size -eq 4) 
 	{ 
@@ -1441,106 +1284,3 @@ function is64bit()
 		return $true 
 	}
 }
-function Set-Record
-{
-	param(
-	[string] $Title = $(throw 'Title is required'),
-	[string] $Description = $(throw 'Description is required')
-	)
-	$obj = New-Object PSObject -Property @{
-			Title = $Title
-			User = $ENV:USERNAME
-			Description = $Description
-		}
-	WriteTo-SPListViaWebService -url $url -list $list -Item $(Convert-ObjectToHash $obj) -TitleField Title
-}
-function Kill-Process
-{
-param ( [int] $p ) 
-	Stop-Process -id $p -force
-}
-function Disable-InternetExplorerESC {
-    $AdminKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}"
-    $UserKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A8-37EF-4b3f-8CFC-4F3A74704073}"
-    Set-ItemProperty -Path $AdminKey -Name "IsInstalled" -Value 0
-    Set-ItemProperty -Path $UserKey -Name "IsInstalled" -Value 0
-    Stop-Process -Name Explorer
-    Write-Host "IE Enhanced Security Configuration (ESC) has been disabled." -ForegroundColor Green
-}
-
-function Enable-InternetExplorerESC {
-    $AdminKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}"
-    $UserKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A8-37EF-4b3f-8CFC-4F3A74704073}"
-    Set-ItemProperty -Path $AdminKey -Name "IsInstalled" -Value 1
-    Set-ItemProperty -Path $UserKey -Name "IsInstalled" -Value 1
-    Stop-Process -Name Explorer
-    Write-Host "IE Enhanced Security Configuration (ESC) has been enabled." -ForegroundColor Green
-}
-
-function Disable-UserAccessControl {
-    Set-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 00000000
-    Write-Host "User Access Control (UAC) has been disabled." -ForegroundColor Green   
-}
-function Add-UsersToServer {
-param
-(
-[String[]] $servers = $(throw ' You must input at least one server'),
-[string] $username = $(throw ' You must enter a username to check for')
-)
-$creds = Get-Credential -Credential $username
-$user = $creds.UserName.Split("\")[1]
-Foreach ( $server in $servers)
-{
- if( -not ( Get-LocalAdmins -Computer $server | ? { $_ -imatch $user } ) )
-		{
-			Write-Host "Adding $user to " $_
-			Add-LocalAdmin -Computer $_ -Group $user
-		}
-else
-		{
-			Write-Host "$user already exists"
-		}
-}
-
-}
-function SendEmail {
-    #param($strTo, $strFrom, $strSubject, $strBody, $smtpServer)
-    param($To, $From, $Subject, $Body, $smtpServer)
-    $msg = new-object Net.Mail.MailMessage
-    $smtp = new-object Net.Mail.SmtpClient($smtpServer)
-    $msg.From = $From
-    $msg.To.Add($To)
-    $msg.Subject = $Subject
-    $msg.IsBodyHtml = 1
-    $msg.Body = $Body
-    $smtp.Send($msg)
-    }
-
-
-    function SendEmail-attachment
-	{
-	#param($strTo, $strFrom, $strSubject, $strBody, $smtpServer)
-    param(
-    $To,
-    $From,
-    $Subject,
-    $Body,
-    $smtpServer,
-    [string []] $files
-    )
-    $msg = new-object Net.Mail.MailMessage
-    $smtp = new-object Net.Mail.SmtpClient($smtpServer)
-    $msg.From = $From
-    $msg.To.Add($To)
-    $msg.Subject = $Subject
-    $msg.IsBodyHtml = 1
-    $msg.Body = $Body
-	Foreach ($file in $files)
-    {
-    $att = new-object Net.Mail.Attachment($file)
-    $msg.Attachments.Add($att)
-    }
-    $smtp.Send($msg)
-    }
-	
-

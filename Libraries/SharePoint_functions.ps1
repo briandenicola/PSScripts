@@ -2,7 +2,12 @@
 [void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SharePoint")
 [void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.Office.Server.Search") 
 [void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.Office.Server") 
+<<<<<<< HEAD
 #[void][System.Reflection.Assembly]::LoadFrom("D:\Scripts\Libraries\Lists.dll")
+=======
+
+. .\Standard_Variables.ps1
+>>>>>>> Major updates for fit and finish
 
 $siteTypes = @{}
 $siteTypes.Add("Team Site","STS#0")
@@ -20,14 +25,19 @@ $auditTypes['EditContentType'] = 160
 $auditTypes['SearchSiteContent'] = 8192
 $auditTypes['UserSecurity'] = 256
 
+<<<<<<< HEAD
 
 function Get-SharePointServersWS()
+=======
+function Get-SharePointServersWS
+>>>>>>> Major updates for fit and finish
 {
 	param(
 		[string] $version = "2010"
 	)
 	
 	if( $version -eq "2007" ) {
+<<<<<<< HEAD
 		return(	get-SPListViaWebService -Url http://teamadmin.gt.com/sites/ApplicationOperations/ -list Servers -View '{17029C2D-ABD2-45F8-9FE5-17A5F3C0DCBC}' | Select SystemName, Farm, Environment)
 	} else { 
 		return(	get-SPListViaWebService -Url http://teamadmin.gt.com/sites/ApplicationOperations/ -list Servers  | Select SystemName, Farm, Environment)
@@ -40,6 +50,20 @@ function Get-SharePointCentralAdmins()
 }
 
 function Get-LatestLog()
+=======
+		return(	get-SPListViaWebService -Url $global:SharePoint_url -list Servers -View $global:SharePoint_2007_View  | Select SystemName, Farm, Environment )
+	} else { 
+		return(	get-SPListViaWebService -Url $global:SharePoint_url -list Servers  | Select SystemName, Farm, Environment )
+	}
+}
+
+function Get-SharePointCentralAdmins
+{
+	return(	get-SPListViaWebService -Url $global:SharePoint_url -list Servers -view $global:SharePoint_Central_Admin_View | Select SystemName, Farm, Environment, "Central Admin Address" )
+}
+
+function Get-LatestLog
+>>>>>>> Major updates for fit and finish
 {
 	begin {
 		$log_path = "\Logs\Trace\"
@@ -55,8 +79,12 @@ function Get-LatestLog()
 	}
 }
 
+<<<<<<< HEAD
 
 function Get-SharePointSolutions()
+=======
+function Get-SharePointSolutions
+>>>>>>> Major updates for fit and finish
 {
 	return (Get-SPFarm | Select -Expand Solutions | Select Name, Deployed, DeployedWebApplications, DeployedServers, ContainsGlobalAssembly, ContainsCasPolicy, SolutionId, LastOperationEndTime)
 }
@@ -65,6 +93,7 @@ function Get-WebServiceURL( [String] $url )
 {
 	$listWebService = "_vti_bin/Lists.asmx?WSDL"
 	
+<<<<<<< HEAD
 	if( -not $url.EndsWith($listWebService) )
 	{
 		return $url.Substring( 0, $url.LastIndexOf("/") ) + "/" + $listWebService
@@ -85,6 +114,23 @@ function Get-SPListViaWebService([string] $url, [string] $list, [string] $view =
 		$FieldsWS = $service.GetList( $list )
 		$Fields = $FieldsWS.Fields.Field | where { $_.Hidden -ne "TRUE"} | Select DisplayName, StaticName -Unique
 	
+=======
+	if( -not $url.EndsWith($listWebService) ) {
+		return $url.Substring( 0, $url.LastIndexOf("/") ) + "/" + $listWebService
+	}
+	else {
+		return $url
+	}
+}
+
+function Get-SPListViaWebService( [string] $url, [string] $list, [string] $view = $null )
+{
+	begin {
+		$listData = @()	
+		$service = New-WebServiceProxy (Get-WebServiceURL -url $url) -Namespace List -UseDefaultCredential
+		$FieldsWS = $service.GetList( $list )
+		$Fields = $FieldsWS.Fields.Field | where { $_.Hidden -ne "TRUE"} | Select DisplayName, StaticName -Unique
+>>>>>>> Major updates for fit and finish
 		$data = $service.GetListItems( $list, $view, $null, $null, $null, $null, $null )
 	}
 	process {
@@ -160,7 +206,10 @@ function WriteTo-SPListViaWebService ( [String] $url, [String] $list, [HashTable
 	}
 }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> Major updates for fit and finish
 function Update-SPListViaWebService ( [String] $url, [String] $list, [int] $id, [HashTable] $Item, [String] $TitleField )
 {
 	begin {
@@ -210,6 +259,7 @@ function Update-SPListViaWebService ( [String] $url, [String] $list, [int] $id, 
 	}
 }
 
+<<<<<<< HEAD
 function Get-MOSSProfileDetails([string]$SiteURL, [string]$UserLogin) 
 { 
     [Void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.Office.Server.UserProfiles")
@@ -244,6 +294,9 @@ function Get-MOSSProfileDetails([string]$SiteURL, [string]$UserLogin)
 } 
 
 function Get-SSPSearchContext( )
+=======
+function Get-SSPSearchContext
+>>>>>>> Major updates for fit and finish
 {
 	$context = [Microsoft.Office.Server.ServerContext]::Default
  	$searchContext = [Microsoft.Office.Server.Search.Administration.SearchContext]::GetContext($context)
@@ -252,7 +305,11 @@ function Get-SSPSearchContext( )
 	return $content
 }
 
+<<<<<<< HEAD
 function Get-SSPSearchContentSources ( )
+=======
+function Get-SSPSearchContentSources
+>>>>>>> Major updates for fit and finish
 {
  	return $(Get-SSPSearchContext).ContentSources
 }
@@ -299,6 +356,10 @@ function Stop-SSPCrawl( [String] $name )
 		throw "Invalid Crawl State. Crawl should be idle but is not"
 	}
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> Major updates for fit and finish
 function Get-CrawlHistory
 {
     $serverContext = [Microsoft.Office.Server.ServerContext]::Default
@@ -335,7 +396,11 @@ function Set-SPReadOnly ([bool] $state )
 	}
 }
 
+<<<<<<< HEAD
 function Get-SPAudit( ) 
+=======
+function Get-SPAudit
+>>>>>>> Major updates for fit and finish
 {	
 	param(
 		[Object] $obj
@@ -374,10 +439,18 @@ function Get-SPWebApplication( [string] $name )
 	return ( $webApplications | where { $_.Name.ToLower() -like "*"+$name.ToLower()+"*" } | select -Unique )
 }
 
+<<<<<<< HEAD
 function Get-SPFarm()
 {
 	return [microsoft.sharepoint.administration.spfarm]::local
 }
+=======
+function Get-SPFarm
+{
+	return [microsoft.sharepoint.administration.spfarm]::local
+}
+
+>>>>>>> Major updates for fit and finish
 function Get-SPSite ( [String] $url )
 {
 	return new-object Microsoft.SharePoint.SPSite($url)
@@ -399,7 +472,12 @@ function Get-SPWeb( [String] $url )
 	return ( $site.OpenWeb() )
 }
 
+<<<<<<< HEAD
 function UploadTo-Sharepoint {
+=======
+function UploadTo-Sharepoint 
+{
+>>>>>>> Major updates for fit and finish
 	param ( 
 		[string] $lib,
 		[string] $file
@@ -411,7 +489,11 @@ function UploadTo-Sharepoint {
 	$wc.UploadFile($uploadname,"PUT", $file) 
 }
 
+<<<<<<< HEAD
 function Update-SPListEntry([String] $url, [string] $list, [int] $entryID, [HashTable] $entry)
+=======
+function Update-SPListEntry( [String] $url, [string] $list, [int] $entryID, [HashTable] $entry )
+>>>>>>> Major updates for fit and finish
 {
 	$web = Get-SPWeb -url $url
 	
@@ -426,7 +508,11 @@ function Update-SPListEntry([String] $url, [string] $list, [int] $entryID, [Hash
 	$web.Dispose()
 }
 
+<<<<<<< HEAD
 function Add-ToSPList ( [String] $url, [string] $list, [HashTable] $entry)
+=======
+function Add-ToSPList( [String] $url, [string] $list, [HashTable] $entry )
+>>>>>>> Major updates for fit and finish
 {
 	$web = Get-SPWeb -url $url
 	
@@ -441,7 +527,11 @@ function Add-ToSPList ( [String] $url, [string] $list, [HashTable] $entry)
 	$web.Dispose()
 }
 
+<<<<<<< HEAD
 function Get-SPList ( [string] $url, [string] $list, [string] $filter="all")
+=======
+function Get-SPList( [string] $url, [string] $list, [string] $filter="all" )
+>>>>>>> Major updates for fit and finish
 {
 	begin{
 		$rtList = @()
@@ -503,14 +593,22 @@ function Get-SPGroup( [String] $Url, [string] $GroupName )
 	return ( $siteGroups | where { $_.Name -like $GroupName } )
 }
 	
+<<<<<<< HEAD
 function Get-SPUser ( [String] $url, [string] $User ) 
+=======
+function Get-SPUser( [String] $url, [string] $User ) 
+>>>>>>> Major updates for fit and finish
 {
 	$web = Get-SPWeb -url $url
 	if( $user.Contains("\") ) { $loginName = $user } else { $loginName = "*\$user" }
 	return ( $web.AllUsers | where { $_.LoginName -like $loginName } )
 }
 
+<<<<<<< HEAD
 function Add-SPGroupPermission( [String] $url, [string] $GroupName, [string] $perms)
+=======
+function Add-SPGroupPermission( [String] $url, [string] $GroupName, [string] $perms )
+>>>>>>> Major updates for fit and finish
 {
 	$web = Get-SPWeb -url $url
 	
@@ -524,7 +622,11 @@ function Add-SPGroupPermission( [String] $url, [string] $GroupName, [string] $pe
 	$web.Dispose()
 }
 
+<<<<<<< HEAD
 function Add-MemberToSPGroup (  [String] $url, [string] $LoginName , [string] $GroupName) 
+=======
+function Add-MemberToSPGroup( [String] $url, [string] $LoginName , [string] $GroupName ) 
+>>>>>>> Major updates for fit and finish
 {
 	$web = Get-SPWeb -url $url
 	$spGroup = Get-spGroup -url $web -GroupName $GroupName
@@ -563,6 +665,7 @@ function Add-SPGroup( [string] $url, [string] $GroupName, [string] $owner, [stri
 	$web.Dispose()
 }
 
+<<<<<<< HEAD
 function Add-SPWeb([string] $url, [string]$WebUrl, [string]$Title, [string]$Description, [string]$Template, [bool] $Inherit) 
 {
     # Create our SPSite object
@@ -571,12 +674,22 @@ function Add-SPWeb([string] $url, [string]$WebUrl, [string]$Title, [string]$Desc
 	# Add a site
     $web = $spsite.Allwebs.Add($WebUrl, $Title, $Description ,[int]1033, $siteTypes.Item($Template), $Inherit, $false)
 	
+=======
+function Add-SPWeb( [string] $url, [string]$WebUrl, [string]$Title, [string]$Description, [string]$Template, [bool] $Inherit ) 
+{
+    $spsite = Get-SPSite $url
+    $web = $spsite.Allwebs.Add($WebUrl, $Title, $Description ,[int]1033, $siteTypes.Item($Template), $Inherit, $false)
+>>>>>>> Major updates for fit and finish
 	$spsite.Dispose()
 	
 	return $web	
 }
 
+<<<<<<< HEAD
 function Set-AccessRequestEmail([String] $url, [string] $email)
+=======
+function Set-AccessRequestEmail( [String] $url, [string] $email )
+>>>>>>> Major updates for fit and finish
 {
 	$web = Get-SPWeb -url $url
 	$web.RequestAccessEmail = $email
@@ -585,7 +698,11 @@ function Set-AccessRequestEmail([String] $url, [string] $email)
 	$web.Dispose()
 }
 
+<<<<<<< HEAD
 function Set-Inheritance( [String] $url, [bool] $unique)
+=======
+function Set-Inheritance( [String] $url, [bool] $unique )
+>>>>>>> Major updates for fit and finish
 {
 	$web = Get-SPWeb -url $url
 	$web.HasUniquePerm = $unique
@@ -593,7 +710,11 @@ function Set-Inheritance( [String] $url, [bool] $unique)
 	$web.Dispose()
 }
 
+<<<<<<< HEAD
 function Set-SharedNavigation( [String] $url, [bool] $shared)
+=======
+function Set-SharedNavigation( [String] $url, [bool] $shared )
+>>>>>>> Major updates for fit and finish
 {
 	$web = Get-SPWeb -url $url
 	$web.Navigation.UseShared = $shared
@@ -601,7 +722,11 @@ function Set-SharedNavigation( [String] $url, [bool] $shared)
 	$web.Dispose()
 }
 
+<<<<<<< HEAD
 function Set-spAssociatedGroups( [String] $url, [string] $owners, [string] $members, [string] $visitors)
+=======
+function Set-SPAssociatedGroups( [String] $url, [string] $owners, [string] $members, [string] $visitors )
+>>>>>>> Major updates for fit and finish
 {
 	$web = Get-SPWeb -url $url
 	$web.AssociatedOwnerGroup = Get-spGroup -url $web -GroupName $owners
@@ -609,6 +734,7 @@ function Set-spAssociatedGroups( [String] $url, [string] $owners, [string] $memb
 	$web.AssociatedVisitorGroup = Get-spGroup -url $web -GroupName $visitors
 	$web.Update()
 	$web.Dispose()
+<<<<<<< HEAD
 }
 function Get-LookupFieldData
 {
@@ -682,3 +808,6 @@ $b | Out-File ".\ServerstoPatch.txt"
 }
 }
 
+=======
+}
+>>>>>>> Major updates for fit and finish
