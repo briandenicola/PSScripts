@@ -132,7 +132,7 @@ function Join-WebFarm
 	$sb = {
 		param (
 			[string] $farm,
-			[string] $sever
+			[string] $server
 		)
 		. (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1") 
 		
@@ -147,7 +147,7 @@ function Join-WebFarm
 		}
 	}
 	
-	Invoke-Command -Computer $controller -ScriptBlock $sb -ArgumentList $farm_name, $ENV:COMPUTERNAME
+	Invoke-Command -Computer $controller -ScriptBlock $sb -ArgumentList $farm_name,$ENV:COMPUTERNAME
 
     Start-Service WebFarmAgentService
     Set-Service -StartupType Automatic -Name WebFarmAgentService
