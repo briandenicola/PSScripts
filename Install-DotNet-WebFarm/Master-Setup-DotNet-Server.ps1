@@ -11,7 +11,7 @@ param(
 
     [string] $farm_name = [String]::Empty,
     [string] $service_account = [String]::Empty,
-	
+	[string] $controller = [String]::Empty,
 	[switch] $record
 )
 
@@ -126,18 +126,28 @@ function Create-Farm
 
 function Join-WebFarm
 {
-    . (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1") 
+	Install-WebFarm
+	Add-ServiceAccount
 	
-    if( (Get-WebFarmServers -name $farm_name) -notcontains $ENV:COMPUTERNAME ) {
-        Write-Host "[ $(Get-Date) ] - Joining farm - $farm_name  . . ."
-		Add-ServiceAccount
-	    Install-WebFarm-Software
-	    Add-ServersToWebFarm -name $farm_name -members $ENV:COMPUTERNAME
-        Sync-WebFarm -name $farm_name
-    }
-    else {
-        Write-Host "$($ENV:COMPUTERNAME) is already a member of $farm_name . . ."
-    }
+	$sb = {
+		param (
+			[string] $farm,
+			[string] $sever
+		)
+		. (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1") 
+		
+		if( (Get-WebFarmServers -name $farm) -notcontains $server ) {
+		
+			Write-Host "[ $(Get-Date) ] - Joining farm - $farm  . . ."
+			Add-ServersToWebFarm -name $farm -members $server
+			Sync-WebFarm -name $farm
+		}
+		else {
+			Write-Host "$server is already a member of $farm_name . . ."
+		}
+	}
+	
+	Invoke-Command -Computer $controller -ScriptBlock $sb -ArgumentList $farm_name, $ENV:COMPUTERNAME
 
     Start-Service WebFarmAgentService
     Set-Service -StartupType Automatic -Name WebFarmAgentService
@@ -159,6 +169,10 @@ function main
 		if( [String]::IsNullorEmpty($service_account) ) {
 			throw "Can not join $ENV:COMPUTERNAME to $farm_name without a service account . . . "	
 		}
+	}
+
+	if( $farm -eq "join" -and [String]::IsNullorEmpty($controller) ) {
+		throw "Can not join $ENV:COMPUTERNAME to farm without a controller . . . "	
 	}
 	
 	$log = ".\Logs\System-Setup-" + $ENV:COMPUTERNAME + "-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log"
