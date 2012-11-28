@@ -21,9 +21,9 @@ param(
 #Set Variables
 $cfg = [xml] ( gc ".\Config\web_server_setup.xml")
 
-$source = $cfg.parameters.source #"\\dc01\app-ops\Tools"
-$gac_source = $cfg.parameters.gac #"\\dc01\app-ops\Code"
-$url = $cfg.parameters.url #"http://teamadmin.gt.com/sites/ApplicationOperations/applicationsupport/"
+$source = $cfg.parameters.source 
+$gac_source = $cfg.parameters.gac
+$url = $cfg.parameters.url 
 $scripts_home = $cfg.parameters.scripts
 $utils_home = $cfg.parameters.utils
 $webpi = $cfg.parameters.webpi
@@ -126,7 +126,7 @@ function Create-Farm
 
 function Join-WebFarm
 {
-	Install-WebFarm
+	Install-WebFarm-Software
 	Add-ServiceAccount
 	
 	$sb = {

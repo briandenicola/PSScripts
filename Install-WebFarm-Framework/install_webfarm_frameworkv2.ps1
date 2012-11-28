@@ -1,4 +1,4 @@
-﻿$src = ""
+﻿$src = "."
 
 Write-Host "Installing Web Platform Installer v3 . . ."
 msiexec /i (Join-Path $src "WebPlatformInstaller_3_10_amd64_en-US.msi") /qb
