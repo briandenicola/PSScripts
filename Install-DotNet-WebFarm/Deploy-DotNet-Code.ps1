@@ -1,18 +1,12 @@
 ﻿param (	
 	[Parameter(Mandatory=$true)]
-	[string] $tfs_build_dir
-	
-	[Parameter(Mandatory=$true)]
-	[string] $dst_controller,
-	
+	[string] $tfs_build_dir,	
 	[Parameter(Mandatory=$true)]
 	[string] $dst_site,
-
 	[Parameter(Mandatory=$true)]
 	[string] $farm,
 	
     [switch] $include_webconfig,
-
 	[string] $log = ".\logs\dotnet_webfarm_code_deploy.log"
 )
 
@@ -21,10 +15,8 @@ Add-PSSnapin WDeploySnapin3.0 -EA Stop
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1")
 
-$creds = $null
-
 Set-Variable -Name now -Value $(Get-Date).ToString("yyyyMMddhhmmss") -Option Constant
-Set-Variable -Name backup_directory -Value "\\ent-nas-fs01.us.gt.com\app-ops\Code\Custom-DotNet-Applications" -Option Constant
+Set-Variable -Name backup_directory -Value "\\ad\app-ops\Backups\DotNetBackup" -Option Constant
 Set-Variable -Name list_url -Value "http:/teamadmin.gt.com/sites/ApplicationOperations/applicationsupport/" -Option Constant
 Set-Variable -Name deploy_tracker -Value "Deployment Tracker" -Option Constant
 
@@ -35,41 +27,10 @@ function log( [string] $txt )
 	$txt | Out-File -Append -Encoding Ascii $log
 }
 
-function Create-PSSession 
-{
-
-	$creds = Get-Credential ($ENV:USERDOMAIN + "\" + $ENV:USERNAME)
-	$session = New-PSSession -Computer $dst_computer -Authentication CredSSP -Credentials $creds
-
-	return $session
-}
-
-function Create-PublishingSettings 
-{	
-	$file = Join-Path $ENV:TEMP "$($dst_site).publishsettings"
-
-	New-WDPublishSettings -ComputerName $dst_controller
-		-Site $dst_site
-		-Credentials $creds
-		-FileName $file 
-		-AgentType wmsvc
-	
-	return $file
-}
-
 function Backup-Site 
 {
-	param ( [object] $session ) 
-	
-	Invoke-command -Computer $dst_controller -Session $session -ScriptBlock { 
-		param ( 
-			[string] $dir,
-			[string] $site
-		)
-		
-		Add-PSSnapin WDeploySnapin3.0 -EA Stop
-		Backup-WDSite -Site $site -Ouput $dir -IncludeAppPool
-	} -ArgumentList $dst_site, $backup_directory
+	log -txt "Backup up $dst_site to $backup_directory"
+	Backup-WDSite -Site $dst_site -Output $backup_directory
 }
 
 function Get-MostRecentFile( [string] $src )
@@ -79,16 +40,13 @@ function Get-MostRecentFile( [string] $src )
 
 function Deploy-Site 
 {
-    param ( 
-        [string] $settings
-    )
-
     if( -not (Test-Path $tfs_build_dir) ) {
         throw "Could not find $tfs_build_dir"
     }
 
 	$src = Get-MostRecentFile -src $tfs_build_dir
-	
+	$dst = Get-WebFilePath ('IIS:\Sites\' + $dst_site) | Select -Expand FullName
+
     if(!$include_webconfig) {
         $skipfiles = "web.config"
     }
@@ -98,9 +56,9 @@ function Deploy-Site
             <contentPath path=`"$src`" />
         </sitemanifest>
 "@  
-    $dest_manifest_file = @"
+    $dest_manifest = @"
         <sitemanifest>
-             <iisApp path=`"$dst_site`" />
+            <contentPath path=`"$dst`" />
         </sitemanifest>
 "@
     
@@ -108,9 +66,9 @@ function Deploy-Site
     $dest_manifest_file = Join-Path $ENV:TEMP "destination.xml"
 
     $source_manifest | Out-File -Encoding ascii $source_manifest_file
-    $dest_manifest_file | Out-File -Encoding ascii $dest_manifest_file
+    $dest_manifest | Out-File -Encoding ascii $dest_manifest_file
 
-    Sync-WDManifest $source_manifest_file $dest_manifest_file -DestinationPublishSettings $settings -SkipFileList $skipfiles
+    Sync-WDManifest $source_manifest_file $dest_manifest_file -SkipFileList $skipfiles
 
     Remove-Item $source_manifest_file
     Remove-Item $dest_manifest_file
@@ -118,15 +76,9 @@ function Deploy-Site
 
 function Sync-Farm 
 {
-	param ( [object] $session ) 
-	
-	Invoke-command -Computer $dst_controller -Session $session -ScriptBlock { 
-		param ( 
-			[string] $farm
-		)
-        . (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1") 
-		Sync-WebFarm $farm
-	} -ArgumentList $farm
+    log -txt "Syncing Farm - $farm"
+	Sync-WebFarm $farm
+
 }
 
 function Get-ServerEnvironment
@@ -148,7 +100,7 @@ function Record-Deployment
 		Notes = "Code location is at " + $backup_location
 	}
 	
-    $env = Get-ServerEnvironment -server $dst_controller
+    $env = Get-ServerEnvironment -server $ENV:COMPUTERNAME
 
 	if( $env -imatch "UAT" )
 	{
@@ -160,6 +112,8 @@ function Record-Deployment
 		$deploy | Add-Member -MemberType NoteProperty -Name Prod_x0020_Deployment -Value $(Get-Date).ToString("yyyy-MM-ddThh:mm:ssZ")
 		$deploy | Add-Member -MemberType NoteProperty -Name Prod_x0020_Deployer -Value(Get-SPUserViaWS -url $list_url -name ($ENV:USERDOMAIN + "\" + $ENV:USERNAME))
 	}
+
+    log -txt "Recording deployment to $deploy_tracker @ $list_url - $deploy"
 	WriteTo-SPListViaWebService -url $list_url -list $deploy_tracker -Item (Convert-ObjectToHash $deploy)		
 }
 
@@ -177,12 +131,10 @@ function Get-SPUserViaWS( [string] $url, [string] $name )
 function main()
 {
 	try {   
-		$sess = Create-PSSession
-		Backup-Site -Session $sess
-		Deploy-Site -Session $sess -Settings (Create-PublishingSettings)
-		Sync-Farm -Session $sess
+		Backup-Site
+		Deploy-Site
+		Sync-Farm
 		Record-Deployment
-		Remove-PSSession $sess
 	} catch [System.SystemException] {
 		 Write-Host $_.Exception.ToString() -ForegroundColor Red
 	}
