@@ -17,7 +17,6 @@ param(
 
 . .\Libraries\BootStrap_Functions.ps1
 
-
 #Set Variables
 $cfg = [xml] ( gc ".\Config\web_server_setup.xml")
 
@@ -56,7 +55,15 @@ function Setup-Base
 function Setup-IIS
 {
 	cd  (Join-Path $ENV:SCRIPTS_HOME "iis\install")
-	.\install_and_config_iis7.ps1
+	
+	$ver = Get-WMIObject win32_operatingSystem | Select -Expand name
+	if( $ver -imatch "2008 R2" ) { 
+		.\install_and_config_iis7.ps1 
+	} else if( $ver -imatch "2012" ) { 
+		.\install_and_config_iis8.ps1
+	} else { 
+		throw "Invalid Operating System Detected . . ."
+	}
 }
 
 function Setup-DotNet
@@ -146,10 +153,14 @@ function Join-WebFarm
 		}
 	}
 	
-	Invoke-Command -Computer $controller -ScriptBlock $sb -ArgumentList $farm_name,$ENV:COMPUTERNAME
-
-    Start-Service WebFarmAgentService
-    Set-Service -StartupType Automatic -Name WebFarmAgentService
+	#Invoke-Command -Computer $controller -ScriptBlock $sb -ArgumentList $farm_name,$ENV:COMPUTERNAME
+    #Start-Service WebFarmAgentService
+    #Set-Service -StartupType Automatic -Name WebFarmAgentService
+	
+	Write-Host "There is an issue joining a computer to a web farm via powershell remoting . . . " 
+	Write-Host "Copy the following commands and run these from the controller . . "
+	Write-Host $sb
+	
 }
 
 function main
