@@ -18,13 +18,11 @@ function Get-SharePointApplicationPool
 	
 	)
 	
-	Write-Host "[$(Get-Date)] - Attempting to Get Service Application Pool " $name
+	Write-Host "[$(Get-Date)] - Attempting to Get Service Application Pool -  $($name)"
  	$pool = Get-SPServiceApplicationPool $name
-	if( $pool -eq $nul )
-	{
-		Write-Host "[$(Get-Date)] - Could not find Application Pool - " $name " - therefore creating new pool"
-		if ( (Get-SPManagedAccount | where { $_.UserName -eq $account } ) -eq $nul )
-		{
+	if( $pool -eq $nul ) {
+		Write-Host "[$(Get-Date)] - Could not find Application Pool - $($name) - therefore creating new pool"
+		if ( (Get-SPManagedAccount | where { $_.UserName -eq $account } ) -eq $nul ) {
 			$cred = Get-Credential $account
 			New-SPManagedAccount $cred -verbose
 		}
@@ -38,12 +36,10 @@ function Get-FarmType
 	$xpath = "/SharePoint/Farms/farm/server[@name='" + $ENV:COMPUTERNAME + "']"
 	$global:farm_type = (Select-Xml -xpath $xpath  $cfg | Select @{Name="Farm";Expression={$_.Node.ParentNode.name}}).Farm
 	
-	if( $global:farm_type -ne $null )
-	{
+	if( $global:farm_type -ne $null ) {
 		Write-Host "Found $ENV:COMPUTERNAME in $global:farm_type Farm Configuration"
 	}
-	else
-	{
+	else {
 		throw  "Could not find $ENV:COMPUTERNAME in configuration. Must exit"
 	}
 }
@@ -53,19 +49,23 @@ function Config-FarmAdministrators
 	$web = Get-SPWeb ("http://" + $env:COMPUTERNAME + ":10000")
 
 	$farm_admins = $web.SiteGroups["Farm Administrators"]
-	
+	$current_admins =  $farm_admins.Users | Select -Expand UserLogin
+
 	$cfg.SharePoint.FarmAdministrators.add | % { 
-		Write-Host "Adding "$_.group" to the Farm Administrators group . . ."
-		$user = New-SPUser -UserAlias $_.group.ToLower() -Web $web
-		$farm_admins.AddUser($user, [String]::Empty,[String]::Empty,[String]::Empty)
+		Write-Host "Adding $($_.group) to the Farm Administrators group . . ."
+
+        if( $current_admins -notcontains $_.group ) {
+		    $user = New-SPUser -UserAlias $_.group -Web $web
+		    $farm_admins.AddUser($user, [String]::Empty,[String]::Empty,[String]::Empty)
 		
-		Add-SPShellAdmin $_.group
+		    Add-SPShellAdmin $_.group
+        }
 	}
 	
 	$cfg.SharePoint.FarmAdministrators.remove | % { 
 		$group = $_.group
 
-		Write-Host "Removing "$_.group" to the Farm Administrators group . . ."
+		Write-Host "Removing $($_.group) to the Farm Administrators group . . ."
 		$user = Get-SPUser -Web $web -Group "Farm Administrators" | Where { $_.Name.ToLower() -eq $group }
 
 		$farm_admins.RemoveUser($user)
@@ -79,18 +79,21 @@ function Config-FarmAdministrators
 function Config-ManagedAccounts
 {
 	$cfg.SharePoint.managedaccounts.account | where { $_.farm -match $global:farm_type } | % { 
+        Write-Host "Add $($_.username) as a Managed Service Account . . ."
 		$cred = Get-Credential $_.username
 		New-SPManagedAccount $cred -verbose
 	}
 }
 
-function Config-Logging( [String[]] $servers ) 
+function Config-Logging 
 {
-	foreach( $server in $servers )
-	{
+    param(
+        [String[]] $servers
+    )
+
+	foreach( $server in $servers ) {
 		$path = $cfg.SharePoint.Logging.Path.Replace( "d:\", ("\\" + $server + "\d$\") )
-		if( -not ( Test-Path $path ) )
-		{
+		if( -not ( Test-Path $path ) )	{
 			mkdir $path -verbose
 		}
 	}
@@ -108,13 +111,15 @@ function Config-Logging( [String[]] $servers )
 	
 }
 
-function Config-Usage( [String[]] $servers ) 
+function Config-Usage 
 {
-	foreach( $server in $servers )
-	{
+    param(
+        [String[]] $servers
+    )
+ 
+	foreach( $server in $servers ) {
 		$path = $cfg.SharePoint.Usage.Path.Replace( "d:\", "\\" + $server + "\d$\" )
-		if( -not ( Test-Path $path ) )
-		{
+		if( -not ( Test-Path $path ) )	{
 			mkdir $path -verbose
 		}
 	}
@@ -134,7 +139,7 @@ function Config-Usage( [String[]] $servers )
 
 	Write-Host "************************************************************************"  -foreground green
 	Write-Host "Due to a limitation in the PowerShell API, in order complete the Health Usage Configuration" -foreground green
-	Write-Host "Please go to - http://"$env:COMPUTERNAME":10000/_admin/LogUsage.aspx and "  -foreground green
+	Write-Host "Please go to - http://$($env:COMPUTERNAME):10000/_admin/LogUsage.aspx and "  -foreground green
 	Write-Host "Select the check box next to `'Enable health data collection`'" -foreground green
 	Write-Host "************************************************************************"  -foreground green
 }
@@ -153,6 +158,13 @@ function Config-WebServiceAppPool
 function Config-StateService
 {
 	$app_name = "State Service Application" 
+
+    if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
+        Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+        return
+    }
+
+    Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
 	$app = New-SPStateServiceApplication -Name $app_name 
 	New-SPStateServiceDatabase -Name "SharePoint State Service" -ServiceApplication $app
 	New-SPStateServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app -DefaultProxyGroup
@@ -163,7 +175,14 @@ function Config-StateService
 function Config-SecureStore
 {
 	$app_name = "Secure Store Service"
+
+    if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
+        Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+        return
+    }
 	$db_name = "Secure_Store_Service_DB"
+
+    Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
 	$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
 	$app = New-SPSecureStoreServiceApplication -Name $app_name -ApplicationPool $sharePoint_service_apppool -DatabaseName $db_name -AuditingEnabled:$true -AuditLogMaxSize 30 -Sharing:$false -PartitionMode:$true 
 	$proxy = New-SPSecureStoreServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app -DefaultProxyGroup 
@@ -173,6 +192,13 @@ function Config-SecureStore
 function Config-AccessWebServices
 {
 	$app_name = "Access Service Application"
+
+    if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
+        Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+        return
+    }
+
+    Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
 	$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
 	$app = New-SPAccessServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name 
 	$app | Set-SPAccessServiceApplication -ApplicationLogSizeMax 1500 -CacheTimeout 150
@@ -181,6 +207,13 @@ function Config-AccessWebServices
 function Config-VisioWebServices
 {
 	$app_name = "Visio Service Application"
+
+    if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
+        Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+        return
+    }
+
+    Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
 	$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
 	$app = New-SPVisioServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name
 	$app | Set-SPVisioPerformance -MaxRecalcDuration 60 -MaxDiagramCacheAge 60 -MaxDiagramSize 5 -MinDiagramCacheAge 5
@@ -189,26 +222,26 @@ function Config-VisioWebServices
 
 function Config-InitialPublishing
 {
-	$certs_home = "D:\Certs"
+    if( (Get-PSDrive -PSProvider FileSystem | where { $_.Root -eq "D:\" }) ) { $drive = "D:" } else { $drive = "C:" }
+	$cert_home = (Join-Path $drive "Certs") + "\"
 
-	if( $global:farm_type -eq "standalone" )
-	{
+	if( $global:farm_type -eq "standalone" ) {
 		return
 	}
 	
-	if ( -not ( Test-Path $certs_home) )
-	{
+	if ( -not ( Test-Path $certs_home ) ) {
 		mkdir $certs_home
+        net share Certs=$certs_home /Grant:Everyone,Read
 	}
 	
-	if( $global:farm_type -eq "services" )
-	{
+	if( $global:farm_type -eq "services" ) {
+        Write-Host "[ $(Get-Date) ] - Creating Services Farm Root Certificte . . . "
 		$rootCert = (Get-SPCertificateAuthority).RootCertificate
 		$rootCert.Export("Cert") | Set-Content "$certs_home\ServicesFarmRoot.cer" -Encoding byte
 
 	}
-	else
-	{
+	else {
+        Write-Host "[ $(Get-Date) ] - Creating Root and STS Certifictes . . . "
 		$rootCert = (Get-SPCertificateAuthority).RootCertificate
 		$rootCert.Export("Cert") | Set-Content "$certs_home\$global:farm_type-Root.cer" -Encoding byte
 		
@@ -219,50 +252,58 @@ function Config-InitialPublishing
 	}
 }
 
-function Configure-FormsTimeout
+function Configure-SecureTokenService
 {
 	$sts = Get-SPSecurityTokenServiceConfig
 	$sts.FormsTokenLifeTime = (New-TimeSpan -Minute 20)
+    $sts.AllowMetadataOverHttp = $true
+    $sts.AllowOAuthOverHttp = $true
 	$sts.Update()
 }
 
-$sb = {
-	param (
-		[string] $source
-	)
+function Config-SharePointApps
+{
+    $app_name = "App Service Application"
+    if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
+        Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+        return
+    }
+    return "Not Implemented ... Yet "
 
-	$deploy_home = "D:\Deploy"
+    $app_name = "App Settings Service Application"
+    if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
+        Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+        return
+    }
+    return "Not Implemented ... Yet "
+}
 
-	if( (Test-Path "$source\SharePoint2010AdministrationToolkit.exe"  ) ) {
-		copy "$source\SharePoint2010AdministrationToolkit.exe" $deploy_home -Verbose
-		&"$deploy_home\SharePoint2010AdministrationToolkit.exe" /quiet /norestart 
-		Sleep 5
-	
-		if( -not (Test-Path "C:\Program Files\Microsoft\SharePoint 2010 Administration Toolkit\SPDIAG.exe") )
-		{
-			Write-Host "SharePoint2010AdministrationToolkit install failed on " $ENV:COMPUTERNAME
-		}
-		else
-		{
-			Write-Host "SharePoint2010AdministrationToolkit install succeeded on " $ENV:COMPUTERNAME
-		}
-	} 
-	else {
-		Write-Host "Could not find $source\SharePoint2010AdministrationToolkit.exe" 
-	}
+function Config-DistributedCache
+{
+    return "Not Implemented ... Yet "
+}
+
+function Config-BusinessConnectivityServices
+{
+    $app_name = "BCS Service Application"
+
+    if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
+        Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+        return
+    }
+    return "Not Implemented ... Yet "
 }
 
 function main()
 {
-	$log = "D:\Logs\Farm-Config-" + $ENV:COMPUTERNAME + "-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log"
+	$log = $cfg.SharePoint.BaseConfig.LogsHome + "\SharePoint-Farm-Confiuration-" + $ENV:COMPUTERNAME + "-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log"
 	&{Trap{continue};Start-Transcript -Append -Path $log}
 
 	Get-FarmType
 	
 	Enable-WSManCredSSP -role client -delegate * -Force
 	
-	$sharepoint_servers = @()
-	$sharepoint_servers += Get-SPServer | where { $_.Role -ne "Invalid" } | Select -Expand Address 
+	$sharepoint_servers = @(Get-SPServer | where { $_.Role -ne "Invalid" } | Select -Expand Address )
 	
 	$global:source = $cfg.SharePoint.Setup.master_file_location
 			
@@ -313,11 +354,26 @@ function main()
 	Config-VisioWebServices
 	Write-Host "--------------------------------------------"
 	
+    Write-Host "--------------------------------------------"
+    Write-Host "Configure Business Connectivity Services"
+    Config-BusinessConnectivityServices
+    Write-Host "--------------------------------------------"
+
 	Write-Host "--------------------------------------------"
 	Write-Host "Configure Logging"
 	Config-Logging -servers $sharepoint_servers
 	Write-Host "--------------------------------------------"
+
+    Write-Host "--------------------------------------------"
+	Write-Host "Configure SharePoint Apps"
+	Config-SharePointApps 
+	Write-Host "--------------------------------------------"
 	
+    Write-Host "--------------------------------------------"
+	Write-Host "Configure SharePoint Distirbuted Cache"
+	Config-DistributedCache 
+	Write-Host "--------------------------------------------"
+
 	Write-Host "--------------------------------------------"
 	Write-Host "Configure Usage"
 	Config-Usage -servers $sharepoint_servers
@@ -327,6 +383,11 @@ function main()
 	Write-Host "Configure Initial Cert Exchange"
 	Config-InitialPublishing 
 	Write-Host "--------------------------------------------"
+
+	Write-Host "--------------------------------------------"
+	Write-Host "Configure Forms Timeout"
+    Configure-SecureTokenService
+    Write-Host "--------------------------------------------"
 
 	Stop-Transcript
 }

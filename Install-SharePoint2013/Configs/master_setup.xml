@@ -16,6 +16,10 @@
 			<server name="" role="indexer"/>
 			<server name="" role="wfe"/>
 		</farm>
+        <farm name="standalone">
+            <server name="" role="all"/>
+            <server name="" role="central-admin"/>
+        </farm>
 	</Farms>
 	<Databases>
 		<Database name="" port="" instance="" />
@@ -26,6 +30,7 @@
 		<DeployHome>D:\Deploy\</DeployHome>
 		<SPVersion>SHAREPOINT2013-RTM-15.0.4420.1017-SLIPSTREAM</SPVersion>
 		<AuditUrl>http://teamadmin.gt.com/sites/ApplicationOperations/</AuditUrl>
+        <LogsHome>D:\Logs</LogsHome>
 		<HouseKeeping>
 			<name>HouseKeeping</name>
 			<user>svc_shpt_scom</user>

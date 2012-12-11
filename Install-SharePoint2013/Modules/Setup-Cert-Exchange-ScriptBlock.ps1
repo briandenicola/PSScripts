@@ -3,22 +3,23 @@ param(
 	[string] $RemoteFarmType
 )
 
+if( (Get-PSDrive -PSProvider FileSystem | where { $_.Root -eq "D:\" }) ) { $drive = "D:" } else { $drive = "C:" }
+$cert_home = (Join-Path $drive "Certs") + "\"
+
 Add-PSSnapin Microsoft.SharePoint.Powershell –EA SilentlyContinue
 
 Write-Host "[$(Get-Date)] - Importing $RemoteFarmType Farm Trust and STS Certificates ($RemoteCentralAdmin)"
 
-if( Test-Path ( "\\$RemoteCentralAdmin\D$\Certs" ) )
-{
-	Copy-Item \\$RemoteCentralAdmin\D$\Certs\$RemoteFarmType-Root.cer D:\Certs\
-	Copy-Item \\$RemoteCentralAdmin\D$\Certs\$RemoteFarmType-STS.cer D:\Certs\
+if( Test-Path ( "\\$RemoteCentralAdmin\Certs" ) ) {
+	Copy-Item \\$RemoteCentralAdmin\Certs\$RemoteFarmType-Root.cer $cert_home
+	Copy-Item \\$RemoteCentralAdmin\Certs\$RemoteFarmType-STS.cer $cert_home
 	
-	$trustCert = Get-PfxCertificate "D:\Certs\$RemoteFarmType-Root.cer"
+	$trustCert = Get-PfxCertificate (Join-Path $cert_home "$RemoteFarmType-Root.cer")
 	New-SPTrustedRootAuthority "GT-$RemoteFarmType" -Certificate $trustCert
 	
-	$stsCert = Get-PfxCertificate "D:\Certs\$RemoteFarmType-STS.cer"
+	$stsCert = Get-PfxCertificate (Join-Path $cert_home "$RemoteFarmType-STS.cer")
 	New-SPTrustedServiceTokenIssuer "GT-$RemoteFarmType" -Certificate $stsCert
 }
-else
-{
-	Write-Host "[$(Get-Date)] - \\$RemoteCentralAdmin\D$\Certs was not found. Can not import certs." -ForegroundColor Red
+else {
+	Write-Host "[$(Get-Date)] - \\$RemoteCentralAdmin\Certs was not found. Can not import certs." -ForegroundColor Red
 }

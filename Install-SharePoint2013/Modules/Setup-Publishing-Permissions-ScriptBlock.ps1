@@ -30,32 +30,26 @@ $provider = (Get-SPClaimProvider System).ClaimProvider
 foreach( $service_app in $service_apps_perms_map )
 {
 	Write-Host "[$(Get-Date)] - Setting permissions for -" $service_app.Name "- with permissions -" $service_app.Perms "- for account/farm -" $service_app.Id
-	if( $service_app.Name -match "Application Load Balancer" )
-	{
+	if( $service_app.Name -match "Application Load Balancer" ) {
 		$app = Get-SPTopologyServiceApplication
 	}
-	else
-	{
+	else {
 		$app = Get-SPServiceApplication | where { $_.Name -eq $service_app.Name }
 	}
 	
-	if( $app -ne $null )
-	{
+	if( $app -ne $null ) {
 		$security = $app | Get-SPServiceApplicationSecurity
-		if( $service_app.Name -match "User Profile" )
-		{
+		if( $service_app.Name -match "User Profile" ) {
 			$principal = New-SPClaimsPrincipal -IdentityType WindowsSamAccountName -Identity $service_app.Id
 		} 
-		else
-		{
+		else {
 			$principal = New-SPClaimsPrincipal -ClaimType "http://schemas.microsoft.com/sharepoint/2009/08/claims/farmid" -ClaimProvider $provider -ClaimValue $service_app.Id
 		}
 	
 		Grant-SPObjectSecurity -Identity $security -Principal $principal -Rights $service_app.Perms
 		$app | Set-SPServiceApplicationSecurity -ObjectSecurity $security
 	} 
-	else
-	{
+	else {
 		Write-Host "Could not find Service Application - " $service_app.Name -ForegroundColor Red
 	}
 }

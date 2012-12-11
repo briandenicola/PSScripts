@@ -59,7 +59,7 @@ function Setup-IIS
 	$ver = Get-WMIObject win32_operatingSystem | Select -Expand name
 	if( $ver -imatch "2008 R2" ) { 
 		.\install_and_config_iis7.ps1 
-	} else if( $ver -imatch "2012" ) { 
+	} elseif( $ver -imatch "2012" ) { 
 		.\install_and_config_iis8.ps1
 	} else { 
 		throw "Invalid Operating System Detected . . ."

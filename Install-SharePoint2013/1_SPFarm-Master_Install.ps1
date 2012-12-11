@@ -1,16 +1,17 @@
 ﻿[CmdletBinding(SupportsShouldProcess=$true)]
 param(
-	[ValidateSet("all", "copy", "base", "iis", "database", "sharepoint-install", "farm-install")]
+	[ValidateSet("all", "copy", "base", "iis", "el", "database", "sharepoint", "farm")]
 	[string]
 	$operation = "all",
 	
 	[string]
-	$config = ".\config\setup.xml"
+	$config = ".\config\setup.xml",
+
+    [switch]
+    $record
 )
 
-# Source Required Libraries
-. .\Libraries\Standard_Functions.ps1
-. .\Libraries\SharePoint_Functions.ps1
+. .\Libraries\BootStrap_Functions.ps1
 	
 #Global Varibles
 $global:server_type = $null
@@ -21,6 +22,7 @@ $global:utils_home = $null
 $global:deploy_home = $null
 $global:sp_version = $null
 $global:audit_url = $null
+$global:log_home = $null
 
 function Get-Variables
 {
@@ -34,6 +36,7 @@ function Get-Variables
 	$global:deploy_home = $cfg.SharePoint.BaseConfig.DeployHome
 	$global:sp_version = $cfg.SharePoint.BaseConfig.SPVersion
 	$global:audit_url = $cfg.SharePoint.BaseConfig.AuditUrl
+    $global:log_home = $cfg.SharePoint.BaseConfig.LogsHome
 	
 	$xpath = "/SharePoint/Farms/farm/server[@name='" + $ENV:COMPUTERNAME + "']"
 	$node = Select-Xml -xpath $xpath  $cfg 
@@ -41,12 +44,10 @@ function Get-Variables
 	$global:farm_type = $node.Node.ParentNode.name
 	$global:server_type = $node.Node.Role
 	
-	if( $global:server_type -ne $null )
-	{
+	if( $global:server_type -ne $null ) 	{
 		Write-Host "Found $ENV:COMPUTERNAME in $global:farm_type Farm Configuration as a $global:server_type server"
 	}
-	else
-	{
+	else {
 		throw "Could not find $ENV:COMPUTERNAME in configuration. Must exit"
 	}
 }
@@ -66,34 +67,37 @@ function Unzip-File
 
 }
 
-function CopyFiles
+function Copy-Files
 {
-	
+	#Copy Team Utils
 	xcopy /e/v/f/s "$global:source\SharePoint2010-Utils-Scripts\Scripts" "$global:scripts_home\"
 	xcopy /e/v/f/s "$global:source\SharePoint2010-Utils-Scripts\Utils" "$global:utils_home\"
 		
-	#Copy Files 
-	xcopy /e/v/f/s "$global:source\SharePoint2010-Utils-Scripts\EnterpriseLibrary4.1" "$global:$deploy_home\EL4.1\"
-	xcopy /e/v/f/s "$global:source\SharePoint2010-Utils-Scripts\ReportViewers" "$global:deploy_home\ReportViewers\"
+	#Copy SharePoint Files 
 	copy "$global:source\$sp_version.zip" $global:deploy_home
 	Unzip-File -zip "$deploy_home\$global:sp_version.zip" -folder $global:deploy_home
 }
 
-function BaseSetup
+function Setup-BaseSystem
 {
 	#Setup Sysem
 	Disable-InternetExplorerESC
 	Disable-UserAccessControl
 	
+    #Setup Powershell Remotint
 	Enable-PSRemoting -force
 	Enable-WSmanCredSSP -role server -force
 	
+    #Setup Scripting locations
 	cscript.exe //H:cscript
 	setx -m SCRIPTS_HOME $global:scripts_home
+    $ENV:SCRIPTS_HOME = $global:scripts_home
 	
+    #Disable Reboot Prompt
 	New-Item -Path "HKLM:SOFTWARE\Policies\Microsoft\Windows NT\" -Name "Reliability" 
 	New-ItemProperty -Path "HKLM:SOFTWARE\Policies\Microsoft\Windows NT\Reliability" -Name "ShutdownReasonOn" -Value "0" -PropertyType dword
 	
+    #Setup House Keeping
 	if( -not ( $cfg.SharePoint.BaseConfig.HouseKeeping.Name -eq $null ) )
 	{
 		$house_keeping = $cfg.SharePoint.BaseConfig.HouseKeeping
@@ -102,28 +106,25 @@ function BaseSetup
 	}
 }
 
-function IISSetup
+function Setup-IIS
 {
-	#Install IIS, .NET4, SQL Client, and WebDeploy
+	#Install IIS and disable loopback check
 	cd  "$global:scripts_home\iis\install\"
 	.\install_and_config_iis8.ps1
-	
-	&"$global:utils_home\WebPI\WebpiCmdLine.exe" /Products:NETFramework45 /accepteula /SuppressReboot 
-	&"$global:utils_home\WebPI\WebpiCmdLine.exe" /Products:SQLNativeClient2008 /accepteula /SuppressReboot
-	&"$global:utils_home\WebPI\WebpiCmdLine.exe" /Products:WDeployNoSMO /accepteula /SuppressReboot 
 	C:\Windows\Microsoft.NET\Framework64\v4.0.30319\aspnet_regiis.exe -iru
-	
-	#Install Enterprise Library to GAC
-	cd "$global:deploy_home\EL4.1"
-	&"$global:deploy_home\EL4.1\deploy_to_gac.bat"
-	
-	#Install Reporting Services Viewers for SharePoint
-	cd "$global:deploy_home\ReportViewers"
-	&"$global:deploy_home\ReportViewers\ReportViewer2008.exe" /q
+	New-ItemProperty -Path "HKLM:SYSTEM\CurrentControlSet\Control\Lsa" -PropertyType dword -Name "DisableLoopbackCheck" -Value "1"
 }
 
-function DatabaseAliasSetup
+function Install-EnterpriseLibrary
 {
+    #Install Microsoft's Enterprise Library to GAC
+    cd  "$global:scripts_home\MISC-SPSripts"
+    .\Install-Assemblies.ps1 ("$global:source\SharePoint2010-Utils-Scripts\EnterpriseLibrary4.1")
+}
+
+function Setup-DatabaseAlias
+{
+    #Create SQL Aliases 
 	New-Item -Path "HKLM:SOFTWARE\Microsoft\MSSQLServer\Client" -Name ConnectTo
 	$cfg.SharePoint.Databases.Database | % { 
 		Write-Host "Creating SQL Alias - " $_.name " - that points to " $_.instance " on port " $_.port
@@ -132,14 +133,14 @@ function DatabaseAliasSetup
 	}
 }
 
-function SharePointSetup
+function Install-SharePointBinaries
 {
-	cd "$global:scripts_home\InstallSharePoint2010"
+	cd "$global:scripts_home\Install-SharePoint2013"
 	if( CheckFor-PendingReboot )
 	{	
-		$script = "cd $global:scripts_home\InstallSharePoint2010;"
+		$script = "cd $global:scripts_home\Install-SharePoint2013;"
 		$script += Join-Path $PWD.Path "1_SPFarm-Master_Install.ps1"
-		$script += " -operation sharepoint-install -config $config"
+		$script += " -operation sharepoint -config $config"
 		
 		$cmd = "c:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command `"$script`""
 		
@@ -152,25 +153,19 @@ function SharePointSetup
 	}
 	
 	.\Modules\Install-SharePointBits.ps1 -config $cfg.SharePoint.setup.setup_configs.$global:farm_type -setup $cfg.SharePoint.Setup.setup_path
-	
-	New-ItemProperty -Path "HKLM:SYSTEM\CurrentControlSet\Control\Lsa" -PropertyType dword -Name "DisableLoopbackCheck" -Value "1"
-	
-	audit-Servers -Servers . | % { WriteTo-SPListViaWebService -url $global:audit_url -list Servers -Item $(Convert-ObjectToHash $_) -TitleField SystemName } 
 }
 
-function FarmSetup
+function Setup-Farm
 {
 	$db = $cfg.SharePoint.setup.databases.$global:farm_type
 	$pass = $cfg.SharePoint.setup.security.$global:farm_type.passphrase
 	$account = $cfg.SharePoint.setup.security.$global:farm_type.farm_account
 	
-	cd "$global:scripts_home\InstallSharePoint2010"
-	if( $global:server_type -eq "central-admin" )
-	{	
+	cd "$global:scripts_home\Install-SharePoint2013"
+	if( $global:server_type -eq "central-admin" -or $global:server_type -eq "all" ) {	
 		.\Modules\Create-SharePointFarm.ps1 -db $db -passphrase $pass -account $account
 	} 
-	else
-	{
+	else {
 		.\Modules\Join-SharePointFarm.ps1 -db $db -passphrase $pass
 	}
 }
@@ -179,36 +174,39 @@ function main
 {	
 	#Start Log
 	Set-ExecutionPolicy unrestricted -force
-	
-	if( -not (Test-Path D:\Logs) ) 
-	{ 
-		mkdir D:\Logs 
-		mkdir D:\Logs\Trace
-		cmd.exe /c "net share Logs=D:\Logs /Grant:Everyone,Read"
-	}
 		
-	$log = "D:\Logs\System-Setup-" + $ENV:COMPUTERNAME + "-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log"
-	&{Trap{continue};Start-Transcript -Append -Path $log}
-
-	try
-	{
+	try {
 		Get-Variables
 	}
-	catch
-	{
+	catch {
 		Write-Error "Could not set base variables. Must exit"
 		return 
 	}
+
+    if( !(Test-Path $global:log_home) ) { 
+		mkdir $global:log_home
+		mkdir (Join-Path $global:log_home "Trace")
+		net share Logs=$global:log_home /Grant:Everyone,Read
+	}
+
+	$log = $global:log_home + "\System-Setup-" + $ENV:COMPUTERNAME + "-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log"
+	&{Trap{continue};Start-Transcript -Append -Path $log}
 	
 	#Steps to Setup Server 
-	if( $operation -eq "all" -or $operation -eq "copy") { CopyFiles; $operation = "all" }
-	if( $operation -eq "all" -or $operation -eq "base") { BaseSetup; $operation = "all" }
-	if( $operation -eq "all" -or $operation -eq "iis") { IISSetup; $operation = "all" }
-	if( $operation -eq "all" -or $operation -eq "database") { DatabaseAliasSetup; $operation = "all" }
-	if( $operation -eq "all" -or $operation -eq "sharepoint-install") { SharePointSetup; $operation = "all" }
+	if( $operation -eq "all" -or $operation -eq "copy") { Copy-Files; $operation = "all" }
+	if( $operation -eq "all" -or $operation -eq "base") { Setup-BaseSystem; $operation = "all" }
+	if( $operation -eq "all" -or $operation -eq "iis") { Setup-IIS; $operation = "all" }
+    if( $operation -eq "all" -or $operation -eq "el") {  Install-EnterpriseLibrary; $operation = "all" }
+	if( $operation -eq "all" -or $operation -eq "database") { Setup-DatabaseAlias; $operation = "all" }
+	if( $operation -eq "all" -or $operation -eq "sharepoint") { Install-SharePointBinaries ; $operation = "all" }
 	
 	Read-Host "Press any key to continue to either create or join the farm. Please remember that only one system can run config wizard at a time."
-	if( $operation -eq "all" -or $operation -eq "farm-install") { FarmSetup }
+	if( $operation -eq "all" -or $operation -eq "farm") { Setup-Farm }
+
+    if( $record ) { 
+        $audit = audit-Servers -Servers . 
+         WriteTo-SPListViaWebService -url $global:audit_url -list Servers -Item $(Convert-ObjectToHash $audit) -TitleField SystemName 
+    } 
 	Stop-Transcript
 	
 }
