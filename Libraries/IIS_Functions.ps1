@@ -1,7 +1,7 @@
 ﻿Import-Module WebAdministration
 Add-PSSnapin WebFarmSnapin -ErrorAction SilentlyContinue
 
-. .\Standard_Variables.ps1
+. (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Variables.ps1")
 
 $ENV:PATH += ';C:\Program Files\IIS\Microsoft Web Deploy V2'
 

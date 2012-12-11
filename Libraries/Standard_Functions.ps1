@@ -863,40 +863,7 @@ function Create-WindowsService([string[]] $Servers, [string] $Path, [string] $Se
 	}
 	return( $result | Format-List )
 }
-
-	set-variable -option constant -name eventqueryScript -Value "cscript //NoLogo $ENV:WINDIR\system32\eventquery.vbs /S {0} /L {1} /V /FO List {2}"
-	$logs = @()
 	
-	if( -not [String]::IsNullOrEmpty($filter) ) 
-	{
-		$filter = "/FI `"$filter`""	
-	}
-	
-	$evtlogs | % {
-			
-		$evtLog = "`"$_`""
-		Write-Progress -activity "Querying Event logs" -status "Working on $server's $evtLog log"
-	
-		$scriptCmd = $eventqueryScript -f $server,$evtLog,$filter
-		$eventquery = invoke-expression $scriptCmd
-		
-		for( $i = 0; $i -lt $eventquery.Length; $i++ )
-		{
-			$log = new-object System.Object
-			$log | add-member -type NoteProperty -name Server -value $server
-			$log | add-member -type NoteProperty -name EventLog -value $evtLog
-
-			while($eventquery[$i] -ne "" -and $i -lt $eventquery.Length )
-			{
-				$key, $value, $nul = [regex]::Split( $eventquery[$i], ":  " )
-				if($key -ne $nul -and $value -ne $nul) { $log | add-member -type NoteProperty -name $key -value $value.TrimStart() }
-				$i++
-			}
-			$logs += $log
-		}
-	}
-	
-	return $logs	
 function sed () 
 {
 	param (
