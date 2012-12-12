@@ -157,67 +157,86 @@ function Config-WebServiceAppPool
 
 function Config-StateService
 {
-	$app_name = "State Service Application" 
+	try { 
+		$app_name = "State Service Application" 
 
-    if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
-        Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
-        return
-    }
+		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
+			Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+			return
+		}
 
-    Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
-	$app = New-SPStateServiceApplication -Name $app_name 
-	New-SPStateServiceDatabase -Name "SharePoint State Service" -ServiceApplication $app
-	New-SPStateServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app -DefaultProxyGroup
-	Enable-SPSessionStateService -DefaultProvision
-	
+		Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
+		$app = New-SPStateServiceApplication -Name $app_name 
+		New-SPStateServiceDatabase -Name "SharePoint State Service" -ServiceApplication $app
+		New-SPStateServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app -DefaultProxyGroup
+		Enable-SPSessionStateService -DefaultProvision
+	} 
+	catch [System.Exception] {
+		Write-Error ("The SharePoint State Service Configuration failed with the following Exception - " + $_.Exception.ToString() )
+	}
 }
 
 function Config-SecureStore
 {
-	$app_name = "Secure Store Service"
+	try { 
+		$app_name = "Secure Store Service"
 
-    if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
-        Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
-        return
-    }
-	$db_name = "Secure_Store_Service_DB"
+		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
+			Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+			return
+		}
+		$db_name = "Secure_Store_Service_DB"
 
-    Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
-	$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
-	$app = New-SPSecureStoreServiceApplication -Name $app_name -ApplicationPool $sharePoint_service_apppool -DatabaseName $db_name -AuditingEnabled:$true -AuditLogMaxSize 30 -Sharing:$false -PartitionMode:$true 
-	$proxy = New-SPSecureStoreServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app -DefaultProxyGroup 
-	Update-SPSecureStoreMasterKey -ServiceApplicationProxy $proxy -Passphrase $cfg.SharePoint.Secure.Passphrase
+		Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
+		$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
+		$app = New-SPSecureStoreServiceApplication -Name $app_name -ApplicationPool $sharePoint_service_apppool -DatabaseName $db_name -AuditingEnabled:$true -AuditLogMaxSize 30 -Sharing:$false -PartitionMode:$true 
+		$proxy = New-SPSecureStoreServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app -DefaultProxyGroup 
+		Update-SPSecureStoreMasterKey -ServiceApplicationProxy $proxy -Passphrase $cfg.SharePoint.Secure.Passphrase
+	}
+	catch [System.Exception] {
+		Write-Error ("The SharePoint Secure Store Configuration failed with the following Exception - " + $_.Exception.ToString() )
+	}
 }
 
 function Config-AccessWebServices
 {
-	$app_name = "Access Service Application"
+	try { 
+		$app_name = "Access Service Application"
 
-    if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
-        Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
-        return
-    }
+		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
+			Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+			return
+		}
 
-    Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
-	$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
-	$app = New-SPAccessServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name 
-	$app | Set-SPAccessServiceApplication -ApplicationLogSizeMax 1500 -CacheTimeout 150
+		Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
+		$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
+		$app = New-SPAccessServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name 
+		$app | Set-SPAccessServiceApplication -ApplicationLogSizeMax 1500 -CacheTimeout 150
+	}
+	catch [System.Exception] {
+		Write-Error ("The SharePoint Access Configuration failed with the following Exception - " + $_.Exception.ToString() )
+	}
 }
 
 function Config-VisioWebServices
 {
-	$app_name = "Visio Service Application"
+	try {
+		$app_name = "Visio Service Application"
 
-    if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
-        Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
-        return
-    }
+		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
+			Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+			return
+		}
 
-    Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
-	$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
-	$app = New-SPVisioServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name
-	$app | Set-SPVisioPerformance -MaxRecalcDuration 60 -MaxDiagramCacheAge 60 -MaxDiagramSize 5 -MinDiagramCacheAge 5
-	$proxy = New-SPVisioServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app.Name  
+		Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
+		$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
+		$app = New-SPVisioServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name
+		$app | Set-SPVisioPerformance -MaxRecalcDuration 60 -MaxDiagramCacheAge 60 -MaxDiagramSize 5 -MinDiagramCacheAge 5
+		$proxy = New-SPVisioServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app.Name  
+	}
+	catch [System.Exception] {
+		Write-Error ("The SharePoint Visio Configuration failed with the following Exception - " + $_.Exception.ToString() )
+	}
 }
 
 function Config-InitialPublishing
@@ -263,35 +282,76 @@ function Configure-SecureTokenService
 
 function Config-SharePointApps
 {
-    $app_name = "App Service Application"
-    if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
-        Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
-        return
-    }
-    return "Not Implemented ... Yet "
+	try {
+		$app_name = "App Settings Service Application"
+		$db_name = "App_Settings_Service_DB"
+		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
+			Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+			return
+		}
+		
+		$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name
+		$app_settings_svc = New-SPSubscriptionSettingsServiceApplication –ApplicationPool $sharePoint_service_apppool –Name $app_name –DatabaseName $db_name
+		New-SPSubscriptionSettingsServiceApplicationProxy –ServiceApplication $app_settings_svc
+		
+		$app_name = "App Management Service Application"
+		$db_name = "App_Management_Service_DB"
+		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
+			Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+			return
+		}
+		$app_mgmt_svc = New-SPAppManagementServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name -DatabaseName $db_name
+		New-SPAppManagementServiceApplicationProxy -ServiceApplication $appAppSvc 
 
-    $app_name = "App Settings Service Application"
-    if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
-        Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
-        return
-    }
-    return "Not Implemented ... Yet "
+		Set-SPAppDomain $cfg.SharePoint.App.domain
+		Set-SPAppSiteSubscriptionName -Name $cfg.SharePoint.App.prefix -Confirm:$false
+	}
+	catch [System.Exception] {
+		Write-Error ("The SharePoint Application Configuration failed with the following Exception - " + $_.Exception.ToString() )
+	}
+}
+
+function Config-WorkManagement
+{
+	try {
+		$app_name = "Work Management Service Application"
+		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
+			Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+			return
+		}
+		$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
+		New-SPWorkManagementServiceApplication –Name $app_name –ApplicationPool $sharePoint_service_apppool
+	}	
+	catch [System.Exception] {
+		Write-Error ("The SharePoint Work Managment Configuration failed with the following Exception - " + $_.Exception.ToString() )
+	}
 }
 
 function Config-DistributedCache
-{
-    return "Not Implemented ... Yet "
-}
-
-function Config-BusinessConnectivityServices
-{
-    $app_name = "BCS Service Application"
-
-    if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
-        Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
-        return
-    }
-    return "Not Implemented ... Yet "
+{	
+	$type = "Microsoft SharePoint Foundation Web Application"
+	$sb = {
+		param (
+			[double] $percent_of_ram
+		)
+		$cache_port = "22233"
+		
+		$physical_memory = (Get-WmiObject Win32_ComputerSystem ).TotalPhysicalMemory
+		
+		Stop-SPDistributedCacheServiceInstance 
+		
+		$Guid = Get-SPServiceInstance -Server $server.name  | where { $_.TypeName -eq "Distributed Cache" } | Select -Expand Id
+		Start-SPServiceInstance -Identity $Guid
+		
+		Use-CacheCluster
+		Update-SPDistributedCacheSize ( $percent_of_ram * ($physical_memory/1mb) )
+		Add-SPDistributedCacheServiceInstance
+		
+		Get-SPDistributedCacheClientSetting -ContainerType DistributedLogonTokenCache
+	}
+	
+	$sharepoint_servers = Get-SPServiceInstance | where { $_.TypeName -eq $type -and $_.Status -eq "Online" } | Select Server
+	Invoke-Command -ComputerName ($sharepoint_servers | Select -Expand Address) -ScriptBlock $sb -ArgumentList  $cfg.SharePoint.DistributedCache.ReserveMemory
 }
 
 function main()
@@ -352,6 +412,11 @@ function main()
 	Write-Host "--------------------------------------------"
 	Write-Host "Configure Visio Web Service"
 	Config-VisioWebServices
+	Write-Host "--------------------------------------------"
+	
+	Write-Host "--------------------------------------------"
+	Write-Host "Configure Work Management Service"
+	Config-WorkManagement
 	Write-Host "--------------------------------------------"
 	
     Write-Host "--------------------------------------------"

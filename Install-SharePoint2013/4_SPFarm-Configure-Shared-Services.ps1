@@ -35,57 +35,6 @@ function Get-SharePointApplicationPool
 	return $pool
 }
 	
-function Create-WebAnalytics
-{
-	param (
-		[object] $cfg
-	)
-	$proxy_name = $cfg.Name + " Proxy"
-	
-	$cfg.Servers.Server.Name | % { 
-		Write-Host "[$(Get-Date)] - Attempting to start Web Analytics on " $_
-		Get-SPServiceInstance -Server $_ | where { $_.TypeName -eq "Web Analytics Web Service" } | Start-SPServiceInstance 
-		Get-SPServiceInstance -Server $_ | where { $_.TypeName -eq "Web Analytics Data Processing Service" } | Start-SPServiceInstance 
-	}
-	
-	# Format Databses
-	$staging_db = "<StagingDatabases>"
-	$reporting_db = "<ReportingDatabases>"
-	$cfg.Databases.Database | % { 
-		if( $_.role -eq "Reporting" )
-		{
-			$reporting_db += "<ReportingDatabase ServerName=`"{0}`" DatabaseName=`"{1}`" />" -f $_.instance, $_.name
-		}
-		elseif( $_.Role -eq "Staging" )
-		{
-			$staging_db += "<StagingDatabase ServerName=`"{0}`" DatabaseName=`"{1}`" />" -f $_.instance, $_.name
-		}
-		else
-		{
-			Write-Host "[$(Get-Date)][WebAnalytics] - Invalid Role - " $_.role
-		}
-	}
-	$staging_db += "</StagingDatabases>"
-	$reporting_db += "</ReportingDatabases>"
-	
-	# Create Application Pool
-	$pool = Get-SharePointApplicationPool -name $cfg.AppPool.name -account $cfg.AppPool.account 
-
-	$params = @{
-		Name = $cfg.Name
-		ReportingDataRetention = 20
-		Sampling = 100
-		ListOfReportingDatabases = $reporting_db
-		ListOfStagingDatabases = $staging_db
-		ApplicationPool = $pool
-	}
-	
-	Write-Host "[$(Get-Date)] - Attempting to create Web Analytics Service Application with the following parameters - "  (HashTable_Output $params)
-	$app = New-SPWebAnalyticsServiceApplication  @params -verbose
-	New-SPWebAnalyticsServiceApplicationProxy -Name $proxy_name -ServiceApplication $app -ViewDataPermissionLevel Medium
-	Publish-SPServiceApplication $app
-}
-
 function Create-ManagedMetadata
 {
 	param (
@@ -142,7 +91,7 @@ function Create-UserProfile
 	$pool = Get-SharePointApplicationPool -name $cfg.AppPool.name -account $cfg.AppPool.account
 
 	# Get or Create MySite Web Application
-	$w = get-SPWebApplication $cfg.MySite.name -EA SilentlyContinue
+	$w = Get-SPWebApplication $cfg.MySite.name -EA SilentlyContinue
 	if( $w -eq $null )
 	{
 		$acc = Get-SPManagedAccount $cfg.MySite.AppPool.account -EA SilentlyContinue
@@ -315,15 +264,6 @@ function main()
 {
 	$log = "D:\Logs\Farm-Shared-Service-Application-Setup-" + $ENV:COMPUTERNAME + "-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log"
 	Start-Transcript -Append -Path $log
-
-	$analytics_cfg = $cfg.SharePoint.SharedServices.Service | where { $_.App -eq "WebAnalytics" }
-	if( $analytics_cfg -ne $null )
-	{
-		Write-Host "--------------------------------------------"
-		Write-Host "Create Web Analytics Service Application"
-		Create-WebAnalytics -cfg $analytics_cfg
-		Write-Host "--------------------------------------------"
-	}
 
 	$metadata_cfg = $cfg.SharePoint.SharedServices.Service | where { $_.App -eq "Metadata" }
 	if( $metadata_cfg -ne $null )

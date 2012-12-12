@@ -89,6 +89,13 @@
 		<MaxDiskSpace>5</MaxDiskSpace>
 		<Database>WSS_Logging</Database>
 	</Usage>
+	<App>
+		<prefix>app</prefix>
+		<domain>apps.sharepoint.test</domain>
+	</App>
+	<DistributedCache>
+		<ReserveMemory>0.05</ReserveMemory>
+	</DistributedCache>
 	<SharedServices>
 		<Service App="UserProfile">
 			<name>User Profile Service Application</name>
@@ -131,17 +138,6 @@
 			</Databases>
 			<AppPool name="AppPool - SharePoint Shared Service Application" account="USGTAD\"/>
 			<Administrators>SHAREPOINT\svc_services</Administrators>
-		</Service>
-		<Service App="WebAnalytics">
-			<name>Web Analytics Service Application</name>
-			<Servers>
-				<server name="" />
-			</Servers>
-			<Databases>
-				<database instance="" name="WebAnalytis_Reporting" Role="Reporting" />
-				<database instance="" name="WebAnalytis_Staging" Role="Staging" />
-			</Databases>
-			<AppPool name="AppPool - SharePoint Shared Service Application" account="USGTAD\"/>
 		</Service>
 	</SharedServices>
 </SharePoint>

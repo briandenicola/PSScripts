@@ -15,11 +15,7 @@ function Configure-CentralAdmin-Role
 	$ca_roles = @(
 		"Microsoft SharePoint Foundation Incoming E-Mail",
 		"Microsoft SharePoint Foundation Web Application",
-		"Application Registry Service", 
-		"Business Data Connectivity Service", 
 		"Claims to Windows Token Service", 
-		"Document Conversions Load Balancer Service", 
-		"Document Conversions Launcher Service"
     )
 		
 	$farm = $cfg.SharePoint.Farms.farm | where { $_.name -eq $type }
@@ -46,15 +42,12 @@ function Configure-WFE-Roles
 
 	$wfe_roles = @(
 		"Microsoft SharePoint Foundation Sandboxed Code Service",
-		"Word Automation Services",
 		"Claims to Windows Token Service",
 		"Secure Store Service",
 		"Access Database Service", 
 		"Visio Graphics Service"
 		"Application Registry Service", 
-		"Business Data Connectivity Service",
         "Work Management Service",
-        "Distributed Cache",
         "App Management Service",
         "Request Management"
     )
@@ -84,8 +77,6 @@ function Configure-ServicesFarm-Roles([String] $env)
 	$services_roles = @(
         "Managed Metadata Web Service", 
         "User Profile Service", 
-        "Web Analytics Web Service", 
-        "Web Analytics Data Processing Service"
     )
 
 	$farm = $cfg.SharePoint.Farms.farm | where { $_.name -eq $env }

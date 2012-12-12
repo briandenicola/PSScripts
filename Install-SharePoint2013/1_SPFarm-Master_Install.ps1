@@ -26,7 +26,6 @@ $global:log_home = $null
 
 function Get-Variables
 {
-
 	Write-Host "Using the following Varibles - " 
 	$cfg.SharePoint.BaseConfig
 	
@@ -98,8 +97,7 @@ function Setup-BaseSystem
 	New-ItemProperty -Path "HKLM:SOFTWARE\Policies\Microsoft\Windows NT\Reliability" -Name "ShutdownReasonOn" -Value "0" -PropertyType dword
 	
     #Setup House Keeping
-	if( -not ( $cfg.SharePoint.BaseConfig.HouseKeeping.Name -eq $null ) )
-	{
+	if( -not ( $cfg.SharePoint.BaseConfig.HouseKeeping.Name -eq $null ) ) {
 		$house_keeping = $cfg.SharePoint.BaseConfig.HouseKeeping
 		$creds = Get-Credential ( $ENV:USERDOMAIN + "\" + $house_keeping.user)
 		schtasks /Create /TN $house_keeping.Name /RU $house_keeping.user /RP $creds.GetNetworkCredential().Password /SC $house_keeping.Schedule /ST $house_keeping.start_time /TR $house_keeping.process /NP
@@ -119,7 +117,7 @@ function Install-EnterpriseLibrary
 {
     #Install Microsoft's Enterprise Library to GAC
     cd  "$global:scripts_home\MISC-SPSripts"
-    .\Install-Assemblies.ps1 ("$global:source\SharePoint2010-Utils-Scripts\EnterpriseLibrary4.1")
+    .\Install-Assemblies-To-GAC.ps1 ("$global:source\SharePoint2010-Utils-Scripts\EnterpriseLibrary4.1")
 }
 
 function Setup-DatabaseAlias

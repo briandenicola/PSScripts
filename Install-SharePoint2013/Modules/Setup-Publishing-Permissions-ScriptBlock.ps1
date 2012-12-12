@@ -6,7 +6,7 @@
 Add-PSSnapin Microsoft.SharePoint.Powershell -EA SilentlyContinue
 
 $service_apps_perms_map = @()
-@("Application Load Balancer", "Web Analytics Service Application", "Search Service Application")  | % {
+@("Application Load Balancer", "Search Service Application")  | % {
 	$service_apps_perms_map += (New-Object PSObject -Property @{
 		Name = $_
 		Id = $id
