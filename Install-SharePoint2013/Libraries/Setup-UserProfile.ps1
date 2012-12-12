@@ -24,11 +24,9 @@ function Create-UserProfile
 
 	# Get or Create MySite Web Application
 	$w = Get-SPWebApplication $cfg.MySite.name -EA SilentlyContinue
-	if( $w -eq $null )
-	{
+	if( $w -eq $null ) {
 		$acc = Get-SPManagedAccount $cfg.MySite.AppPool.account -EA SilentlyContinue
-		if( $acc -eq $nul )
-		{
+		if( $acc -eq $nul ) {
 			$cred = Get-Credential $cfg.MySite.AppPool.account
 			New-SPManagedAccount $cred -verbose 
 			$acc = Get-SPManagedAccount $cfg.MySite.AppPool.account
