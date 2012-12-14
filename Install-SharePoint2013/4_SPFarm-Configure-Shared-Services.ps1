@@ -36,10 +36,7 @@ function main()
 		Write-Host "--------------------------------------------"
 		Write-Host "Create Enterprise Search Service Application"
 		Write-Host "`t Note: This script only creates the shell of Enterprise Search on one Search Server"
-		Write-Host "`t The Following requires manual work: "
-		Write-Host "`t 1.) Content Sources"
-		Write-Host "`t 2.) Crawl Schedules"
-		Write-Host "`t 3.) Any Advanced Search Topology such as multiple crawlers, query servers, and/or partitions"
+		Write-Host "`t The final setup of the search topology requires manual work: "
 		Create-EnterpriseSearch -cfg $search_cfg
 		Write-Host "--------------------------------------------"
 	}

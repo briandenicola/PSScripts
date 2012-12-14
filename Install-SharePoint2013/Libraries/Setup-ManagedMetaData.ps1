@@ -31,9 +31,11 @@ function Create-ManagedMetadata
 		Write-Host "[$(Get-Date)] - Attempting to create Managed Metadata Service Application with the following parameters - "  (HashTable_Output $params)
 		$app = New-SPMetadataServiceApplication @params -verbose
 		New-SPMetadataServiceApplicationProxy -Name $proxy_name -ServiceApplication $app -DefaultProxyGroup
+		
+		Write-Host "[$(Get-Date)] - Attempting to publish Managed Metadata Service Application"
 		Publish-SPServiceApplication $app
 	}
 	catch [System.Exception] {
-		Write-Error ("The SharePoint State Service Configuration failed with the following Exception - " + $_.Exception.ToString() )
+		Write-Error ("The SharePoint Managed MetaData Configuration failed with the following Exception - " + $_.Exception.ToString() )
 	}
 }

@@ -118,15 +118,9 @@
 		<Service App="EnterpriseSearch">
 			<name>Search Service Application</name>
 			<Server name="" />
-			<CrawlDatabase instance="" name="Search_Crawl_DB" />
-			<AdminDatabase instance="" name="Search_Admin_DB" />
+			<Database instance="" name="Search_Service_DB" />
 			<SearchAppPool name="AppPool - SharePoint Search Service Application" account="USGTAD\"/>
-			<AdminAppPool name="AppPool - SharePoint Search Service Application" account="USGTAD\"/>
-			<PerformanceLevel>PartlyReduced</PerformanceLevel>
-			<Email>(IT) SharePoint Operations@gt.com</Email>
 			<DefaultContentAccessAccount name="USGTAD\" password="" />
-			<SearchAccessAccount name="USGTAD\" password="" />
-			<IndexLocation>D:\SharePoint\Index</IndexLocation>
 		</Service>
 		<Service App="Metadata">
 			<name>Managed Metadata Service Application</name>
