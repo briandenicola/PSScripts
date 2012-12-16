@@ -37,7 +37,7 @@ function Get-Variables
 	$global:audit_url = $cfg.SharePoint.BaseConfig.AuditUrl
     $global:log_home = $cfg.SharePoint.BaseConfig.LogsHome
 	
-	$xpath = "/SharePoint/Farms/farm/server[@name='" + $ENV:COMPUTERNAME + "']"
+	$xpath = "/SharePoint/Farms/farm/server[@name='" + ($ENV:COMPUTERNAME).ToLower() + "']"
 	$node = Select-Xml -xpath $xpath  $cfg 
 	
 	$global:farm_type = $node.Node.ParentNode.name
@@ -72,7 +72,8 @@ function Copy-Files
 	xcopy /e/v/f/s "$global:source\SharePoint2010-Utils-Scripts\Scripts" "$global:scripts_home\"
 	xcopy /e/v/f/s "$global:source\SharePoint2010-Utils-Scripts\Utils" "$global:utils_home\"
 		
-	#Copy SharePoint Files 
+	#Copy SharePoint Files
+	if( !( Test-Path $global:deploy_home ) ) { mkdir $global:deploy_home } 
 	copy "$global:source\$sp_version.zip" $global:deploy_home
 	Unzip-File -zip "$deploy_home\$global:sp_version.zip" -folder $global:deploy_home
 }
@@ -107,10 +108,16 @@ function Setup-BaseSystem
 function Setup-IIS
 {
 	#Install IIS and disable loopback check
-	cd  "$global:scripts_home\iis\install\"
-	.\install_and_config_iis8.ps1
-	C:\Windows\Microsoft.NET\Framework64\v4.0.30319\aspnet_regiis.exe -iru
-	New-ItemProperty -Path "HKLM:SYSTEM\CurrentControlSet\Control\Lsa" -PropertyType dword -Name "DisableLoopbackCheck" -Value "1"
+	try {
+		cd  "$global:scripts_home\iis\install\"
+		.\install_and_config_iis8.ps1
+		C:\Windows\Microsoft.NET\Framework64\v4.0.30319\aspnet_regiis.exe -iru
+		New-ItemProperty -Path "HKLM:SYSTEM\CurrentControlSet\Control\Lsa" -PropertyType dword -Name "DisableLoopbackCheck" -Value "1"
+	}
+	catch { 
+		throw "Could not install IIS"
+		exit
+	}
 }
 
 function Install-EnterpriseLibrary
@@ -133,38 +140,34 @@ function Setup-DatabaseAlias
 
 function Install-SharePointBinaries
 {
-	cd "$global:scripts_home\Install-SharePoint2013"
-	if( CheckFor-PendingReboot )
-	{	
-		$script = "cd $global:scripts_home\Install-SharePoint2013;"
-		$script += Join-Path $PWD.Path "1_SPFarm-Master_Install.ps1"
-		$script += " -operation sharepoint -config $config"
-		
-		$cmd = "c:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command `"$script`""
-		
-		Add-RunOnceTask -command $cmd -name "SPInstall"
-		
-		Write-Host "System will reboot in 10 seconds"
-		Start-Sleep 10
-		Restart-Computer -Force -Confirm:$true
-	
+	try {
+		cd "$global:scripts_home\Install-SharePoint2013"	
+		.\Modules\Install-SharePointBits.ps1 -config $cfg.SharePoint.setup.setup_configs.$global:farm_type -setup $cfg.SharePoint.Setup.setup_path	
 	}
-	
-	.\Modules\Install-SharePointBits.ps1 -config $cfg.SharePoint.setup.setup_configs.$global:farm_type -setup $cfg.SharePoint.Setup.setup_path
+	catch { 
+		throw "Could not install SharePoint"
+		exit
+	}
 }
 
 function Setup-Farm
 {
-	$db = $cfg.SharePoint.setup.databases.$global:farm_type
-	$pass = $cfg.SharePoint.setup.security.$global:farm_type.passphrase
-	$account = $cfg.SharePoint.setup.security.$global:farm_type.farm_account
+	try {
+		$db = $cfg.SharePoint.setup.databases.$global:farm_type
+		$pass = $cfg.SharePoint.setup.security.$global:farm_type.passphrase
+		$account = $cfg.SharePoint.setup.security.$global:farm_type.farm_account
 	
-	cd "$global:scripts_home\Install-SharePoint2013"
-	if( $global:server_type -eq "central-admin" -or $global:server_type -eq "all" ) {	
-		.\Modules\Create-SharePointFarm.ps1 -db $db -passphrase $pass -account $account
-	} 
-	else {
-		.\Modules\Join-SharePointFarm.ps1 -db $db -passphrase $pass
+		cd "$global:scripts_home\Install-SharePoint2013"
+		if( $global:server_type -eq "central-admin" -or $global:server_type -eq "all" ) {	
+			.\Modules\Create-SharePointFarm.ps1 -db $db -passphrase $pass -account $account
+		} 
+		else {
+			.\Modules\Join-SharePointFarm.ps1 -db $db -passphrase $pass
+		}
+	}
+	catch {
+		throw "Could not create farm"
+		exit
 	}
 }
 
