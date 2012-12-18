@@ -13,11 +13,15 @@ param (
 	[string] $readers_group,
 	
 	[Parameter(Mandatory=$true)]
-	[string] $users_group
+	[string] $users_group,
+
+    [Parameter(Mandatory=$true)]
+    [object] $service_account,
+
+	[switch] $create
 )
 
 Import-Module ApplicationServer
-
 
 function Set-ServiceCredential([string]$serviceName, $credential, [string] $computer)
 {
@@ -49,15 +53,20 @@ $monitoring_connection = Create-SqlConnString $sql_server $monitoring_database
 $persistence_database = "AppFabric_Persistence_Store"
 $persistence_connection = Create-SqlConnString $sql_server $persistence_database
 
-## Setup Databases
-Initialize-ASMonitoringSqlDatabase  –Server $sql_server –Database $monitoring_database –Admins $admin_group –Readers $readers_group –Writers $users_group
-Initialize-ASPersistenceSqlDatabase -Server $sql_server -Database $persistence_database -Admins $admin_group -Readers $readers_group -Users $users_group
+if( $create ) {
+    Initialize-ASMonitoringSqlDatabase  –Server $sql_server –Database $monitoring_database –Admins $admin_group –Readers $readers_group –Writers $users_group
+    Initialize-ASPersistenceSqlDatabase -Server $sql_server -Database $persistence_database -Admins $admin_group -Readers $readers_group -Users $users_group
+}
 
 ###########################
 ### Collect credentials ###
 ###########################
-
-$systemService_Credentials = Get-Credential
+if( $service_account -is [String] ) {
+    $systemService_Credentials = Get-Credential $service_account 
+} 
+else {
+    $systemService_Credentials = $service_account 
+}
 $systemService_Domain = $systemService_Credentials.GetNetworkCredential().Domain
 $systemService_UserName = $systemService_Credentials.GetNetworkCredential().UserName
 
@@ -95,5 +104,12 @@ foreach ( $computer in $computers )
 	Write-Output "Updating Workflow Management service on " $computer
 	Set-ServiceCredential $WMS_ServiceName $systemService_Credentials $computer
 
-	Invoke-Command -ScriptBlock $sb -Credential $systemService_Credentials -Authentication Credssp -ComputerName $computer -ArgumentList $monitoring_connection, $monitoring_database, $persistence_connection, $persistence_database
+    if( $computer -imatch $env:COMPUTERNAME ) {
+        &$sb -monitoring_connection $monitoring_connection `
+         -monitoring_database $monitoring_database `
+         -persistence_connection $persistence_connection `
+         -persistence_database $persistence_database
+    } else {
+	    Invoke-Command -ScriptBlock $sb -Credential $systemService_Credentials -Authentication Credssp -ComputerName $computer -ArgumentList $monitoring_connection, $monitoring_database, $persistence_connection, $persistence_database
+    }
 }

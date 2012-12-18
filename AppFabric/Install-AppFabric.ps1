@@ -16,6 +16,8 @@ $source = "http://download.microsoft.com/download/1/A/D/1ADC8F3E-4446-4D31-9B2B-
 $dest = "D:\Deploy"
 $exe = "WindowsServerAppFabricSetup_x64_6.1.exe"
 
+if( -not ( Test-Path $dest ) ) { mkdir $dest }
+
 if( -not ( Test-Path (Join-Path $dest $exe) ) )
 {
 	log -txt "Downloading $source"
@@ -26,11 +28,5 @@ if( -not ( Test-Path (Join-Path $dest $exe) ) )
 if( $module -eq "complete" ) { $module = "HostingServices,CachingService,CacheClient" }
 
 log -txt "Installing $exe with $module modules"
-&(Join-Path $dest $exe) /install $module
-
-while( (Get-Process | where { $_.ProcessName -eq $exe }))
-{ 
-	Write-Host -NoNewline "."
-	Sleep 5
-}
+Start-Process (Join-Path $dest $exe) -ArgumentList "/install $module" -Wait
 log -txt "`n Install Complete"
