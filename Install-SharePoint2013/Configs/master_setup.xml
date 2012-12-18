@@ -41,7 +41,7 @@
 	</BaseConfig>
 	<setup>
 		<master_file_location>\\ent-nas-fs01.us.gt.com\app-ops\Installs</master_file_location>
-		<setup_path>D:\Deploy\SHAREPOINT2013-RTM-15.0.4420.1017-SLIPSTREAM\InstallFiles\setup.exe</setup_path>
+		<setup_path>D:\Deploy\SHAREPOINT2013-RTM-15.0.4420.1017-SLIPSTREAM\setup.exe</setup_path>
 		<setup_configs>
 			<external>D:\Scripts\InstallSharePoint2013\Configs\SP-Install-Configs\config-internet.xml</external>
 			<services>D:\Scripts\InstallSharePoint2013\Configs\SP-Install-Configs\config-internet.xml</services>
