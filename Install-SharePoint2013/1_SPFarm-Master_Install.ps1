@@ -106,11 +106,16 @@ function Setup-BaseSystem
 
 function Setup-IIS
 {
-	#Install IIS and disable loopback check
-	cd  "$global:scripts_home\iis\install\"
-	.\install_and_config_iis8.ps1
-	C:\Windows\Microsoft.NET\Framework64\v4.0.30319\aspnet_regiis.exe -iru
-	New-ItemProperty -Path "HKLM:SYSTEM\CurrentControlSet\Control\Lsa" -PropertyType dword -Name "DisableLoopbackCheck" -Value "1"
+    try { 
+	    #Install IIS and disable loopback check
+	    cd  "$global:scripts_home\iis\install\"
+	    .\install_and_config_iis8.ps1
+    }
+    catch {
+        throw "Error installing IIS"
+    }
+	
+    New-ItemProperty -Path "HKLM:SYSTEM\CurrentControlSet\Control\Lsa" -PropertyType dword -Name "DisableLoopbackCheck" -Value "1"
 }
 
 function Install-EnterpriseLibrary
@@ -122,40 +127,55 @@ function Install-EnterpriseLibrary
 
 function Setup-DatabaseAlias
 {
-    #Create SQL Aliases 
-    if( -not ( Test-Path "HKLM:SOFTWARE\Microsoft\MSSQLServer" ) ) { 
-        New-Item -Path "HKLM:SOFTWARE\Microsoft\" -Name MSSQLServer
-        New-Item -Path "HKLM:SOFTWARE\Microsoft\MSSQLServer" -Name Client
-        New-Item -Path "HKLM:SOFTWARE\Microsoft\MSSQLServer\Client" -Name SuperSocketNetLib
-        New-Item -Path "HKLM:SOFTWARE\Microsoft\MSSQLServer\Client" -Name DB-Lib
-	    New-Item -Path "HKLM:SOFTWARE\Microsoft\MSSQLServer\Client" -Name ConnectTo
+    try {
+        #Create SQL Aliases 
+        if( -not ( Test-Path "HKLM:SOFTWARE\Microsoft\MSSQLServer" ) ) { 
+            New-Item -Path "HKLM:SOFTWARE\Microsoft\" -Name MSSQLServer
+            New-Item -Path "HKLM:SOFTWARE\Microsoft\MSSQLServer" -Name Client
+            New-Item -Path "HKLM:SOFTWARE\Microsoft\MSSQLServer\Client" -Name SuperSocketNetLib
+            New-Item -Path "HKLM:SOFTWARE\Microsoft\MSSQLServer\Client" -Name DB-Lib
+	        New-Item -Path "HKLM:SOFTWARE\Microsoft\MSSQLServer\Client" -Name ConnectTo
+        }
+	    $cfg.SharePoint.Databases.Database | % { 
+		    Write-Host "Creating SQL Alias - " $_.name " - that points to " $_.instance " on port " $_.port
+		    $connection_string = "DBMSSOCN,{0},{1}" -f $_.instance, $_.port
+		    New-ItemProperty -Path "HKLM:SOFTWARE\Microsoft\MSSQLServer\Client\ConnectTo" -Name $_.name -PropertyTYpe string -Value $connection_string 
+	    }
     }
-	$cfg.SharePoint.Databases.Database | % { 
-		Write-Host "Creating SQL Alias - " $_.name " - that points to " $_.instance " on port " $_.port
-		$connection_string = "DBMSSOCN,{0},{1}" -f $_.instance, $_.port
-		New-ItemProperty -Path "HKLM:SOFTWARE\Microsoft\MSSQLServer\Client\ConnectTo" -Name $_.name -PropertyTYpe string -Value $connection_string 
-	}
+    catch {
+          throw "Error creating SQL Alias"
+    }      
 }
 
 function Install-SharePointBinaries
 {
-	cd "$global:scripts_home\Install-SharePoint2013"	
-	.\Modules\Install-SharePointBits.ps1 -config $cfg.SharePoint.setup.setup_configs.$global:farm_type -setup $cfg.SharePoint.Setup.setup_path
+    try { 
+	    cd "$global:scripts_home\Install-SharePoint2013"	
+	    .\Modules\Install-SharePointBits.ps1 -config $cfg.SharePoint.setup.setup_configs.$global:farm_type -setup $cfg.SharePoint.Setup.setup_path
+    }
+    catch {
+        throw "Error installing SharePoint"
+    }
 }
 
 function Setup-Farm
 {
-	$db = $cfg.SharePoint.setup.databases.$global:farm_type
-	$pass = $cfg.SharePoint.setup.security.$global:farm_type.passphrase
-	$account = $cfg.SharePoint.setup.security.$global:farm_type.farm_account
+    try { 
+	    $db = $cfg.SharePoint.setup.databases.$global:farm_type
+	    $pass = $cfg.SharePoint.setup.security.$global:farm_type.passphrase
+	    $account = $cfg.SharePoint.setup.security.$global:farm_type.farm_account
 	
-	cd "$global:scripts_home\Install-SharePoint2013"
-	if( $global:server_type -eq "central-admin" -or $global:server_type -eq "all" ) {	
-		.\Modules\Create-SharePointFarm.ps1 -db $db -passphrase $pass -account $account
-	} 
-	else {
-		.\Modules\Join-SharePointFarm.ps1 -db $db -passphrase $pass
-	}
+	    cd "$global:scripts_home\Install-SharePoint2013"
+	    if( $global:server_type -eq "central-admin" -or $global:server_type -eq "all" ) {	
+		    .\Modules\Create-SharePointFarm.ps1 -db $db -passphrase $pass -account $account
+	    } 
+	    else {
+		    .\Modules\Join-SharePointFarm.ps1 -db $db -passphrase $pass
+	    }
+    }
+    catch { 
+        throw "Error creating or joining the SharePoint Farm"
+    }
 }
 
 function main
