@@ -5,7 +5,7 @@ param(
 	$operation = "all",
 	
 	[string]
-	$config = ".\config\setup.xml",
+	$config = ".\config\master_setup.xml",
 
     [switch]
     $record

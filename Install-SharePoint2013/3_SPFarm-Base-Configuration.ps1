@@ -28,7 +28,10 @@ function main()
 	
 	Write-Host "--------------------------------------------"
 	Write-Host "Start SPTimer Service"
-	Invoke-Command -ComputerName $sharepoint_servers -ScriptBlock { Start-Service SPTimerV4 } -Authentication Credssp -Credential $cred
+    Start-Service SPTimerV4 -Verbose
+    if( $sharepoint_servers.Length -gt 1 ) {
+	    Invoke-Command -ComputerName ($sharepoint_servers | ? { $_ -inotmatch $ENV:COMPUTERNAME }) -ScriptBlock { Start-Service SPTimerV4 } -Authentication Credssp -Credential $cred
+    }
 	Write-Host "--------------------------------------------"
 	
 	Write-Host "--------------------------------------------"
@@ -75,11 +78,6 @@ function main()
 	Write-Host "Configure Work Management Service"
 	Config-WorkManagement
 	Write-Host "--------------------------------------------"
-	
-    Write-Host "--------------------------------------------"
-    Write-Host "Configure Business Connectivity Services"
-    Config-BusinessConnectivityServices
-    Write-Host "--------------------------------------------"
 
 	Write-Host "--------------------------------------------"
 	Write-Host "Configure Logging"
@@ -115,3 +113,8 @@ function main()
 }
 $cfg = [xml] (gc $config)
 main
+
+
+#Bugs
+## 1. Caches is not being setup on local machines.  Need a solution on how 
+## 2. Apps are not executing Set-SPAppSiteSubscriptionName

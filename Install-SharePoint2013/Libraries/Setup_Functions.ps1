@@ -1,4 +1,4 @@
-function Configure-CentralAdmin-Role
+function Configure-CentralAdmin-Roles
 {
     param ( 
         [string] $type
@@ -7,20 +7,21 @@ function Configure-CentralAdmin-Role
 	$ca_roles = @(
 		"Microsoft SharePoint Foundation Incoming E-Mail",
 		"Microsoft SharePoint Foundation Web Application",
-		"Claims to Windows Token Service", 
+		"Claims to Windows Token Service" 
     )
 		
 	$farm = $cfg.SharePoint.Farms.farm | where { $_.name -eq $type }
 	foreach( $server in $farm.Server | where { $_.role -eq "central-admin" -or $_.role -eq "all" } ) {
 		Write-Host "Working on $($server.name) . . ."
-		if( $server.name -ne $null -and (Get-SPServer -Identity $server.name -EA SilentlyContinue) -ne $null) {
-            Write-Host "[Warning] $($_.name) is not a server in this SharePoint farm. Skipping"	
-            continue
-        }
 		
 		foreach( $start_app in $ca_roles ) {
 			$Guid = Get-SPServiceInstance -Server $server.name  | where {$_.TypeName -eq $start_app} | Select -Expand Id
-			Start-SPServiceInstance -Identity $Guid
+            if( $Guid -ne $null ) {
+			    Start-SPServiceInstance -Identity $Guid
+			}
+			else { 
+				Write-Error "Could not find $start_app on $($server.name) . . . "
+			}
     	}
 	}
 
@@ -38,28 +39,33 @@ function Configure-WFE-Roles
 		"Secure Store Service",
 		"Access Database Service", 
 		"Visio Graphics Service"
-		"Application Registry Service", 
         "Work Management Service",
         "App Management Service",
-        "Request Management"
-    )
+        "Microsoft SharePoint Foundation Subscription Settings Service",
+        "Request Management")
 		
 	$farm = $cfg.SharePoint.Farms.farm | where { $_.name -eq $type }
 	foreach( $server in $farm.Server | where { $_.role -eq "wfe" -or $_.role -eq "all" } ) {
-		Write-Host "Working on $($server.name) . . ."
-		if( $server.name -ne $null -and (Get-SPServer -Identity $server.name -ErrorAction SilentlyContinue) -ne $null) {
-            Write-Host "[Warning] $($_.name) is not a server in this SharePoint farm. Skipping"	
-            continue
-        }	
+		Write-Host "Working on $($server.name) . . ."	
 		
 		foreach( $start_app in $wfe_roles )	{
 			$Guid = Get-SPServiceInstance -Server $server.name  | where {$_.TypeName -eq $start_app} | Select -Expand Id
-			Start-SPServiceInstance -Identity $Guid
+            if( $Guid -ne $null ) {
+			    Start-SPServiceInstance -Identity $Guid
+			}
+			else { 
+				Write-Error "Could not find $start_app on $($server.name) . . . "
+			}
 		}
 				
 		foreach ( $stop_app in @("Microsoft SharePoint Foundation Incoming E-Mail") ) {
 			$Guid = Get-SPServiceInstance -Server $server.name  | where {$_.TypeName -eq $stop_app} | Select -Expand Id
-			Stop-SPServiceInstance -Identity $Guid -Confirm:$false
+            if( $Guid -ne $null ) {
+			    Stop-SPServiceInstance -Identity $Guid -Confirm:$false
+			}
+			else { 
+				Write-Error "Could not find $stop_app on $($server.name) . . . "
+			}
 		}
 	}
 }
@@ -68,20 +74,21 @@ function Configure-ServicesFarm-Roles([String] $env)
 {
 	$services_roles = @(
         "Managed Metadata Web Service", 
-        "User Profile Service", 
+        "User Profile Service" 
     )
 
 	$farm = $cfg.SharePoint.Farms.farm | where { $_.name -eq $env }
 	foreach( $server in $farm.Server | where { $_.role -eq "application" } ) {
-		Write-Host "Working on $($server.name) . . ."
-		if( $server.name -ne $null -and (Get-SPServer -Identity $server.name -ErrorAction SilentlyContinue) -ne $null) {
-            Write-Host "[Warning] $($_.name) is not a server in this SharePoint farm. Skipping"	
-            continue
-        }		
+		Write-Host "Working on $($server.name) . . ."	
 
 		foreach( $start_app in $services_roles ) {
 			$Guid = Get-SPServiceInstance -Server $server.name  | where {$_.TypeName -eq $stop_app} | Select -Expand Id
-			Start-SPServiceInstance -Identity $Guid
+            if( $Guid -ne $null ) {
+			    Start-SPServiceInstance -Identity $Guid
+			}
+			else { 
+				Write-Error "Could not find $start_app on $($server.name) . . . "
+			}
 		}
 	}
 }
@@ -109,7 +116,7 @@ function Get-SharePointApplicationPool
 
 function Get-FarmType
 {
-	$xpath = "/SharePoint/Farms/farm/server[@name='" + $ENV:COMPUTERNAME + "']"
+	$xpath = "/SharePoint/Farms/farm/server[@name='" + $ENV:COMPUTERNAME.ToLower() + "']"
 	$global:farm_type = (Select-Xml -xpath $xpath  $cfg | Select @{Name="Farm";Expression={$_.Node.ParentNode.name}}).Farm
 	
 	if( $global:farm_type -ne $null ) {
@@ -118,6 +125,8 @@ function Get-FarmType
 	else {
 		throw  "Could not find $ENV:COMPUTERNAME in configuration. Must exit"
 	}
+
+    return $global:farm_type
 }
 
 function Config-FarmAdministrators 
@@ -154,6 +163,7 @@ function Config-FarmAdministrators
 
 function Config-ManagedAccounts
 {
+
 	$cfg.SharePoint.managedaccounts.account | where { $_.farm -match $global:farm_type } | % { 
         Write-Host "Add $($_.username) as a Managed Service Account . . ."
 		$cred = Get-Credential $_.username
@@ -307,7 +317,7 @@ function Config-VisioWebServices
 		Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
 		$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
 		$app = New-SPVisioServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name
-		$app | Set-SPVisioPerformance -MaxRecalcDuration 60 -MaxDiagramCacheAge 60 -MaxDiagramSize 5 -MinDiagramCacheAge 5
+		$app | Set-SPVisioPerformance -MaxRecalcDuration 60 -MaxDiagramCacheAge 60 -MaxDiagramSize 5 -MinDiagramCacheAge 5 -MaxCacheSize 100
 		$proxy = New-SPVisioServiceApplicationProxy -Name ($app_name + " Proxy") -ServiceApplication $app.Name  
 	}
 	catch [System.Exception] {
@@ -366,7 +376,15 @@ function Config-SharePointApps
 			return
 		}
 		
-		$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name
+        $services = @("App Management Service","Microsoft SharePoint Foundation Subscription Settings Service")
+        foreach( $service in $services ) { 
+            $instance = Get-SPServiceInstance | ? { $_.TypeName -eq $service }
+            if( $instance.Status -eq "Disabled" ) { Start-SPServiceInstance $service.Id }
+        }
+
+        $farm_account = (get-SPFarm).DefaultServiceAccount
+
+		$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.App.AppPool -account $farm_account.Name
 		$app_settings_svc = New-SPSubscriptionSettingsServiceApplication –ApplicationPool $sharePoint_service_apppool –Name $app_name –DatabaseName $db_name
 		New-SPSubscriptionSettingsServiceApplicationProxy –ServiceApplication $app_settings_svc
 		
@@ -377,7 +395,7 @@ function Config-SharePointApps
 			return
 		}
 		$app_mgmt_svc = New-SPAppManagementServiceApplication -ApplicationPool $sharePoint_service_apppool -Name $app_name -DatabaseName $db_name
-		New-SPAppManagementServiceApplicationProxy -ServiceApplication $appAppSvc 
+		New-SPAppManagementServiceApplicationProxy -ServiceApplication $app_mgmt_svc 
 
 		Set-SPAppDomain $cfg.SharePoint.App.domain
 		Set-SPAppSiteSubscriptionName -Name $cfg.SharePoint.App.prefix -Confirm:$false
@@ -416,7 +434,7 @@ function Config-DistributedCache
 		
 		Stop-SPDistributedCacheServiceInstance 
 		
-		$Guid = Get-SPServiceInstance -Server $server.name  | where { $_.TypeName -eq "Distributed Cache" } | Select -Expand Id
+		$Guid = Get-SPServiceInstance -Server $ENV:COMPUTERNAME  | where { $_.TypeName -eq "Distributed Cache" } | Select -Expand Id
 		Start-SPServiceInstance -Identity $Guid
 		
 		Use-CacheCluster
@@ -426,6 +444,13 @@ function Config-DistributedCache
 		Get-SPDistributedCacheClientSetting -ContainerType DistributedLogonTokenCache
 	}
 	
-	$sharepoint_servers = Get-SPServiceInstance | where { $_.TypeName -eq $type -and $_.Status -eq "Online" } | Select Server
-	Invoke-Command -ComputerName ($sharepoint_servers | Select -Expand Address) -ScriptBlock $sb -ArgumentList  $cfg.SharePoint.DistributedCache.ReserveMemory
+	$sharepoint_servers = Get-SPServiceInstance | where { $_.TypeName -eq $type -and $_.Status -eq "Online" } | Select -Expand Server | Select -Expand Address
+
+    if( $sharepoint_servers -icontains $env:COMPUTERNAME ) { 
+        &sb -percent_of_ram $cfg.SharePoint.DistributedCache.ReserveMemory
+        $sharepoint_servers = @( $sharepoint_servers | where { $_ -inotmatch $env:COMPUTERNAME } )
+    }
+    if( $sharepoint_servers.Length -gt 1 ) {
+        Invoke-Command -ComputerName $sharepoint_servers -ScriptBlock $sb -ArgumentList  $cfg.SharePoint.DistributedCache.ReserveMemory
+    }
 }

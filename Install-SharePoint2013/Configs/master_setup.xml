@@ -90,6 +90,7 @@
 		<Database>WSS_Logging</Database>
 	</Usage>
 	<App>
+        <AppPool>AppPool - SharePoint Apps</AppPool>
 		<prefix>app</prefix>
 		<domain>apps.sharepoint.test</domain>
 	</App>
