@@ -116,7 +116,7 @@
 				<database instance="" name="SyncDB_001" Type="Sync" />
 			</Databases>
 			<AppPool name="AppPool - SharePoint User Profile Service Application" account="USGTAD\"/>
-			<MySite>
+			<MySite> <!-- Do not include http:// for hostheader! -->
 				<name>SharePoint - MySites</name>
 				<databaseName>WSS_Content_MySite</databaseName>
 				<databaseServer></databaseServer>

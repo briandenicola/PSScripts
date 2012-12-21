@@ -5,6 +5,7 @@ param (
 
 Add-PSSnapin Microsoft.SharePoint.PowerShell –erroraction SilentlyContinue
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
+. (Join-Path $ENV:SCRIPTS_HOME "Libraries\Setup_Functions.ps1")
 . .\Libraries\Setup-ManagedMetaData.ps1
 . .\Libraries\Setup-UserProfile.ps1
 . .\Libraries\Setup-Search.ps1
@@ -20,6 +21,8 @@ function main()
 {
 	$log = $cfg.SharePoint.BaseConfig.LogsHome + "\Farm-Shared-Service-Application-Setup-" + $ENV:COMPUTERNAME + "-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log"
 	Start-Transcript -Append -Path $log
+
+    $global:farm_type = Get-FarmType
 
 	$metadata_cfg = $cfg.SharePoint.SharedServices.Service | where { $_.App -eq "Metadata" }
 	if( $metadata_cfg -ne $null ) {

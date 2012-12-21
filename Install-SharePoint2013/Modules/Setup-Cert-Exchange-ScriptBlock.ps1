@@ -8,7 +8,7 @@ $cert_home = (Join-Path $drive "Certs") + "\"
 
 Add-PSSnapin Microsoft.SharePoint.Powershell –EA SilentlyContinue
 
-Write-Host "[$(Get-Date)] - Importing $RemoteFarmType Farm Trust and STS Certificates ($RemoteCentralAdmin)"
+Write-Host "[ $(Get-Date) ] - Importing $RemoteFarmType Farm Trust and STS Certificates ($RemoteCentralAdmin)"
 
 if( Test-Path ( "\\$RemoteCentralAdmin\Certs" ) ) {
 	Copy-Item \\$RemoteCentralAdmin\Certs\$RemoteFarmType-Root.cer $cert_home
@@ -21,5 +21,5 @@ if( Test-Path ( "\\$RemoteCentralAdmin\Certs" ) ) {
 	New-SPTrustedServiceTokenIssuer "GT-$RemoteFarmType" -Certificate $stsCert
 }
 else {
-	Write-Host "[$(Get-Date)] - \\$RemoteCentralAdmin\Certs was not found. Can not import certs." -ForegroundColor Red
+	Write-Host "[ $(Get-Date) ] - \\$RemoteCentralAdmin\Certs was not found. Can not import certs." -ForegroundColor Red
 }

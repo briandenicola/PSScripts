@@ -29,7 +29,7 @@ $users | % {
 $provider = (Get-SPClaimProvider System).ClaimProvider
 foreach( $service_app in $service_apps_perms_map )
 {
-	Write-Host "[$(Get-Date)] - Setting permissions for -" $service_app.Name "- with permissions -" $service_app.Perms "- for account/farm -" $service_app.Id
+	Write-Host "[ $(Get-Date) ] - Setting permissions for -" $service_app.Name "- with permissions -" $service_app.Perms "- for account/farm -" $service_app.Id
 	if( $service_app.Name -match "Application Load Balancer" ) {
 		$app = Get-SPTopologyServiceApplication
 	}

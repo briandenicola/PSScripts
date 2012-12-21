@@ -10,17 +10,17 @@ function Create-EnterpriseSearch
 		$search_app_pool = Get-SharePointApplicationPool $cfg.SearchAppPool.Name -Account $cfg.SearchAppPool.Account
 
 		Write-Host "[ $(Get-Date) ] - Starting Search Service Instances . . . "
-		Get-SPEnterpriseSearchServiceInstance -Identity $cfg.Server.Name | Start-SPEnterpriseSearchServiceInstance -Identity
-		Get-SPEnterpriseSearchQueryAndSiteSettingsServiceInstance -Identity $cfg.ServerName | Start-SPEnterpriseSearchQueryAndSiteSettingsServiceInstance
+		Get-SPEnterpriseSearchServiceInstance -Identity $cfg.Server.Name | Start-SPEnterpriseSearchServiceInstance
+		Get-SPEnterpriseSearchQueryAndSiteSettingsServiceInstance -Identity $cfg.Server.Name | Start-SPEnterpriseSearchQueryAndSiteSettingsServiceInstance
 
 		Write-Host "[ $(Get-Date) ] -  Creating Search Service Application and Proxy (This will take a while) . . ."
 		$search_app = New-SPEnterpriseSearchServiceApplication -Name $app_name -ApplicationPool $search_app_pool -DatabaseName $cfg.Database.Name -DatabaseServer $cfg.Databse.Instance -Verbose
 		New-SPEnterpriseSearchServiceApplicationProxy -Name $proxy_nmae -SearchApplication $search_app -Verbose
 
-		Write-Host "[ $(Get-Date) ] -  Configuring Search Default Acess Account . . . "
+		Write-Host "[ $(Get-Date) ] -  Configuring Search Default Access Account . . . "
 		$search_app | Set-SPEnterpriseSearchServiceApplication `
 			-DefaultContentAccessAccountName $cfg.DefaultContentAccessAccount.Name `
-			-DefaultContentAccessAccountPassword $cfg.DefaultContentAccessAccount.Password
+			-DefaultContentAccessAccountPassword ( ConvertTo-SecureString -String $cfg.DefaultContentAccessAccount.Password -AsPlainText -Force )
 
 		Write-Host "[ $(Get-Date) ] -  Configuring Search Component Topology . . . "
 		$clone = $search_app.ActiveTopology.Clone()

@@ -3,29 +3,27 @@ Add-PSSnapin Microsoft.SharePoint.PowerShell –EA SilentlyContinue
 
 function Configure-CentralAdmin-Roles
 {
-    param ( 
-        [string] $type
-    )
-
 	$ca_roles = @(
 		"Microsoft SharePoint Foundation Incoming E-Mail",
 		"Microsoft SharePoint Foundation Web Application",
 		"Claims to Windows Token Service" 
     )
+	
+    $type = "Central Administration"
+    $ca_servers = @( Get-SPServiceInstance | where { $_.TypeName -eq $type -and $_.Status -eq "Online" } | Select -Expand Server | Select -Expand Address )
+
+    foreach( $server in $ca_servers ) {
+	    Write-Host "Working on $server . . ."
 		
-	$farm = $cfg.SharePoint.Farms.farm | where { $_.name -eq $type }
-	foreach( $server in ($farm.Server | where { $_.role -eq "central-admin" -or $_.role -eq "all" }) ) {
-		Write-Host "Working on $($server.name) . . ."
-		
-		foreach( $start_app in $ca_roles ) {
-			$Guid = Get-SPServiceInstance -Server $server.name  | where {$_.TypeName -eq $start_app} | Select -Expand Id
+        foreach( $start_app in $ca_roles ) {
+	        $Guid = Get-SPServiceInstance -Server $server  | where {$_.TypeName -eq $start_app} | Select -Expand Id
             if( $Guid -ne $null ) {
-			    Start-SPServiceInstance -Identity $Guid
-			}
-			else { 
-				Write-Error "Could not find $start_app on $($server.name) . . . "
-			}
-    	}
+		        Start-SPServiceInstance -Identity $Guid
+		    }
+		    else { 
+			    Write-Error "Could not find $start_app on $server . . . "
+    	    }
+        }
 	}
 
 }
@@ -284,7 +282,7 @@ function Config-AccessWebServices
 
 	try { 
 		$app_name = "Access Service Application"
-        $inst_name = "Access Database Service"
+        $inst_name = "Access Services"
 
 		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
 			Write-Host "[ $(Get-Date) ] - $app_name already exists in this farm" -ForegroundColor Red
@@ -350,7 +348,7 @@ function Config-VisioWebServices
 function Config-InitialPublishing
 {
     if( (Get-PSDrive -PSProvider FileSystem | where { $_.Root -eq "D:\" }) ) { $drive = "D:" } else { $drive = "C:" }
-	$cert_home = (Join-Path $drive "Certs") + "\"
+	$certs_home = (Join-Path $drive "Certs") + "\"
 
 	if( $global:farm_type -eq "standalone" ) {
 		return
@@ -358,7 +356,7 @@ function Config-InitialPublishing
 	
 	if ( -not ( Test-Path $certs_home ) ) {
 		mkdir $certs_home
-        net share Certs=$certs_home /Grant:Everyone,Read
+        New-SMBShare  -Name Certs -Path $certs_home -ReadAccess Everyone
 	}
 	
 	if( $global:farm_type -eq "services" ) {
@@ -497,7 +495,7 @@ function Config-DistributedCache
 
     Write-Host "[ $(Get-Date) ] - Setting Cache to $($cfg.SharePoint.DistributedCache.ReserveMemory) of Physical Memory on all Web Front End Servers"		
     if( $sharepoint_servers -icontains $env:COMPUTERNAME ) { 
-        &sb -percent_of_ram $cfg.SharePoint.DistributedCache.ReserveMemory
+        &$sb -percent_of_ram $cfg.SharePoint.DistributedCache.ReserveMemory
         $sharepoint_servers = @( $sharepoint_servers | where { $_ -inotmatch $env:COMPUTERNAME } )
     }
     if( $sharepoint_servers.Length -gt 1 ) {

@@ -25,7 +25,10 @@ function main()
 	Write-Host "[ $(Get-Date) ] - Start SPTimer Service"
     Start-Service SPTimerV4 -Verbose
     if( $sharepoint_servers.Length -gt 1 ) {
-	    Invoke-Command -ComputerName ($sharepoint_servers | ? { $_ -inotmatch $ENV:COMPUTERNAME }) -ScriptBlock { Start-Service SPTimerV4 } -Authentication Credssp -Credential $cred
+        $systems = $sharepoint_servers | ? { $_ -inotmatch $ENV:COMPUTERNAME }
+        if( $systems -ne $null ) {
+	        Invoke-Command -ComputerName $systems -ScriptBlock { Start-Service SPTimerV4 -Verbose } 
+        }
     }
 	
     Write-Host "[ $(Get-Date) ] - Configuring Required Parts of SharePoint"
