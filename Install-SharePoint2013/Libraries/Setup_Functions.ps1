@@ -1,3 +1,6 @@
+$global:sharepoint_wfe_severs = [String]::Empty
+Add-PSSnapin Microsoft.SharePoint.PowerShell –EA SilentlyContinue
+
 function Configure-CentralAdmin-Roles
 {
     param ( 
@@ -11,7 +14,7 @@ function Configure-CentralAdmin-Roles
     )
 		
 	$farm = $cfg.SharePoint.Farms.farm | where { $_.name -eq $type }
-	foreach( $server in $farm.Server | where { $_.role -eq "central-admin" -or $_.role -eq "all" } ) {
+	foreach( $server in ($farm.Server | where { $_.role -eq "central-admin" -or $_.role -eq "all" }) ) {
 		Write-Host "Working on $($server.name) . . ."
 		
 		foreach( $start_app in $ca_roles ) {
@@ -27,68 +30,46 @@ function Configure-CentralAdmin-Roles
 
 }
 
+function Get-FarmWebServers
+{
+    if( $global:sharepoint_wfe_severs -eq  [String]::Empty ) {
+        $type = "Microsoft SharePoint Foundation Web Application"
+        $global:sharepoint_wfe_severs = Get-SPServiceInstance | where { $_.TypeName -eq $type -and $_.Status -eq "Online" } | Select -Expand Server | Select -Expand Address
+    }
+
+    return @( $global:sharepoint_wfe_severs )
+}
+
 function Configure-WFE-Roles
 {
-    param (
-        [string] $type
-    )
+    $servers = Get-FarmWebServers
 
 	$wfe_roles = @(
 		"Microsoft SharePoint Foundation Sandboxed Code Service",
 		"Claims to Windows Token Service",
-		"Secure Store Service",
-		"Access Database Service", 
-		"Visio Graphics Service"
-        "Work Management Service",
-        "App Management Service",
-        "Microsoft SharePoint Foundation Subscription Settings Service",
-        "Request Management")
+        "Request Management"
+    )
 		
-	$farm = $cfg.SharePoint.Farms.farm | where { $_.name -eq $type }
-	foreach( $server in $farm.Server | where { $_.role -eq "wfe" -or $_.role -eq "all" } ) {
-		Write-Host "Working on $($server.name) . . ."	
+	foreach( $server in $servers ) {
+		Write-Host "Working on $server . . ."	
 		
 		foreach( $start_app in $wfe_roles )	{
-			$Guid = Get-SPServiceInstance -Server $server.name  | where {$_.TypeName -eq $start_app} | Select -Expand Id
+			$Guid = Get-SPServiceInstance -Server $server  | where {$_.TypeName -eq $start_app} | Select -Expand Id
             if( $Guid -ne $null ) {
 			    Start-SPServiceInstance -Identity $Guid
 			}
 			else { 
-				Write-Error "Could not find $start_app on $($server.name) . . . "
+				Write-Error "Could not find $start_app on $server . . . "
 			}
 		}
 				
-		foreach ( $stop_app in @("Microsoft SharePoint Foundation Incoming E-Mail") ) {
-			$Guid = Get-SPServiceInstance -Server $server.name  | where {$_.TypeName -eq $stop_app} | Select -Expand Id
-            if( $Guid -ne $null ) {
-			    Stop-SPServiceInstance -Identity $Guid -Confirm:$false
-			}
-			else { 
-				Write-Error "Could not find $stop_app on $($server.name) . . . "
-			}
+		$stop_app = "Microsoft SharePoint Foundation Incoming E-Mail"
+		$Guid = Get-SPServiceInstance -Server $server  | where {$_.TypeName -eq $stop_app} | Select -Expand Id
+        if( $Guid -ne $null ) {
+		    Stop-SPServiceInstance -Identity $Guid -Confirm:$false
 		}
-	}
-}
-
-function Configure-ServicesFarm-Roles([String] $env)
-{
-	$services_roles = @(
-        "Managed Metadata Web Service", 
-        "User Profile Service" 
-    )
-
-	$farm = $cfg.SharePoint.Farms.farm | where { $_.name -eq $env }
-	foreach( $server in $farm.Server | where { $_.role -eq "application" } ) {
-		Write-Host "Working on $($server.name) . . ."	
-
-		foreach( $start_app in $services_roles ) {
-			$Guid = Get-SPServiceInstance -Server $server.name  | where {$_.TypeName -eq $stop_app} | Select -Expand Id
-            if( $Guid -ne $null ) {
-			    Start-SPServiceInstance -Identity $Guid
-			}
-			else { 
-				Write-Error "Could not find $start_app on $($server.name) . . . "
-			}
+		else { 
+			Write-Error "Could not find $stop_app on $server . . . "
 		}
 	}
 }
@@ -98,13 +79,12 @@ function Get-SharePointApplicationPool
 	param (
 		[string] $name,
 		[string] $account
-	
 	)
 	
-	Write-Host "[$(Get-Date)] - Attempting to Get Service Application Pool -  $($name)"
- 	$pool = Get-SPServiceApplicationPool $name
+	Write-Host "[ $(Get-Date) ] - Attempting to Get Service Application Pool -  $name"
+ 	$pool = Get-SPServiceApplicationPool $name -EA SilentlyContinue
 	if( $pool -eq $nul ) {
-		Write-Host "[$(Get-Date)] - Could not find Application Pool - $($name) - therefore creating new pool"
+		Write-Host "[ $(Get-Date) ] - Could not find Application Pool - $name - therefore creating new pool"
 		if ( (Get-SPManagedAccount | where { $_.UserName -eq $account } ) -eq $nul ) {
 			$cred = Get-Credential $account
 			New-SPManagedAccount $cred -verbose
@@ -120,7 +100,7 @@ function Get-FarmType
 	$global:farm_type = (Select-Xml -xpath $xpath  $cfg | Select @{Name="Farm";Expression={$_.Node.ParentNode.name}}).Farm
 	
 	if( $global:farm_type -ne $null ) {
-		Write-Host "Found $ENV:COMPUTERNAME in $global:farm_type Farm Configuration"
+		Write-Host "[ $(Get-Date) ] - Found $ENV:COMPUTERNAME in $global:farm_type Farm Configuration"
 	}
 	else {
 		throw  "Could not find $ENV:COMPUTERNAME in configuration. Must exit"
@@ -137,7 +117,7 @@ function Config-FarmAdministrators
 	$current_admins =  $farm_admins.Users | Select -Expand UserLogin
 
 	$cfg.SharePoint.FarmAdministrators.add | % { 
-		Write-Host "Adding $($_.group) to the Farm Administrators group . . ."
+		Write-Host "[ $(Get-Date) ] - Adding $($_.group) to the Farm Administrators group . . ."
 
         if( $current_admins -notcontains $_.group ) {
 		    $user = New-SPUser -UserAlias $_.group -Web $web
@@ -150,7 +130,7 @@ function Config-FarmAdministrators
 	$cfg.SharePoint.FarmAdministrators.remove | % { 
 		$group = $_.group
 
-		Write-Host "Removing $($_.group) to the Farm Administrators group . . ."
+		Write-Host "[ $(Get-Date) ] - Removing $($_.group) to the Farm Administrators group . . ."
 		$user = Get-SPUser -Web $web -Group "Farm Administrators" | Where { $_.Name.ToLower() -eq $group }
 
 		$farm_admins.RemoveUser($user)
@@ -165,7 +145,7 @@ function Config-ManagedAccounts
 {
 
 	$cfg.SharePoint.managedaccounts.account | where { $_.farm -match $global:farm_type } | % { 
-        Write-Host "Add $($_.username) as a Managed Service Account . . ."
+        Write-Host "[ $(Get-Date) ] - Add $($_.username) as a Managed Service Account . . ."
 		$cred = Get-Credential $_.username
 		New-SPManagedAccount $cred -verbose
 	}
@@ -247,9 +227,9 @@ function Config-StateService
 		$app_name = "State Service Application" 
 
 		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
-			Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+			Write-Host "[ $(Get-Date) ] - $app_name already exists in this farm" -ForegroundColor Red
 			return
-		}
+		}        
 
 		Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
 		$app = New-SPStateServiceApplication -Name $app_name 
@@ -264,14 +244,28 @@ function Config-StateService
 
 function Config-SecureStore
 {
+    $sharepoint_servers = Get-FarmWebServers
 	try { 
-		$app_name = "Secure Store Service"
+		$app_name = "Secure Store Service Application"
+        $inst_name = "Secure Store Service"
 
 		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
-			Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+			Write-Host "[ $(Get-Date) ] - $app_name already exists in this farm" -ForegroundColor Red
 			return
 		}
 		$db_name = "Secure_Store_Service_DB"
+
+        foreach( $server in $sharepoint_servers ) {
+    		Write-Host "[ $(Get-Date) ] - Working on $server . . ."			
+			$Guid = Get-SPServiceInstance -Server $server | where {$_.TypeName -eq $inst_name} | Select -Expand Id
+            if( $Guid -ne $null ) {
+			    Start-SPServiceInstance -Identity $Guid
+			}
+			else { 
+				Write-Error "Could not find $inst_name on $server . . . "
+			}
+		}
+
 
 		Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
 		$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
@@ -286,12 +280,26 @@ function Config-SecureStore
 
 function Config-AccessWebServices
 {
+    $sharepoint_servers = Get-FarmWebServers
+
 	try { 
 		$app_name = "Access Service Application"
+        $inst_name = "Access Database Service"
 
 		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
-			Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+			Write-Host "[ $(Get-Date) ] - $app_name already exists in this farm" -ForegroundColor Red
 			return
+		}
+
+        foreach( $server in $sharepoint_servers ) {
+    		Write-Host "[ $(Get-Date) ] - Working on $server . . ."			
+			$Guid = Get-SPServiceInstance -Server $server  | where {$_.TypeName -eq $inst_name} | Select -Expand Id
+            if( $Guid -ne $null ) {
+			    Start-SPServiceInstance -Identity $Guid
+			}
+			else { 
+				Write-Error "Could not find $inst_name on $server. . . . "
+			}
 		}
 
 		Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
@@ -306,12 +314,26 @@ function Config-AccessWebServices
 
 function Config-VisioWebServices
 {
+    $sharepoint_servers = Get-FarmWebServers
+
 	try {
 		$app_name = "Visio Service Application"
+        $inst_name = "Visio Graphics Service"
 
 		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
-			Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+			Write-Host "[ $(Get-Date) ] - $app_name already exists in this farm" -ForegroundColor Red
 			return
+		}
+
+        foreach( $server in $sharepoint_servers ) {
+    		Write-Host "[ $(Get-Date) ] - Working on $server . . ."			
+			$Guid = Get-SPServiceInstance -Server $server  | where {$_.TypeName -eq $inst_name} | Select -Expand Id
+            if( $Guid -ne $null ) {
+			    Start-SPServiceInstance -Identity $Guid
+			}
+			else { 
+				Write-Error "Could not find $inst_name on $server. . . . "
+			}
 		}
 
 		Write-Host "[ $(Get-Date) ] - Creating $app_name Service Application . . . "
@@ -368,18 +390,29 @@ function Configure-SecureTokenService
 
 function Config-SharePointApps
 {
+    $sharepoint_servers = Get-FarmWebServers
+
 	try {
 		$app_name = "App Settings Service Application"
 		$db_name = "App_Settings_Service_DB"
+
 		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
-			Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+			Write-Host "[ $(Get-Date) ] - $app_name already exists in this farm" -ForegroundColor Red
 			return
 		}
 		
         $services = @("App Management Service","Microsoft SharePoint Foundation Subscription Settings Service")
-        foreach( $service in $services ) { 
-            $instance = Get-SPServiceInstance | ? { $_.TypeName -eq $service }
-            if( $instance.Status -eq "Disabled" ) { Start-SPServiceInstance $service.Id }
+        foreach( $server in $sharepoint_servers ) {
+            Write-Host "[ $(Get-Date) ] - Working on $server . . ."			
+            foreach( $service in $services ) { 
+                $Guid = Get-SPServiceInstance -Server $server | where {$_.TypeName -eq $service} | Select -Expand Id
+                if( $Guid -ne $null ) {
+			        Start-SPServiceInstance -Identity $Guid
+			    }
+			    else { 
+				    Write-Error "Could not find $service on $server. . . . "
+			    }
+            }
         }
 
         $farm_account = (get-SPFarm).DefaultServiceAccount
@@ -407,12 +440,29 @@ function Config-SharePointApps
 
 function Config-WorkManagement
 {
+    $sharepoint_servers = Get-FarmWebServers
+
 	try {
 		$app_name = "Work Management Service Application"
+        $inst_name = "Work Management Service"
+
 		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $app_name }) ) {
-			Write-Host "$($app_name) already exists in this farm" -ForegroundColor Red
+			Write-Host "[ $(Get-Date) ] - $app_name already exists in this farm" -ForegroundColor Red
 			return
 		}
+
+        foreach( $server in $sharepoint_servers ) {
+    		Write-Host "[ $(Get-Date) ] - Working on $server . . ."			
+			$Guid = Get-SPServiceInstance -Server $server  | where {$_.TypeName -eq $inst_name} | Select -Expand Id
+            if( $Guid -ne $null ) {
+			    Start-SPServiceInstance -Identity $Guid
+			}
+			else { 
+				Write-Error "Could not find $inst_name on $server. . . . "
+			}
+		}
+
+
 		$sharePoint_service_apppool = Get-SharePointApplicationPool -name $cfg.SharePoint.Services.Name 
 		New-SPWorkManagementServiceApplication –Name $app_name –ApplicationPool $sharePoint_service_apppool
 	}	
@@ -422,8 +472,9 @@ function Config-WorkManagement
 }
 
 function Config-DistributedCache
-{	
-	$type = "Microsoft SharePoint Foundation Web Application"
+{
+    $sharepoint_servers = Get-FarmWebServers
+
 	$sb = {
 		param (
 			[double] $percent_of_ram
@@ -443,9 +494,8 @@ function Config-DistributedCache
 		
 		Get-SPDistributedCacheClientSetting -ContainerType DistributedLogonTokenCache
 	}
-	
-	$sharepoint_servers = Get-SPServiceInstance | where { $_.TypeName -eq $type -and $_.Status -eq "Online" } | Select -Expand Server | Select -Expand Address
 
+    Write-Host "[ $(Get-Date) ] - Setting Cache to $($cfg.SharePoint.DistributedCache.ReserveMemory) of Physical Memory on all Web Front End Servers"		
     if( $sharepoint_servers -icontains $env:COMPUTERNAME ) { 
         &sb -percent_of_ram $cfg.SharePoint.DistributedCache.ReserveMemory
         $sharepoint_servers = @( $sharepoint_servers | where { $_ -inotmatch $env:COMPUTERNAME } )

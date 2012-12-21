@@ -1,9 +1,25 @@
 function Create-ManagedMetadata
 {
 	param (
-		[object] $cfg
+		[object] $cfg,
+        [string] $env
 	)
+
 	$proxy_name = $cfg.Name + " Proxy"
+	$app_name = "Managed Metadata Web Service"
+
+    $farm = $cfg.SharePoint.Farms.farm | where { $_.name -eq $env }
+	foreach( $server in $farm.Server | where { $_.role -eq "application" } ) {
+		Write-Host "Working on $($server.name) . . ."	
+
+    	$Guid = Get-SPServiceInstance -Server $server.name  | where {$_.TypeName -eq $app_name} | Select -Expand Id
+        if( $Guid -ne $null ) {
+	        Start-SPServiceInstance -Identity $Guid
+		}
+		else { 
+			Write-Error "Could not find $app_name on $($server.name) . . . "
+		}
+	}
 	
 	try { 
 		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $cfg.Name }) ) {

@@ -57,6 +57,15 @@
 			<internal passphrase="" farm_account="USGTAD\" />
 			<services passphrase="" farm_account="USGTAD\" />
 		</security>
+        <Services>
+            <App>Enable</App>
+            <SecureStore>Enable</SecureStore>
+            <Access>Enable</Access>
+            <Visio>Enable</Visio>
+            <Cache>Enable</Cache>
+            <WorkMgmt>Enable</WorkMgmt>
+            <State>Enable</State>
+        </Services>
 	</setup>
 	<FarmAdministrators>
 		<add group="USGTAD\SA-SharePoint-Ops-SysAdmin" />

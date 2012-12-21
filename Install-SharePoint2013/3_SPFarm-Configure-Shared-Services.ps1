@@ -22,38 +22,29 @@ function main()
 	Start-Transcript -Append -Path $log
 
 	$metadata_cfg = $cfg.SharePoint.SharedServices.Service | where { $_.App -eq "Metadata" }
-	if( $metadata_cfg -ne $null )
-	{
-		Write-Host "--------------------------------------------"
-		Write-Host "Create Managed Metadata Service Application"
-		Create-ManagedMetadata -cfg $metadata_cfg
-		Write-Host "--------------------------------------------"
+	if( $metadata_cfg -ne $null ) {
+		Write-Host "[ $(Get-Date) ] - Create Managed Metadata Service Application"
+		Create-ManagedMetadata -cfg $metadata_cfg -env $global:farm_type
 	}
 	
 	$search_cfg = $cfg.SharePoint.SharedServices.Service | where { $_.App -eq "EnterpriseSearch" }
-	if( $search_cfg -ne $null )
-	{	
-		Write-Host "--------------------------------------------"
-		Write-Host "Create Enterprise Search Service Application"
+	if( $search_cfg -ne $null ) {	
+		Write-Host "[ $(Get-Date) ] - Create Enterprise Search Service Application"
 		Write-Host "`t Note: This script only creates the shell of Enterprise Search on one Search Server"
 		Write-Host "`t The final setup of the search topology requires manual work: "
 		Create-EnterpriseSearch -cfg $search_cfg
-		Write-Host "--------------------------------------------"
 	}
 	
 	$user_profile_cfg = $cfg.SharePoint.SharedServices.Service | where { $_.App -eq "UserProfile" }
-	if( $user_profile_cfg -ne $null )
-	{
-		Write-Host "--------------------------------------------"
-		Write-Host "Create User Profile Service Application"
+	if( $user_profile_cfg -ne $null ) {
+		Write-Host "[ $(Get-Date) ] - Create User Profile Service Application"
 		Write-Host "`t Note: This script only creates the shell of the User Profile."
 		Write-Host "`t The following requires manual work: "
 		Write-Host "`t 1.) Start the User Profile Synchronization Service"
 		Write-Host "`t 2.) Setup a connection to Active Directory "
 		Write-Host "`t 3.) Setup a Synchronization Schedule"
 		Write-Host "`t 4.) Setup Profile Filters"
-		Create-UserProfile -cfg $user_profile_cfg
-		Write-Host "--------------------------------------------"
+		Create-UserProfile -cfg $user_profile_cfg -env $global:farm_type
 	}	
 	Stop-Transcript
 }
