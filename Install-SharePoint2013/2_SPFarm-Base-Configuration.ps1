@@ -50,9 +50,6 @@ function main()
 	Write-Host "[ $(Get-Date) ] - Configure Usage"
 	Config-Usage -servers $sharepoint_servers
 
-	Write-Host "[ $(Get-Date) ] - Configure Initial Cert Exchange"
-	Config-InitialPublishing 
-
 	Write-Host "[ $(Get-Date) ] - Configure Forms Timeout"
     Configure-SecureTokenService
 

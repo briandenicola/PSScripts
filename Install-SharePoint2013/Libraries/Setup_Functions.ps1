@@ -347,33 +347,46 @@ function Config-VisioWebServices
 
 function Config-InitialPublishing
 {
+	param ( 
+		[string] $farm_type = "stand-alone"
+	)
+	
     if( (Get-PSDrive -PSProvider FileSystem | where { $_.Root -eq "D:\" }) ) { $drive = "D:" } else { $drive = "C:" }
 	$certs_home = (Join-Path $drive "Certs") + "\"
-
-	if( $global:farm_type -eq "standalone" ) {
-		return
-	}
 	
 	if ( -not ( Test-Path $certs_home ) ) {
 		mkdir $certs_home
-        New-SMBShare  -Name Certs -Path $certs_home -ReadAccess Everyone
+		New-SMBShare  -Name Certs -Path $certs_home -ReadAccess Everyone
 	}
 	
-	if( $global:farm_type -eq "services" ) {
-        Write-Host "[ $(Get-Date) ] - Creating Services Farm Root Certificte . . . "
-		$rootCert = (Get-SPCertificateAuthority).RootCertificate
-		$rootCert.Export("Cert") | Set-Content "$certs_home\ServicesFarmRoot.cer" -Encoding byte
+	Write-Host "[ $(Get-Date) ] - Creating Root and STS Certifictes . . . "
+	$rootCert = (Get-SPCertificateAuthority).RootCertificate
+	$rootCert.Export("Cert") | Set-Content "$certs_home\$farm_type-Root.cer" -Encoding byte
+	
+	$stsCert = (Get-SPSecurityTokenServiceConfig).LocalLoginProvider.SigningCertificate
+	$stsCert.Export("Cert") | Set-Content "$certs_home\$farm_type-STS.cer" -Encoding byte
+	$id = (Get-SPFarm).id 
+	$id.Guid | out-file -encoding ascii "$certs_home\$farm_type-Id.txt"		
+}
 
+function Import-RootCert
+{
+	param(
+		[string] $central_admin,
+		[string] $root_cert = "Services-Root.cer",
+		[string] $authority_name = "Services-Farm"
+	)
+
+	if( (Get-PSDrive -PSProvider FileSystem | where { $_.Root -eq "D:\" }) ) { $drive = "D:" } else { $drive = "C:" }
+	$cert_home = (Join-Path $drive "Certs") + "\"
+	
+	try {
+		Copy-Item \\$central_admin\Certs\$root_cert $cert_home
+		$trustCert = Get-PfxCertificate "$cert_home\$root_cert"
+		New-SPTrustedRootAuthority $authority_name -Certificate $trustCert
 	}
-	else {
-        Write-Host "[ $(Get-Date) ] - Creating Root and STS Certifictes . . . "
-		$rootCert = (Get-SPCertificateAuthority).RootCertificate
-		$rootCert.Export("Cert") | Set-Content "$certs_home\$global:farm_type-Root.cer" -Encoding byte
-		
-		$stsCert = (Get-SPSecurityTokenServiceConfig).LocalLoginProvider.SigningCertificate
-		$stsCert.Export("Cert") | Set-Content "$certs_home\$global:farm_type-STS.cer" -Encoding byte
-		$id = (Get-SPFarm).id 
-		$id.Guid | out-file -encoding ascii "$certs_home\$global:farm_type-Id.txt"		
+	catch { 
+		throw "[ERROR] - Error encounted import $($root_cert). Was Config-InitialPublishing run on $($central_admin) . . ."
 	}
 }
 

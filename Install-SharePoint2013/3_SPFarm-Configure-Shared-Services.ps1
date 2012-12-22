@@ -24,6 +24,9 @@ function main()
 
     $global:farm_type = Get-FarmType
 
+	Write-Host "[ $(Get-Date) ] - Configure Initial Cert Exchange (Publishing Side)"
+	Config-InitialPublishing -farm_type $global:farm_type
+	
 	$metadata_cfg = $cfg.SharePoint.SharedServices.Service | where { $_.App -eq "Metadata" }
 	if( $metadata_cfg -ne $null ) {
 		Write-Host "[ $(Get-Date) ] - Create Managed Metadata Service Application"
