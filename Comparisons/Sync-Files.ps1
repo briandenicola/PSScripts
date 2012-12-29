@@ -64,7 +64,7 @@ function Get-MD5
 	$fileStream.Close()
 	$md5 = ([system.bitconverter]::tostring($hash)).Replace("-","")
 
-    Write-Verbose "File - $file - has a MD5 of $md5"
+    Write-Verbose "File - $file - has a MD5 - $md5"
 
 	return ( $md5 ) 
 }
@@ -82,17 +82,29 @@ function Strip-RootDirectory
 
 function Get-DirectoryHash
 {
+    param(
+        [Parameter(Mandatory=$True,ValueFromPipeline=$True)]
+        [string] $root
+    )
+
 	begin {
 		$ErrorActionPreference = "silentlycontinue"
+        $hashes = @()
 	}
 	process {
-        $root = $_ 
+        if( -not ( Test-Path $root ) ) {
+            throw "Could not find the directory $($root)"
+        }
 
         Write-Verbose "Getting Hashes for $($root) . . ."
 
-		dir -Recurse $root -Exclude $ignore_files | where { $_.PsIsContainer -eq $false } | select Name,@{Name="Directory"; Expression={Strip-RootDirectory -FullDir $_.DirectoryName -RootDir $root}},@{Name="Hash"; Expression={Get-MD5 $_.FullName}}
+		$hashes = @( Get-ChildItem -Recurse $root -Exclude $ignore_files | 
+            Where { $_.PsIsContainer -eq $false } | 
+            Select Name,@{Name="Directory"; Expression={Strip-RootDirectory -FullDir $_.DirectoryName -RootDir $root}},@{Name="Hash"; Expression={Get-MD5 $_.FullName}}
+        )
 	}
 	end {
+        return $hashes
 	}
 }
 
@@ -102,8 +114,12 @@ function main
         $log = Read-Host "Please enter the file path to the log file"
     }
 
-    $src_hashes = $src | Get-DirectoryHash
-    $dst_hashes = $dst | Get-DirectoryHash
+    if( $logging ) { 
+        "[ $(Get-Date) ] -Starting the comparison process . . ." | Out-File -Encoding ascii -Append -FilePath $log
+    }
+
+    $src_hashes = Get-DirectoryHash -root $src
+    $dst_hashes = Get-DirectoryHash -root $dst 
 
     if(  $src_hashes -eq $null -and $dst_hashes -eq $null ) {
         Write-Host "Either $src is empty or both $src and $dst are empty . . ."
@@ -126,11 +142,15 @@ function main
         }
 
         if( $logging ) { 
-            "[ $(Get-Date) ] - Coping $($diff.Name) from $($org_src_file_path) to $($new_file_dst_path) . . ." | Out-File -Encoding ascii -Append -FilePath $log
+            "[ $(Get-Date) ] - Copying $($diff.Name) from $($org_src_file_path) to $($new_file_dst_path) . . ." | Out-File -Encoding ascii -Append -FilePath $log
         }
 
-        Write-Verbose "Coping $($diff.Name) from $($org_src_file_path) to $($new_file_dst_path) . . ."
+        Write-Verbose "Copying $($diff.Name) from $($org_src_file_path) to $($new_file_dst_path) . . ."
         copy (Join-Path $org_src_file_path $diff.Name) (Join-Path $new_file_dst_path $diff.Name) -Force
+    }
+
+    if( $logging ) { 
+        "[ $(Get-Date) ] - Finish. . ." | Out-File -Encoding ascii -Append -FilePath $log
     }
 }
 main
