@@ -13,7 +13,7 @@ The script will copy files from one directory to another based on different MD5 
 .\Sync-Directories.ps1 -src c:\SourceFolder -dst d:\DestinationFolder -ignore_files @("*.xml")
 
 .EXAMPLE
-.\Sync-Directories.ps1 -src c:\SourceFolder -dst d:\DestinationFolder -ignore_files @("*.xml", "*.log") -logging -log "D:\Logs\Rsync.log"
+.\Sync-Directories.ps1 -src c:\SourceFolder -dst d:\DestinationFolder -ignore_files @("*.xml", "housekeeping.bat") -logging -log "D:\Logs\Rsync.log"
 
 .PARAMETER Src
 Specifies the main directory to copy files from. Mandatory parameter
@@ -98,9 +98,10 @@ function Get-DirectoryHash
 
         Write-Verbose "Getting Hashes for $($root) . . ."
 
-		$hashes = @( Get-ChildItem -Recurse $root -Exclude $ignore_files | 
+		$hashes = @( 
+            Get-ChildItem -Recurse $root -Exclude $ignore_files | 
             Where { $_.PsIsContainer -eq $false } | 
-            Select Name,@{Name="Directory"; Expression={Strip-RootDirectory -FullDir $_.DirectoryName -RootDir $root}},@{Name="Hash"; Expression={Get-MD5 $_.FullName}}
+            Select Name, @{Name="Directory"; Expression={Strip-RootDirectory -FullDir $_.DirectoryName -RootDir $root}}, @{Name="Hash"; Expression={Get-MD5 $_.FullName}}
         )
 	}
 	end {
@@ -121,8 +122,8 @@ function main
     $src_hashes = Get-DirectoryHash -root $src
     $dst_hashes = Get-DirectoryHash -root $dst 
 
-    if(  $src_hashes -eq $null -and $dst_hashes -eq $null ) {
-        Write-Host "Either $src is empty or both $src and $dst are empty . . ."
+    if( $src_hashes -eq $null -and $dst_hashes -eq $null ) {
+        throw "Either $src is empty or both $src and $dst are empty . . ."
     }
 
     if( $dst_hashes -eq $null ) {
@@ -138,7 +139,7 @@ function main
 
         if( -not ( Test-Path $new_file_dst_path ) ) { 
             Write-Verbose "Creating $($new_file_dst_path) . . ."
-            mkdir $new_file_dst_path | Out-Null 
+            New-Item $new_file_dst_path -ItemType Directory | Out-Null 
         }
 
         if( $logging ) { 
@@ -146,7 +147,7 @@ function main
         }
 
         Write-Verbose "Copying $($diff.Name) from $($org_src_file_path) to $($new_file_dst_path) . . ."
-        copy (Join-Path $org_src_file_path $diff.Name) (Join-Path $new_file_dst_path $diff.Name) -Force
+        Copy-Item (Join-Path $org_src_file_path $diff.Name) (Join-Path $new_file_dst_path $diff.Name) -Force
     }
 
     if( $logging ) { 
