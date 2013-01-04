@@ -1,0 +1,149 @@
+<SharePoint>
+	<Farms>
+		<farm name="internal">
+			<server name="sp-app-02" role="central-admin"/>
+			<server name="sp-app-01" role="application"/>
+			<server name="sp-web-01" role="wfe"/>
+			<server name="sp-web-02" role="wfe"/>
+		</farm>
+		<farm name="services">
+			<server name="sp-app-03" role="central-admin"/>
+			<server name="sp-app-04" role="application" />
+			<server name="sp-idx-01" role="indexer"/>
+			<server name="sp-web-03" role="wfe"/>
+			<server name="sp-web-04" role="wfe"/>
+			<server name="sp-web-05" role="wfe"/>
+		</farm>
+	</Farms>
+	<Databases>
+		<Database name="SharePoint-Int-Content-DB01" port="1433" instance="sp-db-01" />
+		<Database name="SharePoint-Int-Config-DB01" port="1433" instance="sp-db-02" />
+		<Database name="SharePoint-Ser-Content-DB01" port="1433" instance="sp-db-03" />
+		<Database name="SharePoint-Ser-UserProfile-DB01" port="1433" instance="sp-db-04" />
+		<Database name="SharePoint-Ser-Search-DB01" port="1433" instance="sp-db-05" />
+	</Databases>
+	<BaseConfig>
+		<ScriptsHome>D:\Scripts</ScriptsHome>
+		<UtilsHome>D:\Utils\</UtilsHome>
+		<DeployHome>D:\Deploy\</DeployHome>
+		<SPVersion>SHAREPOINT2013-RTM-15.0.4420.1017-SLIPSTREAM</SPVersion>
+		<AuditUrl>http://collab.sharepoint.test/sites/SharePointSupport/</AuditUrl>
+        	<LogsHome>D:\Logs</LogsHome>
+		<HouseKeeping>
+			<name>HouseKeeping</name>
+			<user>svc_sp_taks</user>
+			<schedule>DAILY</schedule>
+			<start_time>22:00:00</start_time>
+			<process>D:\Scripts\Housekeeping\log_cleanup.bat</process>
+		</HouseKeeping>
+	</BaseConfig>
+	<setup>
+		<master_file_location>\\nas-001\app-ops\Installs</master_file_location>
+		<setup_path>D:\Deploy\SHAREPOINT2013-RTM-15.0.4420.1017-SLIPSTREAM\setup.exe</setup_path>
+		<setup_configs>
+			<external>D:\Scripts\InstallSharePoint2013\Configs\SP-Install-Configs\config-internet.xml</external>
+			<services>D:\Scripts\InstallSharePoint2013\Configs\SP-Install-Configs\config-internet.xml</services>
+			<internal>D:\Scripts\InstallSharePoint2013\Configs\SP-Install-Configs\config-enterprise.xml</internal>
+		</setup_configs>
+		<databases>
+			<services>SharePoint-Ser-Content-DB01</services>
+			<internal>SharePoint-Int-Config-DB01</internal>
+		</databases>
+		<security>
+			<internal passphrase="_Pa$sw0rd__" farm_account="SHAREPOINT\svc_sp_int_farm" />
+			<services passphrase="_Pa$sw0rd__" farm_account="SHAREPOINT\svc_sp_ser_farm" />
+		</security>
+        	<Services>
+	            <App>Enable</App>
+        	    <SecureStore>Enable</SecureStore>
+	            <Access>Disable</Access>
+	            <Visio>Disable</Visio>
+        	    <Cache>Enable</Cache>
+	            <WorkMgmt>Enable</WorkMgmt>
+	            <State>Enable</State>
+        	</Services>
+	</setup>
+	<FarmAdministrators>
+		<add group="SHAREPOINT\SharePoint-SysAdmin" />
+		<remove group="builtin\administrators" />
+	</FarmAdministrators>
+	<Services>
+		<Name>AppPool - SharePoint Web Service Application</Name>
+		<AppPoolAccount>SHAREPOINT\svc_sp_apps</AppPoolAccount>
+    	</Services>
+	<Secure>
+		<Passphrase>_Pa$sw0rd__</Passphrase>
+	</Secure>
+	<Email>
+		<Outgoing>
+			<address>sharepoint.admins@sharepoint.test</address>
+			<server>mail.sharepoint.test</server>
+		</Outgoing>
+	</Email>
+	<ManagedAccounts>
+		<account username="SHAREPOINT\svc_sp_apps" />
+		<account username="SHAREPOINT\svc_sp_web" />
+		<account username="SHAREPOINT\svc_sp_search" />
+		<account username="SHAREPOINT\svc_sp_content" />
+		<account username="SHAREPOINT\svc_sp_profile" />
+	</ManagedAccounts>
+	<Logging>
+		<DaysToKeep>28</DaysToKeep>
+		<CutInterval>1440</CutInterval>
+		<Path>D:\Logs\Trace</Path>
+		<MaxDiskSpace>10</MaxDiskSpace>
+	</Logging>
+	<Usage>	
+		<Path>D:\Logs\Usage</Path>
+		<MaxDiskSpace>5</MaxDiskSpace>
+		<Database>WSS_Logging</Database>
+	</Usage>
+	<App>
+        <AppPool>AppPool - SharePoint Apps</AppPool>
+		<prefix>app</prefix>
+		<domain>apps.sharepoint.test</domain>
+	</App>
+	<DistributedCache>
+		<ReserveMemory>0.10</ReserveMemory>
+	</DistributedCache>
+	<SharedServices>
+		<Service App="UserProfile">
+			<name>User Profile Service Application</name>
+			<Server name="sp-app-04" />
+			<Databases>
+				<database instance="SharePoint-Ser-UserProfile-DB01" name="SocialDB_001" Type="Social" />
+				<database instance="SharePoint-Ser-UserProfile-DB01" name="ProfileDB_001" Type="Profile" />
+				<database instance="SharePoint-Ser-UserProfile-DB01" name="SyncDB_001" Type="Sync" />
+			</Databases>
+			<AppPool name="AppPool - SharePoint User Profile Service Application" account="SHAREPOINT\svc_sp_profile"/>
+			<MySite>
+				<name>SharePoint - MySites</name>
+				<databaseName>WSS_Content_MySite</databaseName>
+				<databaseServer>SharePoint-Ser-Content-DB01</databaseServer>
+				<hostheader>mysites.sharepoint.test</hostheader>
+				<path>personal</path>
+				<apppool account="SHAREPOINT\svc_sp_profile" />
+			</MySite>
+		</Service>
+		<Service App="EnterpriseSearch">
+			<name>Search Service Application</name>
+			<Server name="sp-idx-01" />
+			<Database instance="SharePoint-Ser-Search-DB01" name="Search_Service_DB" />
+			<SearchAppPool name="AppPool - SharePoint Search Service Application" account="USGTAD\"/>
+			<DefaultContentAccessAccount name="SHAREPOINT\svc_sp_content" password="_Pa$sw0rd__" />
+		</Service>
+		<Service App="Metadata">
+			<name>Managed Metadata Service Application</name>
+			<Servers>
+				<server name="sp-app-04" />
+			</Servers>
+			<Databases>
+				<database instance="SharePoint-Ser-Content-DB01" name="Managed_Metadata_Service_DB" />
+			</Databases>
+			<AppPool name="AppPool - SharePoint Shared Service Application" account="SHAREPOINT\svc_sp_apps"/>
+			<Administrators>SHAREPOINT\SharePoint-SysAdmin</Administrators>
+		</Service>
+	</SharedServices>
+</SharePoint>
+
+
