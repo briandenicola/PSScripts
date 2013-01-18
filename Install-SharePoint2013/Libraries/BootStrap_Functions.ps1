@@ -45,6 +45,12 @@ function Get-SPListViaWebService([string] $url, [string] $list, [string] $view =
 	}
 }
 
+function Add-LocalAdmin( [string] $computer, [string] $Group )
+{
+    $localGroup = [ADSI]"WinNT://$computer/Administrators,group"
+    $localGroup.Add("WinNT://$domain_controller/$Group,group")
+}
+
 function WriteTo-SPListViaWebService ( [String] $url, [String] $list, [HashTable] $Item, [String] $TitleField )
 {
 	begin {

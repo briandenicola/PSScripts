@@ -96,11 +96,19 @@ function Setup-BaseSystem
 	New-Item -Path "HKLM:SOFTWARE\Policies\Microsoft\Windows NT\" -Name "Reliability" 
 	New-ItemProperty -Path "HKLM:SOFTWARE\Policies\Microsoft\Windows NT\Reliability" -Name "ShutdownReasonOn" -Value "0" -PropertyType dword
 	
-    #Setup House Keeping
-	if( -not ( $cfg.SharePoint.BaseConfig.HouseKeeping.Name -eq $null ) ) {
-		$house_keeping = $cfg.SharePoint.BaseConfig.HouseKeeping
-		$creds = Get-Credential ( $ENV:USERDOMAIN + "\" + $house_keeping.user)
-		schtasks /Create /TN $house_keeping.Name /RU $house_keeping.user /RP $creds.GetNetworkCredential().Password /SC $house_keeping.Schedule /ST $house_keeping.start_time /TR $house_keeping.process /NP
+    #Add SCOM Account to Local Admin
+    if( $cfg.SharePoint.BaseConfig.SCOMUser -ne [String]::Empty ) {
+        Add-LocalAdmin -computer $env:COMPUTERNAME -Group $cfg.SharePoint.BaseConfig.SCOMUser
+    }
+
+    #Setup Schedule Tasks
+    $user = [String]::Empty
+    foreach( $task in $cfg.SharePoint.Tasks.Task ) {
+        if( $creds -eq $null -or $user -ne $task.user ) {
+    	    $creds = Get-Credential ( $ENV:USERDOMAIN + "\" + $task.user)
+            $user = $task.user
+        }
+		schtasks /Create /TN $task.Name /RU $task.user /RP $creds.GetNetworkCredential().Password /SC $task.Schedule /ST $task.start_time /TR $task.process /NP
 	}
 }
 
@@ -180,6 +188,10 @@ function Setup-Farm
 
 function main
 {	
+    if( $HOST.Version.Major -ne 3 ) {
+        throw "POwerShell Version 3 is required to run these scripts"
+    }
+
 	#Start Log
 	Set-ExecutionPolicy unrestricted -force
 		
