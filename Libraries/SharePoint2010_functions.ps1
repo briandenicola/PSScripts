@@ -1,7 +1,12 @@
 Add-PSSnapin Microsoft.SharePoint.PowerShell –erroraction SilentlyContinue
 
+function Get-SPVersion
+{
+    return (Get-SPFarm | Select -Expand BuildVersion)
+}
+
 ##http://www.sharepointlonghorn.com/Lists/Posts/Post.aspx?ID=11
-function Get-SPManageAccountPassword
+Function Get-SPManageAccountPassword
 {
 	param(
 		[string] $user,
@@ -33,8 +38,14 @@ function Get-SPManageAccountPassword
 	}
 }
 
+# ===================================================================================
+# Func: Set-WebAppUserPolicy
+# AMW 1.7.2
+# Desc: Set the web application user policy
 # Refer to http://technet.microsoft.com/en-us/library/ff758656.aspx
-function Set-WebAppUserPolicy( $wa, $userName, $displayName, $perm ) 
+# Updated based on Gary Lapointe example script to include Policy settings 18/10/2010
+# ===================================================================================
+Function Set-WebAppUserPolicy($wa, $userName, $displayName, $perm) 
 {
     [Microsoft.SharePoint.Administration.SPPolicyCollection]$policies = $wa.Policies
     [Microsoft.SharePoint.Administration.SPPolicy]$policy = $policies.Add($userName, $displayName)
@@ -46,9 +57,9 @@ function Set-WebAppUserPolicy( $wa, $userName, $displayName, $perm )
 }
 
 #http://autospinstaller.codeplex.com/
-function Configure-ObjectCache( [string] $url, [string]$superuser)
+Function Configure-ObjectCache( [string] $url, [string]$superuser)
 {
-	try
+	Try
 	{
 		$wa = Get-SPWebApplication $url
 		# If the web app is using Claims auth, change the user accounts to the proper syntax
@@ -65,8 +76,10 @@ function Configure-ObjectCache( [string] $url, [string]$superuser)
         $wa.Update()        
     	Write-Host -ForegroundColor White " - Done applying object cache accounts to `"$url`""
 	}
-	catch {
-		Write-Error "$($_) - An error occurred applying object cache to `"$url`""
+	Catch
+	{
+		$_
+		Write-Warning " - An error occurred applying object cache to `"$url`""
 	}
 }
 
@@ -74,7 +87,7 @@ function Audit-SharePointWebApplications
 {
 	$webAppSettings = @()
 	
-	Get-SPWebApplication | % {
+	get-SPWebApplication | % {
 		$webApp = $_.Name
 		$appPoolName = $_.ApplicationPool.DisplayName
 		$appPoolUser = $_.ApplicationPool.UserName
