@@ -59,7 +59,7 @@ New-Item -Path "HKLM:SOFTWARE\Policies\Microsoft\Windows NT\" -Name "Reliability
 New-ItemProperty -Path "HKLM:SOFTWARE\Policies\Microsoft\Windows NT\Reliability" -Name "ShutdownReasonOn" -Value "0" -PropertyType dword
 
 Write-Host "[ $(Get-Date) ] - Disabling Error Reporting . . ."
-config_error_reporting.vbs
+.\config_error_reporting.vbs
 
 Write-Host "[ $(Get-Date) ] - Disabling Firewall (I know. I know.) . . ."
 Set-NetworkFirewallProfile -Enabled false
