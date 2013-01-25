@@ -29,21 +29,31 @@
 		<SPVersion>SHAREPOINT2013-RTM-15.0.4420.1017-SLIPSTREAM</SPVersion>
 		<AuditUrl>http://collab.sharepoint.test/sites/SharePointSupport/</AuditUrl>
         	<LogsHome>D:\Logs</LogsHome>
-		<HouseKeeping>
+        	<SCOMUser>svc_scom_acct</SCOMUser>
+	</BaseConfig>
+    	<Tasks>
+        	<Task>
 			<name>HouseKeeping</name>
-			<user>svc_sp_taks</user>
+			<user>svc_shpt_scom</user>
 			<schedule>DAILY</schedule>
 			<start_time>22:00:00</start_time>
-			<process>D:\Scripts\Housekeeping\log_cleanup.bat</process>
-		</HouseKeeping>
-	</BaseConfig>
+			<process>d:\Scripts\Housekeeping\log_cleanup.bat</process>
+		</Task>
+		<Task>
+			<name>Sync-Scripts</name>
+			<user>svc_shpt_scom</user>
+			<schedule>DAILY</schedule>
+			<start_time>23:45:00</start_time>
+			<process> d:\Scripts\Sync\sync_scripts.bat</process>
+		</Task>
+    	</Tasks>
 	<setup>
 		<master_file_location>\\nas-001\app-ops\Installs</master_file_location>
 		<setup_path>D:\Deploy\SHAREPOINT2013-RTM-15.0.4420.1017-SLIPSTREAM\setup.exe</setup_path>
 		<setup_configs>
-			<external>D:\Scripts\InstallSharePoint2013\Configs\SP-Install-Configs\config-internet.xml</external>
-			<services>D:\Scripts\InstallSharePoint2013\Configs\SP-Install-Configs\config-internet.xml</services>
-			<internal>D:\Scripts\InstallSharePoint2013\Configs\SP-Install-Configs\config-enterprise.xml</internal>
+			<external>D:\Scripts\Install-SharePoint2013\Configs\SP-Install-Configs\config-internet.xml</external>
+			<services>D:\Scripts\Install-SharePoint2013\Configs\SP-Install-Configs\config-internet.xml</services>
+			<internal>D:\Scripts\Install-SharePoint2013\Configs\SP-Install-Configs\config-enterprise.xml</internal>
 		</setup_configs>
 		<databases>
 			<services>SharePoint-Ser-Content-DB01</services>
