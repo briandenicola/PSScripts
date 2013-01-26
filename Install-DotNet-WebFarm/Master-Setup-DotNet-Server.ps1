@@ -147,8 +147,8 @@ function Join-WebFarm
 		
 			Write-Host "[ $(Get-Date) ] - Joining farm - $farm  . . ."
 			Add-ServersToWebFarm -name $farm -members $server
-		# }
-		# else {
+		}
+		else {
 			Write-Host "$server is already a member of $farm_name . . ."
 		}
 	}
