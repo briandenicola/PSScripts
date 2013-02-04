@@ -21,6 +21,33 @@ function New-PSWindow
 	}
 }
 
+#http://poshcode.org/2059
+function Get-FileEncoding
+{
+    [CmdletBinding()] Param (
+     [Parameter(Mandatory = $True, ValueFromPipelineByPropertyName = $True)] [string]$Path
+    )
+
+    [byte[]]$byte = get-content -Encoding byte -ReadCount 4 -TotalCount 4 -Path $Path
+
+    if ( $byte[0] -eq 0xef -and $byte[1] -eq 0xbb -and $byte[2] -eq 0xbf ) {
+         Write-Output 'UTF8' 
+    } 
+    elseif ($byte[0] -eq 0xfe -and $byte[1] -eq 0xff) {
+        Write-Output 'Unicode' 
+    }
+    elseif ($byte[0] -eq 0 -and $byte[1] -eq 0 -and $byte[2] -eq 0xfe -and $byte[3] -eq 0xff) {
+        Write-Output 'UTF32' 
+    }
+    elseif ($byte[0] -eq 0x2b -and $byte[1] -eq 0x2f -and $byte[2] -eq 0x76) {
+        Write-Output 'UTF7'
+    }
+    else { 
+        Write-Output 'ASCII' 
+    }
+
+}
+
 function Get-WindowsServices
 {
 	param (
@@ -131,35 +158,6 @@ function Get-Url
 		"[{0}][REPLY] Content Length = {1} . . ." -f $(Get-Date), $response.ContentLength
 		"[{0}][REPLY] Total Time = {1} . . ." -f $(Get-Date), $timing_request.TotalSeconds
 
-		if( $Method -ne "HEAD" )
-		{
-			$ans = Read-Host "Do you wish to see the contents of the request (y/n) - "
-			if( $ans -eq "y" ) {
-				$url_split = $url.Split("/")
-				if( $url_split[$url_split.Length - 1].Contains(".") ) 
-				{ 
-					$file_name =  $url_split[$url_split.Length - 1]
-				} 
-				else
-				{
-					$file_name = $server + ".html"
-				}
-				$ResultFile = Join-Path $ENV:TEMP ($url.Trim("http://").Split("/")[0] + "-" + $file_name)
-				$reader.ReadToEnd() | Out-File -Encoding ascii $ResultFile
-				
-				if( (dir $ResultFile).Extension -match "html|aspx" ) {
-					$ie = new-object -comobject "InternetExplorer.Application"  
-					$ie.visible = $true  
-					$ie.navigate($ResultFile)
-				} else { 
-					&$ResultFile
-				}
-				
-				Start-Sleep 10
-				
-				Remove-Item $ResultFile
-			}
-		}
 	}
 	catch [System.Net.WebException]
 	{
