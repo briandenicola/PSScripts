@@ -80,3 +80,9 @@ reg add HKLM\System\CurrentControlSet\Services\WAS\Parameters /v ConfigIsolation
 
 Write-Host "8.0 Start all IIS services"
 iisreset /start
+
+Write-Host "9.0 Enable Remote Management"
+Set-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\WebManagement\Server -Name EnableRemoteManagement -Value 1
+Restart-Service WMSVC -Verbose
+netsh advfirewall firewall add rule name=”Allow Web Management” dir=in action=allow service=”WMSVC”
+
