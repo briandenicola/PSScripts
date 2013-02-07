@@ -1,6 +1,6 @@
 @echo off
 
-set DST=D:\SCRIPTS\Install-SharePoint2010\
+set DST=D:\Scripts\Install-SharePoint2010\
 set SRC=\\ent-nas-fs01\app-ops\Installs\SharePoint\Install-SharePoint2010
 
 xcopy /e/v/f/s %SRC% %DST%
