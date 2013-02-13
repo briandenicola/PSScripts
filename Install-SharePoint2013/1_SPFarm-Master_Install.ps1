@@ -73,6 +73,9 @@ function Copy-Files
 	xcopy /e/v/f/s "$global:source\SharePoint2010-Utils-Scripts\Utils" "$global:utils_home\"
 		
 	#Copy SharePoint Files 
+    if( -not ( Test-Path $global:deploy_home ) ) {
+        mkdir $global:deploy_home
+    }
 	copy "$global:source\$sp_version.zip" $global:deploy_home
 	Unzip-File -zip "$deploy_home\$global:sp_version.zip" -folder $global:deploy_home
 }
@@ -108,7 +111,7 @@ function Setup-BaseSystem
     	    $creds = Get-Credential ( $ENV:USERDOMAIN + "\" + $task.user)
             $user = $task.user
         }
-		schtasks /Create /TN $task.Name /RU $task.user /RP $creds.GetNetworkCredential().Password /SC $task.Schedule /ST $task.start_time /TR $task.process /NP
+		schtasks /Create /TN $task.Name /RU $task.user /RP $creds.GetNetworkCredential().Password /SC $task.Schedule /ST $task.start_time /TR $task.process /RL HIGHEST /V1		
 	}
 }
 
@@ -206,7 +209,7 @@ function main
     if( !(Test-Path $global:log_home) ) { 
 		mkdir $global:log_home
 		mkdir (Join-Path $global:log_home "Trace")
-		net share Logs=$global:log_home /Grant:Everyone,Read
+		New-SmbShare -Name Logs -Path $global:log_home -ReadAccess everyone
 	}
 
 	$log = $global:log_home + "\System-Setup-" + $ENV:COMPUTERNAME + "-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log"

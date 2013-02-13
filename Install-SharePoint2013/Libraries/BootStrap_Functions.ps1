@@ -1,3 +1,5 @@
+$domain_controller = ""
+
 function Get-WebServiceURL( [String] $url )
 {
 	$listWebService = "_vti_bin/Lists.asmx?WSDL"
