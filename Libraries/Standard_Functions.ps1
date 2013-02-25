@@ -1145,44 +1145,24 @@ function Get-FileVersion()
 	}
 }
 
-function Get-Tail([string]$path = $(throw "Path name must be specified."), [int]$count = 10)
+function Get-Tail
 {
-	if ( $count -lt 1 ) {$(throw "Count must be greater than 1.")}
+    param(
+        [string] $path = $(throw "Path name must be specified."),
+        [int] $count = 10,
+        [Alias("f")]
+        [switch] $wait
+    )
 
-	$content = Get-Content $path
-	
-	if( $content.Length -le $count )
-	{
-		return $content
-	}
-	
-	$start = $content.Length - $count
-	for ($i = $start; $i -lt $content.Length; $i++)
-  	{
-  		$content[$i];
-  	}
+    try { 
+        Get-Content $path -Tail $count -Wait:$wait
+    }
+    catch { 
+        throw "An error occur - $_ "
+    }
+
 }
-
-function Get-TailByBytes([string]$path = $(throw "Path name must be specified."), [int]$bytes)
-{
-	$tail = @()
-
-	if ( $bytes -lt 1 ) {$(throw "Bytes must be greater than 1.")}
-
-	$reader = new-object -typename System.IO.StreamReader -argumentlist $path, $true
-	[long]$end = $reader.BaseStream.Length - 1
-	[long]$cur = $end - $bytes - 100
-
-	$reader.BaseStream.Position = $cur
-	while(-not ($reader.EndofStream) )
-	{
-		$tail += $reader.ReadLine()
-	} 
-	
-	$reader.Close()
-
-	return $tail
-}
+Set-Alias -Name Tail -Value Get-Tail
 
 function Get-FileSize ( [string] $path ) 
 {
