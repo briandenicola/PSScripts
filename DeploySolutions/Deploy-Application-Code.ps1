@@ -23,8 +23,8 @@ param (
 $global:deploy_steps = @()
 
 Set-Variable -Name log_home -Value "D:\Logs" -Option Constant
-Set-Variable -Name deploy_home -Value "D:\Deploy\WGC" -Option Constant
-Set-Variable -Name team_site -Value "http://teamadmin.gt.com/sites/ApplicationOperations/" -Option Constant
+Set-Variable -Name deploy_home -Value "D:\Deploy\AppSource" -Option Constant
+Set-Variable -Name team_site -Value "http://team.example.com" -Option Constant
 Set-Variable -Name team_list -Value "Deployment Tracker" -Option Constant
 Set-Variable -Name team_view -Value '{4CB38665-FBC7-48DC-86A9-6ABF8B289EE6}' -Option Constant
 Set-Variable -Name deploy_solutions -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Deploy-Sharepoint-Solutions.ps1") -Option Constant
@@ -47,14 +47,9 @@ function Get-SPUserViaWS( [string] $url, [string] $name )
 	$service = New-WebServiceProxy ($url + "_vti_bin/UserGroup.asmx?WSDL") -Namespace User -UseDefaultCredential
 	$user = $service.GetUserInfo("i:0#.w|$name")
 	
-	if( $user ) 
-	{
+	if( $user ) {
 		return ( $user.user.id + ";#" + $user.user.Name )
 	} 
-	else
-	{
-		return $null
-	}	
 }
 
 function Record-Deployment { 
