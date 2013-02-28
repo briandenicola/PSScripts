@@ -1,8 +1,33 @@
 Add-PSSnapin Microsoft.SharePoint.PowerShell –erroraction SilentlyContinue
 
+function Get-SPStartedServices
+{
+    return ( Get-SPServiceInstance | 
+                Where { $_.Status -eq "Online" } |
+                Select @{Name="Service";Expression={$_.TypeName}}, @{Name="Server";Expression={$_.Server.Address}} | 
+                Sort Service
+            )
+}
+
+function Get-SPDatabaseSize
+{
+    $databases = @()
+
+    foreach( $database in Get-SPDatabase ) { 
+        $databases += New-Object PSObject -Property @{
+            Name = $database.Name
+            Size = [math]::Round( $database.DiskSizeRequired / 1mb , 2 )
+            Server = if( $database.Server -is [string] ) { $database.Server } else { $database.Server.Address }
+        }
+
+    }
+
+    return $databases
+}
+
 function Get-SPVersion
 {
-    return (Get-SPFarm | Select -Expand BuildVersion)
+    return ( Get-SPFarm | Select -Expand BuildVersion )
 }
 
 ##http://www.sharepointlonghorn.com/Lists/Posts/Post.aspx?ID=11
