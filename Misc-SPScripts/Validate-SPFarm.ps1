@@ -104,8 +104,14 @@ $check_search_topology_sb = {
 	})
 }
 
+$check_failed_timer_jobs = {
+    . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
+    $farm = Get-SPFarm
+    $farm.TimerService.JobHistoryEntries | Where { $_.Status -eq "Failed" -and $_.EndTime -gt $(Get-Date).AddDays(-1) }
+}
+
 $check_service_application_status = {
-    Add-PSSnapIn Microsoft.SharePoint.Powershell
+    . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
 	Get-SPServiceApplication | 
      Select DisplayName, IisVirtualDirectoryPath, @{Name="AppPoolName";Expression={$_.ApplicationPool.Name}}, @{Name="AppPoolUser";Expression={$_.ApplicationPool.ProcessAccountName}}
 }
@@ -222,6 +228,13 @@ if($farm -eq "2010-" -or $farm -eq "2010-Services") {
 			Out-File -Append -Encoding ASCII $global:logFile	
 	}
 }
+#EndRegion
+
+#Region Check Failed Timer Jobs
+log -txt "Check SFailed Timer Jobs"
+Invoke-Command -Session $ca_session -ScriptBlock $check_failed_timer_jobs |
+	Select JobDefinitionTitle, ServerName, StartTime, EndTime, ErrorMessage | 
+	Out-File -Append -Encoding ASCII $global:logFile
 #EndRegion
 
 #Region Check URLs
