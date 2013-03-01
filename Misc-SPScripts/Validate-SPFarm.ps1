@@ -112,8 +112,8 @@ $check_service_application_status = {
 }
 
 $check_service_instance_status = {
-    Add-PSSnapIn Microsoft.SharePoint.Powershell
-	Get-SPServiceInstance | Select TypeName, Status, @{Name="Server";Expression={$_.Server.Address}} 
+	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
+	Get-SPStartedServices
 }
 #EndRegion
 
