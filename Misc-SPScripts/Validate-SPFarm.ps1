@@ -35,8 +35,7 @@ $check_url_sb = {
 	$urls = Get-SPWebApplication | Select -Expand Url
 	
 	$urls_to_check = @()
-	foreach( $url in $urls )
-	{
+	foreach( $url in $urls ) {
 		$urls_to_check += (New-Object PSObject -Property @{
 			url = $url
 			servers = $servers
@@ -56,8 +55,7 @@ $check_solutions_sb = {
 	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 
 	$solutions = @()
-	foreach( $solution in (Get-SPFarm | Select -Expand Solutions) )
-	{
+	foreach( $solution in (Get-SPFarm | Select -Expand Solutions) )	{
 		$solution.SolutionFile.SaveAs( $ENV:TEMP + "\" + $solution.Name )
 		$solutions += (New-Object PSObject -Property @{
 			Server = $env:COMPUTERNAME
@@ -109,13 +107,17 @@ $check_search_topology_sb = {
 $check_service_application_status = {
     Add-PSSnapIn Microsoft.SharePoint.Powershell
 	Get-SPServiceApplication | 
-     Select DisplayName, IisVirtualDirectoryPath, @{Name="AppPoolName";Expression={$_.ApplicationPool.Name}}, @{Name="AppPoolUser";Expression={$_.ApplicationPool.ProcessAccountName}} | 
-     Format-List
+     Select DisplayName, IisVirtualDirectoryPath, @{Name="AppPoolName";Expression={$_.ApplicationPool.Name}}, @{Name="AppPoolUser";Expression={$_.ApplicationPool.ProcessAccountName}}
 }
 
 $check_service_instance_status = {
 	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
 	Get-SPStartedServices
+}
+
+$check_db_size = {
+	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
+	Get-SPDatabaseSize
 }
 #EndRegion
 
@@ -134,21 +136,18 @@ $sql_servers | select -expand SystemName | ping-multiple
 #EndRegion
 
 #Region Check SQL Server
-foreach( $sql_server in $sql_servers )
-{
+foreach( $sql_server in $sql_servers ) {
 	if( $sql_server.Role -eq "Database Node" ) { continue }
 	
 	log -txt ("Checking SQL Services Status on " + $sql_server.SystemName)
 	$con =  $sql_server.SystemName + "," + $sql_server.Port.Split(".")[0] +  "\" + $sql_server."Instances Name" 
 	
-	if( $sql_server.Role -eq "Standalone Database Server" )
-	{ 
+	if( $sql_server.Role -eq "Standalone Database Server" ) { 
 		Get-Service -ComputerName $sql_server.SystemName @("MSSQLServer","MSDTC","SQLSERVERAGENT") -EA SilentlyContinue | 
 			Select @{Name="Server";Expression={$_.MachineName}}, Name, Status | 
 			Out-File -Append -Encoding ASCII $global:logFile			
 	}
-	elseif( $sql_server.Role -eq "Database Cluster"  )
-	{
+	elseif( $sql_server.Role -eq "Database Cluster" ) {
 		log -txt "Due to permissions, can not checking the state of the SQL Server or MSDTC in UAT or Production"	
 	}
 
@@ -161,8 +160,7 @@ foreach( $sql_server in $sql_servers )
 #Region Check Services
 $services = @("iisadmin", "SPAdminV4", "SPUserCodeV4", "SPTraceV4", "sptimerv4", "msdtc", "FIMService", "FIMSynchronizationService" , "OSearch14", "SPSearch4")
 log -txt ("Checking the following Windows Services (Make sure at least one Search and FIMSynchronizationService Service is running) - " + $services)
-foreach( $server in $servers )
-{
+foreach( $server in $servers ) {
 	Get-WmiObject -ComputerName $server Win32_Service | 
 		Where { $_.StartMode -eq "manual" -or $_.StartMode -eq "auto"} |
 		Where { $services -contains $_.Name } |
@@ -185,16 +183,25 @@ Invoke-Command -Session $server_session -ScriptBlock $check_apppool_sb |
 
 #Region Check Service Applications
 log -txt "Check Service Applications in Farm"
-#Invoke-Command -Session $ca_session -ScriptBlock $check_service_application_status |
-#	Select Service, Server, Status | 
-#	Sort -Property Service |
-#	Out-File -Append -Encoding ASCII $global:logFile
+Invoke-Command -Session $ca_session -ScriptBlock $check_service_application_status |
+    Select DisplayName, IisVirtualDirectoryPath, AppPoolName, AppPoolUser |
+	Sort -Property DisplayName |
+    Format-List |
+	Out-File -Append -Encoding ASCII $global:logFile
 	
 Invoke-Command -Session $ca_session -ScriptBlock $check_service_instance_status |
-	Select TypeName, Server, Status | 
-	Sort -Property TypeName |
+	Select Service, Server |
+	Sort -Property Service |
 	Out-File -Append -Encoding ASCII $global:logFile
 #EndRegion
+
+#Region Check Database Size
+log -txt "Check Database File Sizes in Farm"
+Invoke-Command -Session $ca_session -ScriptBlock $check_db_size |
+    Select Name, Server, Size |
+    Sort -Property Server | 
+	Out-File -Append -Encoding ASCII $global:logFile
+#EndRegsion
 
 #Region Check Solutions
 log -txt "Check Solutions in Farm"
@@ -204,13 +211,11 @@ Invoke-Command -Session $ca_session -ScriptBlock $check_solutions_sb |
 #EndRegion
 
 #Region Check SharePoint Search Topology
-if($farm -eq "2010-" -or $farm -eq "2010-Services")
-{
+if($farm -eq "2010-" -or $farm -eq "2010-Services") {
 	log -txt "Check Search Topology in Search Farm"
 	$search = Invoke-Command -ComputerName $services_farm_ca -Authentication Credssp -Credential (Get-Creds) -ScriptBlock $check_search_topology_sb 
 
-	foreach( $property in ($search | Get-Member | where { $_.MemberType -eq "NoteProperty" -and $_.Name -notmatch "PS"}) ) 
-	{
+	foreach( $property in ($search | Get-Member | where { $_.MemberType -eq "NoteProperty" -and $_.Name -notmatch "PS"}) ) {
 		log -txt ( "Search Property - " + $property.Name )
 		$search.$($property.Name) | 
 			Format-List |
@@ -223,10 +228,8 @@ if($farm -eq "2010-" -or $farm -eq "2010-Services")
 log -txt "Check URLs in Farm"
 $urls_to_check = Invoke-Command -Session $ca_session -ScriptBlock $check_url_sb
  
-foreach( $obj in $urls_to_check )
-{
-	foreach( $server in $obj.servers )
-	{
+foreach( $obj in $urls_to_check ) {
+	foreach( $server in $obj.servers ) {
 		log -txt ("Checking " + $obj.Url + " on " + $server )
 		Get-Url -url $obj.Url -server $server | Out-File -Append -Encoding ASCII $global:logFile
 	}
@@ -234,8 +237,7 @@ foreach( $obj in $urls_to_check )
 #EndRegion
 
 #Region Check Event Log
-if($withlogs)
-{
+if($withlogs) {
 	log -txt "Checking Event Logs"
 	$servers | % { Get-WinEvent -LogName @("Application", "System") -ComputerName $_ -MaxEvents 20 } | 
 		Select TimeCreated, ProviderName, Message |
@@ -245,8 +247,7 @@ if($withlogs)
 #EndRegion
 
 #Region Check SharePoint Trace Log
-if($withlogs)
-{
+if($withlogs) {
 	log -txt "Checking ULS Logs"
 	Invoke-Command -Session $server_session -ScriptBlock $check_uls_sb |
 		Out-File -Append -Encoding ASCII $global:logFile
