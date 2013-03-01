@@ -1,4 +1,4 @@
-﻿[CmdletBinding(SupportsShouldProcess=$true)]
+[CmdletBinding(SupportsShouldProcess=$true)]
 param (
 	[Parameter(Mandatory=$true)]
 	[string[]] $computers,
@@ -14,28 +14,26 @@ param (
 
 function Reduce-Set
 {
+	PARAM (
+		[Parameter(ValueFromPipeline=$true)]
+   		[string] $ht
+	)
+	
 	BEGIN { 
 		$differences = @()
 	}
 	PROCESS {		
-		Write-Host "Comparing Keys . . ."
-		
-		$ht = $_
-		
-		foreach ( $key in $ht.Keys )
-		{
-			if( $ht[$key].Count -eq 1 ) 
-			{		
+		Write-Verbose "Comparing Keys . . ."				
+		foreach ( $key in $ht.Keys ) {
+			if( $ht[$key].Count -eq 1 ) {		
 				$differences += (New-Object PSObject -Property @{
 					File = $ht[$key] | Select -ExpandProperty Name
 					System = $ht[$key] | Select -ExpandProperty System
 					Hash = $ht[$key] | Select -ExpandProperty FileHash
 				})
 			} 
-			elseif( ($ht[$key] | Select -Unique -ExpandProperty FileHash).Count -ne $null )
-			{
-				foreach( $diff in $ht[$key] )
-				{
+			elseif( ($ht[$key] | Select -Unique -ExpandProperty FileHash).Count -ne 1 )	{
+				foreach( $diff in $ht[$key] ) {
 					$differences += (New-Object PSObject -Property @{
 						File =  $diff.Name
 						System = $diff.System
@@ -53,16 +51,14 @@ function Reduce-Set
 
 $map = {
 	param ( [string] $directory )
- 
-	. d:\Scripts\Libraries\Standard_Functions.ps1
-
+ 	
+	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 	$files = @()
 	$system = $ENV:COMPUTERNAME
 	
-	Write-Host "Working on - $system"
-	dir $directory -Recurse | Where { $_.PSIsContainer -eq $false } | ForEach-Object { 
+	Write-Verbose "Working on - $system"
+	Get-ChildItem $directory -Recurse | Where { $_.PSIsContainer -eq $false } | ForEach-Object { 
 		$name = $_.FullName
-		
 		$files += New-Object PSObject -Property @{
             Name = $name
 			System = $system
