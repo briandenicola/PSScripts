@@ -108,7 +108,9 @@ $check_search_topology_sb = {
 
 $check_service_application_status = {
     Add-PSSnapIn Microsoft.SharePoint.Powershell
-	Get-SPServiceApplication | Select -Expand ServiceInstances | Select Service,@{Name="Server";Expression={$_.Server.Address}}, Status
+	Get-SPServiceApplication | 
+     Select DisplayName, IisVirtualDirectoryPath, @{Name="AppPoolName";Expression={$_.ApplicationPool.Name}}, @{Name="AppPoolUser";Expression={$_.ApplicationPool.ProcessAccountName}} | 
+     Format-List
 }
 
 $check_service_instance_status = {

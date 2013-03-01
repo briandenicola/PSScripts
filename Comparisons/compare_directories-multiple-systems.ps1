@@ -1,12 +1,8 @@
 [CmdletBinding(SupportsShouldProcess=$true)]
 param (
-	[Parameter(Mandatory=$true)]
-	[string[]] $computers,
-	
-	[Parameter(Mandatory=$true)]
-	[string] $path,
-	
-	[Parameter(Mandatory=$true)]
+	[Parameter(Mandatory=$true)] [string[]] $computers,
+	[Parameter(Mandatory=$true)] [string] $path,
+    [switch] $ShowAllFiles,
 	[string] $out
 )
 
@@ -16,7 +12,7 @@ function Reduce-Set
 {
 	PARAM (
 		[Parameter(ValueFromPipeline=$true)]
-   		[string] $ht
+   		[object] $ht
 	)
 	
 	BEGIN { 
@@ -37,7 +33,7 @@ function Reduce-Set
 					$differences += (New-Object PSObject -Property @{
 						File =  $diff.Name
 						System = $diff.System
-						Hash = $diff.fileHash
+						Hash = $diff.FileHash
 					})
 				}
 			}
@@ -57,21 +53,30 @@ $map = {
 	$system = $ENV:COMPUTERNAME
 	
 	Write-Verbose "Working on - $system"
-	Get-ChildItem $directory -Recurse | Where { $_.PSIsContainer -eq $false } | ForEach-Object { 
-		$name = $_.FullName
+	foreach( $file in (Get-ChildItem $directory -Recurse | Where { $_.PSIsContainer -eq $false } ) ) {
 		$files += New-Object PSObject -Property @{
-            Name = $name
+            Name = $file.FullName
 			System = $system
-		    FileHash = (get-hash1 $name)
+            FileHash = (Get-Hash1 $file.FullName)
 		}
 	}
 	return $files
 } 
 
-Invoke-Command -ComputerName $computers -ScriptBlock $map -ArgumentList $path |
-	Select Name, FileHash, System |
-	Group-Object -Property Name -AsHashTable | 
-	Reduce-Set |
-	Export-Csv -Encoding Ascii -NoTypeInformation $out
+function main
+{
+	$results = Invoke-Command -ComputerName $computers -ScriptBlock $map -ArgumentList $path | Select Name, FileHash, System 
 
-Invoke-Item $out
+    if( !$ShowAllFiles ) {
+        $results = $results | Group-Object -Property Name -AsHashTable | Reduce-Set
+    }
+	
+	if( ![string]::IsNullOrEmpty($out) ) {
+		$results | Export-Csv -Encoding Ascii -NoTypeInformation $out
+		Invoke-Item $out
+	}
+	else {
+		return $results
+	}
+}
+main
