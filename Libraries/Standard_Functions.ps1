@@ -21,6 +21,45 @@ function New-PSWindow
 	}
 }
 
+function Get-Installed-DotNet-Versions 
+{
+    $path = 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP'
+
+    return (
+        Get-ChildItem $path -recurse | 
+        Get-ItemProperty -Name Version  -ErrorAction SilentlyContinue | 
+        Select  -Unique -Expand Version
+    )
+}
+
+function Get-DetailedServices 
+{
+    param(
+        [string] $state = "running"
+    )
+    
+    $services = @()
+
+    $processes = Get-WmiObject Win32_process
+    foreach( $service in (Get-WmiObject -Class Win32_Service -Filter ("State='{0}'" -f $state ) ) ) {
+        
+        $process = $processes | Where { $_.ProcessId -eq $service.ProcessId }
+    
+        $services += (New-Object PSObject -Property @{
+            Name = $service.Name
+            DisplayName = $service.DisplayName
+            User = $process.getOwner().user
+            CommandLine = $process.CommandLine
+            PID = $process.ProcessId
+            Memory = [math]::Round( $process.WorkingSetSize / 1mb, 2 )
+        })    
+
+    }
+
+    return $Services
+}
+
+
 #http://poshcode.org/2059
 function Get-FileEncoding
 {
@@ -508,26 +547,35 @@ function Get-WindowsUpdateConfig
 
 function Get-SystemGAC( [string[]] $servers )
 {	
-	$s = New-PSSession -Computer $servers
-	Invoke-Command -Session $s -ScriptBlock {
+	$sb = {
 		$assemblies = @()
-		$dlls = Get-ChildItem -Path C:\windows\assembly -Filter *.dll -Recurse
-
-		foreach ($assembly in $dlls)
-		{
-			$assembly = [Reflection.Assembly]::ReflectionOnlyLoadFrom($Assembly.FullName)
-			if ($assembly -is [System.Reflection.Assembly]) {
-				$assemblies += (New-Object PSObject -Property @{
-					FullName = $assembly.FullName
-					Module = $assembly.ManifestModule
-					RunTime = $assembly.ImageRuntimeVersion
-					Location = $assembly.Location
-					Computer = $ENV:ComputerName	
+		$util = "D:\Utils\gacutil.exe"
+		
+		if( Test-Path $util ) {
+			foreach( $dll in (&$util /l | where { $_ -imatch "culture" } | Sort) ) {
+				$dll -imatch "(\w+),\sVersion=(.*),\sCulture=(.*),\sPublicKeyToken=(.*),\sprocessorArchitecture=(.*)" | Out-Null				
+				$assemblies += (New-Object PSObject -Property @{	
+					DllName = $matches[1]
+					Version = $matches[2]
+					PublicKeyToken = $matches[3]
+					Architecture = $matches[4]
 				})
 			}
 		}
+		else {
+			throw "Could not find gacutil.exe"
+		}
+		
 		return $assemblies
 	}
+	
+	if( $servers -imatch $ENV:COMPUTERNAME ) {
+		return &$sb
+	}
+	else {
+		return ( Invoke-Command -Computer $servers -ScriptBlock $sb )
+	}
+}
 }
 
 function Get-GoogleGraph([HashTable] $ht, [String] $title, [String] $size="750x350", [string] $file="chart.png",  [switch] $invoke)

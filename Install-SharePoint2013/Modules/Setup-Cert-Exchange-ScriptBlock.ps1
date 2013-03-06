@@ -15,10 +15,10 @@ if( Test-Path ( "\\$RemoteCentralAdmin\Certs" ) ) {
 	Copy-Item \\$RemoteCentralAdmin\Certs\$RemoteFarmType-STS.cer $cert_home
 	
 	$trustCert = Get-PfxCertificate (Join-Path $cert_home "$RemoteFarmType-Root.cer")
-	New-SPTrustedRootAuthority "GT-$RemoteFarmType" -Certificate $trustCert
+	New-SPTrustedRootAuthority "SP-Farm-$RemoteFarmType" -Certificate $trustCert
 	
 	$stsCert = Get-PfxCertificate (Join-Path $cert_home "$RemoteFarmType-STS.cer")
-	New-SPTrustedServiceTokenIssuer "GT-$RemoteFarmType" -Certificate $stsCert
+	New-SPTrustedServiceTokenIssuer "SP-Farm-$RemoteFarmType" -Certificate $stsCert
 }
 else {
 	Write-Host "[ $(Get-Date) ] - \\$RemoteCentralAdmin\Certs was not found. Can not import certs." -ForegroundColor Red

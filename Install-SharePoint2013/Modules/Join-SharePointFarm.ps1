@@ -1,6 +1,6 @@
 param (
 	[string] $db = $(throw 'The SQL Database Server is required'),
-	[string] $configDB = "GT-SharePoint2010_SharePoint_Configuration_Database",
+	[string] $configDB = "SP2013_SharePoint_Configuration_Database",
 	[string] $passphrase
 )
 

@@ -1,6 +1,6 @@
 param (
 	[string] $db = $(throw 'The SQL Database Server is required'),
-	[string] $farm = "GT-SharePoint2010",
+	[string] $farm = "SP2013",
 	[string] $port = 10000,
 	[string] $account,
 	[string] $passphrase
