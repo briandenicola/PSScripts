@@ -20,7 +20,7 @@ $map_scriptblock = {
         [string] $log_path = "D:\Logs",
 		[string] $log_file
 	)
-	
+
 	$log_parse = "D:\Utils\logparser.exe"
 	$tmp_output = Join-Path $env:TEMP "results.csv"
 
@@ -33,13 +33,18 @@ $map_scriptblock = {
         $id = (Get-WebSite | Where { $_.Name -imatch $site } | Select -First 1 -ExpandProperty Id).ToString()
     }
 
-	$log =  Join-Path $log_path (Join-Path $id $log_file) 
+    $log =  Join-Path $log_path (Join-Path $id $log_file) 
     if( Test-Path $log )  {	
         $sql = $query -f $log, $tmp_output
-		Invoke-Expression $log_parse $query -o:CSV
+		&$log_parse $sql -q -o:CSV -i:IISW3C
 	}
 
-    return (Import-Csv $tmp_output)
+	if( Test-Path $tmp_output ) {
+	    return (Import-Csv $tmp_output)
+	}
+
+	return @()
+	
 }
 
 $reduce_scriptblock = {
@@ -69,18 +74,23 @@ function main()
 	$session = New-PSSession -ComputerName $config.logparse.servers.server
 	
     foreach( $query in $config.logparse.queries.query ) {
-        foreach( $site in $config.logparse.sites.site ) {
-            $file = Join-Path $ENV:TEMP ( $query.output_file -f $site.Name, $(Get-Date).ToString("yyyyMMdd") )
+        foreach( $site in $config.logparse.sites.site  ) {
+            $name = $query.output_file -f $site.Name, $(Get-Date).ToString("yyyyMMdd")
+            $file = Join-Path (Join-Path $ENV:SystemRoot "TEMP") $name
 
+            Write-Verbose ("File - " + $file )
             Invoke-Command -Session $session -ScriptBlock $map_scriptblock -ArgumentList $site.Name, $site.Id, $query.sql, $config.logparse.settings.log_folder, $log |
-                Export-Csv -Encoding ASCII $file
+                Export-Csv -Encoding ASCII -NoTypeInformation $file
 
 		    if($upload) {
-			    UploadTo-Sharepoint -file $file -lib ($sharepoint_library + $file + "/")
+                $path = (Get-Item $file | Select -Expand BaseName).Split("_") | Select -First 1
+			    UploadTo-Sharepoint -file $file -lib ($sharepoint_library + $path + "/")
 			    Remove-item $file
 		    } 
-		    else  {
-			    Move-Item $file $PWD.Path
+            else  {
+                if( Test-Path $file ) {
+			        Move-Item $file $PWD.Path -ErrorAction SilentlyContinue
+			    }
 		    }
         }
 	} 
