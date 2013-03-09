@@ -95,7 +95,7 @@
 		</Outgoing>
 	</Email>
 	<ManagedAccounts>
-		<account username="DOMAIN\" />
+		<account farm="" username="DOMAIN\" />
 	</ManagedAccounts>
 	<Logging>
 		<DaysToKeep>28</DaysToKeep>

@@ -44,7 +44,7 @@
 			<user>svc_shpt_scom</user>
 			<schedule>DAILY</schedule>
 			<start_time>23:45:00</start_time>
-			<process> d:\Scripts\Sync\sync_scripts.bat</process>
+			<process>d:\Scripts\Sync\sync_scripts.bat</process>
 		</Task>
     	</Tasks>
 	<setup>
@@ -91,11 +91,12 @@
 		</Outgoing>
 	</Email>
 	<ManagedAccounts>
-		<account username="SHAREPOINT\svc_sp_apps" />
-		<account username="SHAREPOINT\svc_sp_web" />
-		<account username="SHAREPOINT\svc_sp_search" />
-		<account username="SHAREPOINT\svc_sp_content" />
-		<account username="SHAREPOINT\svc_sp_profile" />
+		<account farm="services" username="SHAREPOINT\svc_sp_apps" />
+		<account farm="internal" username="SHAREPOINT\svc_sp_apps" />
+		<account farm="internal" username="SHAREPOINT\svc_sp_web" />
+		<account farm="services" username="SHAREPOINT\svc_sp_search" />
+		<account farm="services" username="SHAREPOINT\svc_sp_content" />
+		<account farm="services" username="SHAREPOINT\svc_sp_profile" />
 	</ManagedAccounts>
 	<Logging>
 		<DaysToKeep>28</DaysToKeep>

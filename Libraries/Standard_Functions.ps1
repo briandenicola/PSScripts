@@ -576,7 +576,6 @@ function Get-SystemGAC( [string[]] $servers )
 		return ( Invoke-Command -Computer $servers -ScriptBlock $sb )
 	}
 }
-}
 
 function Get-GoogleGraph([HashTable] $ht, [String] $title, [String] $size="750x350", [string] $file="chart.png",  [switch] $invoke)
 {
