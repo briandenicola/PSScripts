@@ -16,6 +16,7 @@ Import-Module ServiceBus -ErrorAction SilentlyContinue
 $cfg = [xml] ( gc ".\Configs\workflow_setup.xml")
 
 $url = $cfg.Settings.Common.url 
+$source = $cfg.Settings.Common.Source
 $scripts_home = $cfg.Settings.Common.scripts
 $utils_home = $cfg.Settings.Common.utils
 $webpi = $cfg.Settings.Common.webpi
@@ -76,7 +77,7 @@ function Setup-DotNet
 function Update-Audit 
 {
     $audit = audit-Servers -Servers $ENV:COMPUTERNAME
-    WriteTo-SPListViaWebService -url $url -list AppServers -Item $(Convert-ObjectToHash $audit) -TitleField SystemName  
+    WriteTo-SPListViaWebService -url $url -list Servers -Item $(Convert-ObjectToHash $audit) -TitleField SystemName  
 }
 
 function Create-ServiceBusFarm

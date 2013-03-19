@@ -4,6 +4,7 @@
         <url>http://collab.sharepoint.test/sites/AppOps/</url>
         <scripts>C:\Scripts</scripts>
         <utils>C:\utils</utils>
+        <source>\\dc01\app-ops\Tool</source>
         <logs>D:\Logs</logs>
     </Common>
     <ServiceBus>
