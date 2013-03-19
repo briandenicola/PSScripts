@@ -6,10 +6,14 @@ param(
 	[switch] $record
 )
 
+ImportSystemModules
+Import-Module WorkflowManager
+Import-Module ServiceBus
+
 . .\Libraries\BootStrap_Functions.ps1
 
 #Set Variables
-$cfg = [xml] ( gc ".\Config\workflow_setup.xml")
+$cfg = [xml] ( gc ".\Configs\workflow_setup.xml")
 
 $url = $cfg.Settings.Common.url 
 $scripts_home = $cfg.Settings.Common.scripts
@@ -60,13 +64,13 @@ function Setup-DotNet
 {
 	#Install .Net Apps
 	Write-Host "[ $(Get-Date) ] - Installing Workflow Manager, Service Bus, and .Net 4.5 Framework . . ."
-	&$webpi /Install /Products:NETFramework45 /accepteula /SuppressReboot 
-    &$webpi /Install /Products:WDeplolyNoSMO /accepteula /SuppressReboot 
+    &$webpi /Install /Products:WDeployNoSMO /accepteula /SuppressReboot 
     &$webpi /Install /Products:ServiceBus /accepteula /SuppressReboot 
+    &$webpi /Install /Products:ServiceBusCU1 /accepteula /SuppressReboot
     &$webpi /Install /Products:WorkflowManager /accepteula /SuppressReboot 
+    &$webpi /Install /Products:WorkflowCU1 /accepteula /SuppressReboot 
     &$webpi /Install /Products:WorkflowClient /accepteula /SuppressReboot 
 	&$webpi /List /ListOption:Installed
-	C:\Windows\Microsoft.NET\Framework64\v4.0.30319\aspnet_regiis.exe -iru
 }
 
 function Update-Audit 
@@ -77,28 +81,27 @@ function Update-Audit
 
 function Create-ServiceBusFarm
 {
-    Import-Module WorkflowManager
-    Import-Module ServiceBus
-
     $cert_key = ConvertTo-SecureString -AsPlainText -Force -String $cfg.Settings.ServiceBus.passphrase
 
     try {
         Write-Host "[ $(Get-Date) ] - Creating Service Bus Farm . . ."
-        New-SBFarm
-            -FarmMgmtDBConnectionString ($con -f $cfg.Settings.ServiceBus.Database, "SbManagementDB")
-            -PortRangeStart 9000 
-            -TcpPort 9354 
-            -RunAsName $cfg.ServiceBus.service_account
-            -AdminGroup $cfg.ServiceBus.administrators
-            -GatewayDBConnectionString ($con -f $cfg.Settings.ServiceBus.Database, "SbGatewayDB")
-            -CertAutoGenerationKey $cert_key 
-            -ContainerDBConnectionString ($con -f $cfg.Settings.ServiceBus.Database, "SBMessageContainerDB")
-
+        
+        $sb_params = @{
+            SBFarmDBConnectionString = ($con -f $cfg.Settings.ServiceBus.Database, "SbManagementDB") 
+            RunAsAccount = $cfg.Settings.ServiceBus.service_account
+            AdminGroup = $cfg.Settings.ServiceBus.administrators
+            GatewayDBConnectionString = ($con -f $cfg.Settings.ServiceBus.Database, "SbGatewayDB")
+            CertificateAutoGenerationKey = $cert_key 
+            MessageContainerDBConnectionString = ($con -f $cfg.Settings.ServiceBus.Database, "SBMessageContainerDB")
+        }
+        New-SBFarm @sb_params -Verbose 
+        
         Write-Host "[ $(Get-Date) ] - Creating Service Bus Namespace . . ."
-        New-SBNamespace
-            -Name $cfg.Settings.ServiceBus.name_space
-            -AddressingScheme "Path" 
-            -ManageUsers $cfg.Settings.ServiceBus.users
+        $ns_params = @{
+            Name = $cfg.Settings.ServiceBus.name_space
+            ManageUsers = $cfg.Settings.ServiceBus.users
+        }
+        New-SBNamespace @ns_params -Verbose
 
         Write-Host "[ $(Get-Date) ] - Sleeping for 90 . . ."
         Start-Sleep 90
@@ -110,22 +113,20 @@ function Create-ServiceBusFarm
 
 function Create-WorkflowFarm
 {
-    Import-Module WorkflowManager
-    Import-Module ServiceBus
-
     $cert_key = ConvertTo-SecureString -AsPlainText -Force -String $cfg.Workflow.passphrase
 
     try {
         Write-Host "[ $(Get-Date) ] - Creating Workflow Farm . . ."
-        New-WFFarm 
-            -FarmMgmtDBConnectionString ($con -f $cfg.Settings.Workflow.Database, "WFManagementDB") 
-            -RunAsName $cfg.Workflow.service_account
-            -AdminGroup $cfg.Workflow.administrators
-            -HttpsPort 12290 
-            -HttpPort 12291 
-            -InstanceMgmtDBConnectionString ($con -f $cfg.Settings.Workflow.Database, "WFInstanceManagementDB")
-            -ResourceMgmtDBConnectionString ($con -f $cfg.Settings.Workflow.Database, "WFResourceManagementDB")
-            -CertAutoGenerationKey $cert_key
+        
+        $wf_params = @{
+            FarmMgmtDBConnectionString = ($con -f $cfg.Settings.Workflow.Database, "WFManagementDB") 
+            RunAsAccount = $cfg.Workflow.service_account
+            AdminGroup = $cfg.Workflow.administrators
+            InstanceMgmtDBConnectionString = ($con -f $cfg.Settings.Workflow.Database, "WFInstanceManagementDB")
+            ResourceMgmtDBConnectionString = ($con -f $cfg.Settings.Workflow.Database, "WFResourceManagementDB")
+            CertAutoGenerationKey = $cert_key
+        }
+        New-WFFarm @wf_params -Verbose
     }
     catch {
          throw "Error creating Workflow Farm"
@@ -134,18 +135,18 @@ function Create-WorkflowFarm
 
 function Join-ServiceBusFarm
 {
-    Import-Module WorkflowManager
-    Import-Module ServiceBus
-
     try {
         $cred = Get-Credential ( $cfg.Settings.ServiceBus.service_account )
         $cert_key = ConvertTo-SecureString -AsPlainText -Force -String $cfg.Settings.ServiceBus.passphrase
 
         Write-Host "[ $(Get-Date) ] - Joining Service Bus Farm . . ."
-        Add-SBHost 
-            -FarmMgmtDBConnectionString ($con -f $cfg.Settings.ServiceBus.Database, "SbManagementDB")
-            -RunAsPassword $cerd.Password
-            -CertAutoGenerationKey $cert_key
+        $sb_params = @{
+            FarmMgmtDBConnectionString  = ($con -f $cfg.Settings.ServiceBus.Database, "SbManagementDB")
+            RunAsPassword = $cerd.Password
+            CertAutoGenerationKey = $cert_key
+        }
+        Add-SBHost @sb_params -Verbose 
+           
     }
     catch {
          throw "Error joining the Service Bus Farm"
@@ -154,9 +155,6 @@ function Join-ServiceBusFarm
 
 function Join-WorkflowFarm
 {
-    Import-Module WorkflowManager
-    Import-Module ServiceBus
-
     try {
         $cred = Get-Credential ( $cfg.Settings.Workflow.service_account )
         $cert_key = ConvertTo-SecureString -AsPlainText -Force -String $cfg.Settings.Workflow.passphrase
@@ -164,18 +162,37 @@ function Join-WorkflowFarm
         $sb_config = Get-SBClientConfiguration -Namespace $cfg.Settings.ServiceBus.Namepase -Verbose
 
         Write-Host "[ $(Get-Date) ] - Joining Workflow Farm . . ."
-        Add-WFHost 
-            -FarmMgmtDBConnectionString ($con -f $cfg.Settings.Workflow.Database, "WFManagementDB")
-            -RunAsPassword $cred.Password 
-            -SBClientConfiguration $sb_config
-            -EnableHttpPort
-            -CertAutoGenerationKey $cert_key
+        $wf_params = @{ 
+            FarmMgmtDBConnectionString = ($con -f $cfg.Settings.Workflow.Database, "WFManagementDB")
+            RunAsPassword = $cred.Password 
+            SBClientConfiguration = $sb_config
+            EnableHttpPort = $true
+            CertAutoGenerationKey = $cert_key
+        }
+        Add-WFHost @wf_params -Verbose
     }
     catch {
          throw "Error joining the Workflow Farm"
     }
 }
 
+function Schedule-And-Reboot
+{
+    $name = "WorkflowInstall"
+
+    $script = "cd $scripts_home\Install-SharePoint2013;"
+	$script += Join-Path $PWD.Path "Install-SharePoint-Workflows.ps1"
+	$script += " -operation farm"
+		
+	$cmd = "c:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command `"$script`""
+	
+    New-ItemProperty "HKLM:SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" -Name $name -PropertyType string
+	Set-ItemProperty "HKLM:SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce" -Name $name -Value $cmd
+		
+	Write-Host "System will reboot in 10 seconds"
+	Start-Sleep 10
+	Restart-Computer -Force -Confirm:$true
+}
 
 function main
 {	
@@ -192,7 +209,11 @@ function main
 	if( $operation -eq "all" -or $operation -eq "copy" ) { Copy-Files; $operation = "all" }
 	if( $operation -eq "all" -or $operation -eq "base" ) { Setup-Base; $operation = "all" }
 	if( $operation -eq "all" -or $operation -eq "iis" ) { Setup-IIS; $operation = "all" }
-	if( $operation -eq "all" -or $operation -eq "dotnet" ) { Setup-DotNet; $operation = "all" }
+	
+    if( $operation -eq "all" -or $operation -eq "dotnet" ) { 
+        Setup-DotNet
+        Schedule-And-Reboot
+    }
 	
     if( $farm -eq "create" ) { 
         Create-ServiceFarm 

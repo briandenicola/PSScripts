@@ -1,0 +1,23 @@
+﻿<Settings>
+    <Common>
+        <webpi>C:\utils\WebPIv4\WebpiCmd.exe</webpi>
+        <url>http://collab.sharepoint.test/sites/AppOps/</url>
+        <scripts>C:\Scripts</scripts>
+        <utils>C:\utils</utils>
+        <logs>D:\Logs</logs>
+    </Common>
+    <ServiceBus>
+    	<database></database>
+	<passphrase></passphrase>
+	<administrators></administrators>
+	<service_account></service_account>
+	<name_space></name_space>
+	<users></users>
+    </ServiceBus>
+    <Workflow>
+    	<database></database>
+	<passphrase></passphrase>
+	<service_account></service_account>
+	<administrators></administrators>
+    </Workflow>
+</Settings>
