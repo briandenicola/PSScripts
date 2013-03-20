@@ -141,6 +141,7 @@
 			<Database instance="" name="Search_Service_DB" />
 			<SearchAppPool name="AppPool - SharePoint Search Service Application" account="DOMAIN\"/>
 			<DefaultContentAccessAccount name="DOMAIN\" password="" />
+            <RootDirectory>D:\Index</RootDirectory>
 		</Service>
 		<Service App="Metadata">
 			<name>Managed Metadata Service Application</name>

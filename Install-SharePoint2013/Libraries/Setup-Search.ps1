@@ -14,7 +14,12 @@ function Create-EnterpriseSearch
 		Get-SPEnterpriseSearchQueryAndSiteSettingsServiceInstance -Identity $cfg.Server.Name | Start-SPEnterpriseSearchQueryAndSiteSettingsServiceInstance
 
 		Write-Host "[ $(Get-Date) ] -  Creating Search Service Application and Proxy (This will take a while) . . ."
-		$search_app = New-SPEnterpriseSearchServiceApplication -Name $app_name -ApplicationPool $search_app_pool -DatabaseName $cfg.Database.Name -DatabaseServer $cfg.Databse.Instance -Verbose
+		$search_app = New-SPEnterpriseSearchServiceApplication -Name $app_name `
+            -ApplicationPool $search_app_pool `
+            -DatabaseName $cfg.Database.Name `
+            -DatabaseServer $cfg.Databse.Instance 
+            -Verbose
+
 		New-SPEnterpriseSearchServiceApplicationProxy -Name $proxy_nmae -SearchApplication $search_app -Verbose
 
 		Write-Host "[ $(Get-Date) ] -  Configuring Search Default Access Account . . . "
@@ -25,12 +30,25 @@ function Create-EnterpriseSearch
 		Write-Host "[ $(Get-Date) ] -  Configuring Search Component Topology . . . "
 		$clone = $search_app.ActiveTopology.Clone()
 		$instance = Get-SPEnterpriseSearchServiceInstance
-		New-SPEnterpriseSearchAdminComponent –SearchTopology $clone -SearchServiceInstance $instance
-		New-SPEnterpriseSearchContentProcessingComponent –SearchTopology $clone -SearchServiceInstance $instance
-		New-SPEnterpriseSearchAnalyticsProcessingComponent –SearchTopology $clone -SearchServiceInstance $instance 
-		New-SPEnterpriseSearchCrawlComponent –SearchTopology $clone -SearchServiceInstance $instance 
-		New-SPEnterpriseSearchIndexComponent –SearchTopology $clone -SearchServiceInstance $instance
-		New-SPEnterpriseSearchQueryProcessingComponent –SearchTopology $clone -SearchServiceInstance $instance
+		New-SPEnterpriseSearchAdminComponent –SearchTopology $clone -SearchServiceInstance $instance -Verbose
+		New-SPEnterpriseSearchContentProcessingComponent –SearchTopology $clone -SearchServiceInstance $instance -Verbose
+		New-SPEnterpriseSearchAnalyticsProcessingComponent –SearchTopology $clone -SearchServiceInstance $instance -Verbose
+		New-SPEnterpriseSearchCrawlComponent –SearchTopology $clone -SearchServiceInstance $instance -Verbose
+
+        $index_params = @{
+            SearchTopology = $clone
+            SearchServiceInstance = $instance
+        }		
+ 
+        if( $cfg.RootDirectory ) { 
+            if( !(Test-Path $cfg.RootDirectory ) ) {
+                New-Item $cfg.RootDirectory -ItemType Directory
+            }
+            $index_params.Add( "RootDirectory", $cfg.RootDirectory )
+		}
+        New-SPEnterpriseSearchIndexComponent @index_params -Verbose
+
+        New-SPEnterpriseSearchQueryProcessingComponent –SearchTopology $clone -SearchServiceInstance $instance -Verbose
 		
 		Write-Host "[ $(Get-Date) ] -  Activing Search Component Topology (Another Long Setup). . . "
 		$clone.Activate()
