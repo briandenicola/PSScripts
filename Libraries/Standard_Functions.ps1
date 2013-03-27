@@ -8,6 +8,57 @@ $domain  = "mail.sharepoint.test"
 $AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
 $AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
 
+function Get-RemoteDesktopSessions
+{
+    param(
+        [Parameter(Mandatory = $True, ValueFromPipeline = $True)]
+        [string[]] $computers
+    )
+     
+    begin {
+        $users = @()
+        $filter = "name='explorer.exe'"
+    }
+    process {
+        foreach( $computer in $computers ) {
+            foreach( $process in (Get-WmiObject -ComputerName $computer -Class Win32_Process -Filter $filter ) ) {
+                $users += (New-Object PSObject -Property @{
+                    Computer = $computer
+                    User = $process.getOwner() | Select -Expand User
+                })                     
+            }
+        }
+    }
+    end {
+        return $users
+    }
+}
+
+function LogOff-Computer 
+{
+    param(
+        [Parameter(Mandatory = $True, ValueFromPipeline = $True)]
+        [string[]] $computer,
+        [switch] $forced
+    )
+     
+    begin {
+        $log_off = 0
+    }
+    process {
+        if( $forced ) {
+            $log_off = 4
+        }
+
+        foreach( $computer in $computers) {
+            Write-Verbose "Logging off $computer "
+            (Get-WMIObject -class Win32_OperatingSystem -Computername $computer).Win32Shutdown($log_off) | Out-Null
+        }
+    }
+    end {
+    }
+}
+
 function New-PSWindow 
 { 
 	param( 
