@@ -41,9 +41,9 @@ Write-Host "[ $(Get-Date) ] - Setting Time Zone to Central Standard Time . . ."
 tzutil.exe /s "Central Standard Time" 
 
 Write-Host "[ $(Get-Date) ] - Setting Automatic Updates . . ."
-Net stop wsuaserv 
-cscript scregedit.wst /AU 4 
-Net stop wsuaserv 
+Stop-Service wuauserv -Force -Verbose
+cscript c:\windows\system32\scregedit.wsf /AU 4 
+Start-Service wuauserv -Verbose
 
 Write-Host "[ $(Get-Date) ] - Setting CD-Rom Drive to Z: . . ."
 .\reassign_cd-rom_drive_letter.bat
@@ -62,7 +62,7 @@ Write-Host "[ $(Get-Date) ] - Disabling Error Reporting . . ."
 .\config_error_reporting.vbs
 
 Write-Host "[ $(Get-Date) ] - Disabling Firewall (I know. I know.) . . ."
-Set-NetworkFirewallProfile -Enabled false
+Set-NetFirewallProfile -Enabled false
 
 Write-Host "[ $(Get-Date) ] - Disabling UAC . . ."
 Set-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 00000000

@@ -12,7 +12,7 @@ $root_ca = "CN={0},{1}" -f "ca",$ca_name
 
 #Install Features
 Import-Module ServerManager
-Add-WindowsFeatures AD-domain-Services,ADDS-Domain-Controller
+Add-WindowsFeatures AD-domain-Services
 
 #Create Domain
 Import-Module ADDSDeployment
