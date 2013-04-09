@@ -1317,13 +1317,10 @@ function BulkWrite-ToSQLDatabase([Object] $table)
 }
 
 function Is-64Bit() 
-{    
-	if ([IntPtr].Size -eq 4) 
-	{ 
+{   
+	if ( [IntPtr].Size -eq 4 ) { 
 		return $false 
 	}    
-	else 
-	{ 
-		return $true 
-	}
+	return $true 
+
 }
