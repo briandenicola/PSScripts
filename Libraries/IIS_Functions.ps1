@@ -5,6 +5,18 @@ Add-PSSnapin WebFarmSnapin -ErrorAction SilentlyContinue
 
 $ENV:PATH += ';C:\Program Files\IIS\Microsoft Web Deploy V2'
 
+function Get-AppPool-Requests 
+{
+    param(
+        [string] $appPool
+    )
+    Set-Location "IIS:\AppPools\$appPool\WorkerProcesses"
+    $process = Get-ChildItem "IIS:\AppPools\$appPool\WorkerProcesses" | Select -ExpandProperty ProcessId
+    $requests = (Get-Item $process).GetRequests(0).Collection | Select requestId, connectionId, url,verb, timeElapsed
+
+    return $requests 
+}
+
 function Create-WebFarm
 {
 	param(
@@ -319,6 +331,24 @@ function Set-SSLforWebApplication
 
 	Get-WebBinding $name
 }
+
+
+function Update-SSLforWebApplication
+{
+	param (
+		[string] $name,
+		[string] $common_name
+	)
+	
+	Get-WebBinding $name
+	
+	$cert_thumprint = Get-ChildItem -path cert:\LocalMachine\My | Where { $_.Subject.Contains($common_name) } | Select -Expand Thumbprint
+	cd IIS:\SslBindings
+	Get-item cert:\LocalMachine\MY\$cert_thumprint | Set-item 0.0.0.0!443
+
+	Get-WebBinding $name
+}
+
 
 function Set-IISLogging
 {

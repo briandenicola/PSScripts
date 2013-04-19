@@ -104,8 +104,13 @@ function Cycle-IIS()
 	$operators = @()
 	$cfgFile.scrap.operators.operator | % { $operators += $_.pager }
 
+    $timeout = 10
+    if( ![String]::IsNullOrEmpty($url.timeout) ) {
+        $timeout = $url.timeout
+    } 
+
 	$subject = $cfgFile.scrap.app + " alert! "
-	$body = "{0} [{1}] - State: DOWN! `n {2}" -f $url.site, $url.server, $msg
+	$body = "{0} [{1}] - has timed out after {2} seconds.`n{3}" -f $url.site, $url.server, $timeout, $msg
 
 	log -txt $body -log $global:LogFile
 

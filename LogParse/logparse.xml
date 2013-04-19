@@ -20,7 +20,7 @@
 		</query>
 		<query>
 			<sql>"SELECT TOP 25 date,time, cs-uri-stem, s-ip, sc-bytes, cs-bytes, time-taken INTO {2} FROM {1} WHERE cs-uri-stem NOT LIKE '%sitedata.asmx%' ORDER BY time-taken DESC"</sql>
-			<output_file>Top-25-Pages-By-Time-Taken_{0}-{1}}.csv</output_file>
+			<output_file>Top-25-Pages-By-Time-Taken_{0}-{1}.csv</output_file>
 		</query>
 		<query>
 			<sql>"SELECT QUANTIZE(TO_TIMESTAMP(date, time), 3600) AS Hour, COUNT(*) AS Hits, s-ip INTO {2} FROM {1} GROUP BY Hour,s-ip ORDER BY Hour ASC"</sql>

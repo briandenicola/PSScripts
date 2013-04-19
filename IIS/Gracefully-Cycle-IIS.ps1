@@ -2,7 +2,6 @@
 param ( 
     [Parameter(Mandatory=$true)]
     [string] $server,
-    [switch] $record,
     [string] $log
 )
 
@@ -22,11 +21,12 @@ function Stop-Site-Gracefully
     param( [string] $server )
 
 	Stop-IISSite -computers $server -Name $default_site
+    Get-IISWebState -computers $server 
 
 	$i = 0
 	do {
 		Start-Sleep -Seconds 10
-		$active_connections = Get-PerformanceCounters -counters $counter -computers $env:COMPUTERNAME -samples 1 -interval 1 | Select -ExpandProperty CookedValue
+		$active_connections = Get-PerformanceCounters -counters $counter -computers $server -samples 1 -interval 1 | Select -ExpandProperty CookedValue
 		$i++
         Write-Host -NoNewline "."
 	} while ( $i -lt 12 -and $active_connections -ge $impact_limit )
@@ -61,15 +61,13 @@ function main
     Start-IIS -server $server
     Start-Site -server $server
 
-	if( $record ) { 
-        $obj = New-Object PSObject -Property @{
-            Title = "Gracefully Cycled IIS on " + $server
-            User = $ENV:USERNAME
-            Description = "[ $(Get-Date) ] - IIS on $server was cycled. $active_connections connections were impacted..."
-        }
+    $obj = New-Object PSObject -Property @{
+        Title = "Gracefully Cycled IIS on " + $server
+        User = $ENV:USERNAME
+        Description = "[ $(Get-Date) ] - IIS on $server was cycled. $active_connections connections were impacted..."
+    }
 
-        Write-Host $obj
-        WriteTo-SPListViaWebService -url $url -list $list -Item $(Convert-ObjectToHash $obj) -TitleField Title
-	} 
+    Write-Host $obj
+    WriteTo-SPListViaWebService -url $url -list $list -Item $(Convert-ObjectToHash $obj) -TitleField Title
 }
 main
