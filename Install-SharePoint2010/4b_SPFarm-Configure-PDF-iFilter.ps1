@@ -48,7 +48,7 @@ function main()
 	$computers = @()
 	$computers += $cfg.SharePoint.Farms.Farm | where { $_.Name -eq "Services"} | Select -Expand Server | ? { $_.Role -eq "Indexer" } | Select -Expand Name
 	
-	if( $computers.Length -gt 1 )
+	if( $computers.Length -ge 1 )
 	{
 		Write-Host "Found the following indexers in the services farm" + $computers
 	}
