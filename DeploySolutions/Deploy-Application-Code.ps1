@@ -4,6 +4,8 @@ param (
 	[Parameter(Mandatory=$true)]
 	[string] $url,
 
+    [string] $app,
+
 	[switch] $record,
 
     [Parameter(ParameterSetName='interactive')]
@@ -29,13 +31,13 @@ Set-Variable -Name team_list -Value "Deployment Tracker" -Option Constant
 Set-Variable -Name team_view -Value '{4CB38665-FBC7-48DC-86A9-6ABF8B289EE6}' -Option Constant
 Set-Variable -Name deploy_solutions -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Deploy-Sharepoint-Solutions.ps1") -Option Constant
 Set-Variable -Name deploy_configs -Value (Join-Path $ENV:SCRIPTS_HOME "DeployConfig\DeployConfigs.ps1") -Option Constant
-Set-Variable -Name enable_features -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Enable-WGC-Features.ps1") -Option Constant
+Set-Variable -Name enable_features -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Enable-Features.ps1") -Option Constant
 
 $menu = @"
-This script will deploy code for WGC  . . .
-`t1) Deploy WGC Solutions
-`t2) Enable WGC Features
-`t3) Deploy WGC Web Config Files
+This script will deploy code for $app  . . .
+`t1) Deploy $app Solutions
+`t2) Enable $app Features
+`t3) Deploy $app Web Config Files
 `t4) Install MSI Files
 `t5) Uninstall MSI Files
 `t6) Install Files to GAC
@@ -62,17 +64,23 @@ function Record-Deployment {
 	$global:deploy_steps 
 	Write-Host "============================"
 	
-	$code_version = Read-Host "Please enter the Code Version - example: WGC-2010-3.1.0"
+	$code_version = Read-Host "Please enter the Code Version - example: $app-2010-3.1.0"
 	$code_number = Read-Host "Please enter the Code Version Number- example: 11"
 	
 	$deploys = Get-SPListViaWebService -url $team_site -list $team_list -View $team_view 
 	$existing_deploy = $deploys | where { $_.CodeVersion -eq $code_version -and $_.VersionNumber -eq $code_number } | Select -First 1
+
+    $steps = @"
+        $ENV:COMPUTERNAME Steps- 
+        Automated with $MyInvocation.ScriptName. 
+        Steps Taken include - $global:deploy_steps
+"@
 	
 	if( ! $existing_deploy ) {
 		$deploy = @{
 			Title = "Automated WGC Deployment for $url"
 			CodeLocation = $src
-			DeploymentSteps = "$ENV:COMPUTERNAME Steps - <BR/>Automated with " + $MyInvocation.ScriptName + ". Steps Taken include - $($global:deploy_steps)<BR/>"
+			DeploymentSteps = $steps
 			CodeVersion = $code_version
 			VersionNumber = $code_number
 			Notes = "Deployed on $ENV:COMPUTERNAME from $deploy_directory . . .<BR/>"
@@ -94,7 +102,7 @@ function Record-Deployment {
 	}
 	else { 
 		$existing_deploy.Notes += "Deployed on $ENV:COMPUTERNAME from $deploy_directory . . .<BR/>"
-		$existing_deploy.DeploymentSteps += "$ENV:COMPUTERNAME Steps - <BR/>Automated with " + $MyInvocation.ScriptName + ". Steps Taken include - $($global:deploy_steps)<BR/>" 
+		$existing_deploy.DeploymentSteps += $steps
 		Update-SPListViaWebService -url $team_site -list $team_list -Item (Convert-ObjectToHash $existing_deploy) -Id  $existing_deploy.Id	
 	}
 }
