@@ -11,7 +11,8 @@ param (
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 
-$global:logFile = Join-Path $PWD.PATH ($env + "-environmental-validation-" + $(Get-Date).ToString("yyyyMMddmmhhss") + ".log" ) 
+$global:logFile = Join-Path $PWD.PATH ( Join-Path "logs" ($env + "-environmental-validation-" + $(Get-Date).ToString("yyyyMMddmmhhss") + ".log" ) )
+$url = "http://example.com/sites/AppOps/"
 
 function log ( [string] $txt )
 {
@@ -21,12 +22,12 @@ function log ( [string] $txt )
 
 function Get-SharePoint-SQLServersWS ()
 {
-	return(	get-SPListViaWebService -Url "http://collaboration.gt.com/site/SharePointOperationalUpgrade/" -list "SQL Servers"  -view "{41451D55-9C58-4E91-A262-67B26B90305B}" )
+	return(	Get-SPListViaWebService -Url $url -list "SQL Servers" )
 }
 
 $check_apppool_sb = { 
 	Import-Module WebAdministration  -EA SilentlyContinue
-	dir IIS:\AppPools  | where { $_.State -eq "Stopped" -and $_.name -ne "SharePoint Web Services Root" } | Select @{Name="System";Expression={$Env:ComputerName}}, Name, State 
+	Get-ChildItem IIS:\AppPools | Where { $_.State -eq "Stopped" -and $_.name -ne "SharePoint Web Services Root" } | Select @{Name="System";Expression={$Env:ComputerName}}, Name, State 
 }
 
 $check_url_sb = {
@@ -60,7 +61,7 @@ $check_solutions_sb = {
 		$solutions += (New-Object PSObject -Property @{
 			Server = $env:COMPUTERNAME
 			Solution = $solution.Name
-			Hash = (get-hash1 ( $ENV:TEMP + "\" + $solution.Name ))
+			Hash = (Get-Hash1 ( $ENV:TEMP + "\" + $solution.Name ))
 		})
 		Remove-Item ( $ENV:TEMP + "\" + $solution.Name ) -Force
 	}
@@ -181,6 +182,9 @@ $ca_session = New-PSSession -ComputerName $ca_servers -Authentication Credssp -C
 #EndRegion 
 
 #Region Check AppPools
+log -txt "Checking Web Site State"
+Get-IISWebState -computers $servers | Sort Name | Out-File -Append -Encoding ASCII $global:logFile
+
 log -txt "Checking for Stopped AppPools Status"
 Invoke-Command -Session $server_session -ScriptBlock $check_apppool_sb |
 	Select System, Name, State | 
@@ -231,10 +235,12 @@ if($farm -eq "2010-" -or $farm -eq "2010-Services") {
 #EndRegion
 
 #Region Check Failed Timer Jobs
-log -txt "Check SFailed Timer Jobs"
-Invoke-Command -Session $ca_session -ScriptBlock $check_failed_timer_jobs |
-	Select JobDefinitionTitle, ServerName, StartTime, EndTime, ErrorMessage | 
-	Out-File -Append -Encoding ASCII $global:logFile
+if($withlogs) {
+    log -txt "Check Failed Timer Jobs"
+    Invoke-Command -Session $ca_session -ScriptBlock $check_failed_timer_jobs |
+	    Select JobDefinitionTitle, ServerName, StartTime, EndTime, ErrorMessage | 
+	    Out-File -Append -Encoding ASCII $global:logFile
+}
 #EndRegion
 
 #Region Check URLs
