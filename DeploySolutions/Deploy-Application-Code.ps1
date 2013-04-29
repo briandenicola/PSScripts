@@ -1,9 +1,11 @@
 param ( 
 	[Parameter(Mandatory=$true)]
 	[string] $src,
+
 	[Parameter(Mandatory=$true)]
 	[string] $url,
-
+    
+    [Parameter(Mandatory=$true)]
     [string] $app,
 
 	[switch] $record,
@@ -21,17 +23,18 @@ param (
 
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
+. (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
 
 $global:deploy_steps = @()
 
 Set-Variable -Name log_home -Value "D:\Logs" -Option Constant
-Set-Variable -Name deploy_home -Value "D:\Deploy\AppSource" -Option Constant
-Set-Variable -Name team_site -Value "http://team.example.com" -Option Constant
+Set-Variable -Name deploy_home -Value "D:\Deploy\$app" -Option Constant
+Set-Variable -Name team_site -Value "http://example.com/sites/AppOps/" -Option Constant
 Set-Variable -Name team_list -Value "Deployment Tracker" -Option Constant
-Set-Variable -Name team_view -Value '{4CB38665-FBC7-48DC-86A9-6ABF8B289EE6}' -Option Constant
+Set-Variable -Name team_view -Value '{}' -Option Constant
 Set-Variable -Name deploy_solutions -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Deploy-Sharepoint-Solutions.ps1") -Option Constant
 Set-Variable -Name deploy_configs -Value (Join-Path $ENV:SCRIPTS_HOME "DeployConfig\DeployConfigs.ps1") -Option Constant
-Set-Variable -Name enable_features -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Enable-Features.ps1") -Option Constant
+Set-Variable -Name enable_features -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Enable-$app-Features.ps1") -Option Constant
 
 $menu = @"
 This script will deploy code for $app  . . .
@@ -44,14 +47,29 @@ This script will deploy code for $app  . . .
 `tQ) Quit
 "@
 
+function Encode-HTML
+{
+    param(
+        [string] $body
+    )
+
+    return ( [system.net.webutility]::htmlencode($body) )
+}
+
+
 function Get-SPUserViaWS( [string] $url, [string] $name )
 {
 	$service = New-WebServiceProxy ($url + "_vti_bin/UserGroup.asmx?WSDL") -Namespace User -UseDefaultCredential
 	$user = $service.GetUserInfo("i:0#.w|$name")
 	
-	if( $user ) {
+	if( $user ) 
+	{
 		return ( $user.user.id + ";#" + $user.user.Name )
 	} 
+	else
+	{
+		return $null
+	}	
 }
 
 function Record-Deployment { 
@@ -69,40 +87,50 @@ function Record-Deployment {
 	
 	$deploys = Get-SPListViaWebService -url $team_site -list $team_list -View $team_view 
 	$existing_deploy = $deploys | where { $_.CodeVersion -eq $code_version -and $_.VersionNumber -eq $code_number } | Select -First 1
-
-    $steps = @"
-        $ENV:COMPUTERNAME Steps- 
-        Automated with $MyInvocation.ScriptName. 
-        Steps Taken include - $global:deploy_steps
-"@
 	
+    $steps = @"
+        Automated with $($MyInvocation.InvocationName) from $ENV:COMPUTERNAME . . .<BR/>
+        Steps Taken include - <BR/>
+        $global:deploy_steps
+"@
+
+	$date = $(Get-Date).ToString("yyyy-MM-ddThh:mm:ssZ")
+	$user = Get-SPUserViaWS -url $team_site -name ($ENV:USERDOMAIN + "\" + $ENV:USERNAME)
+
 	if( ! $existing_deploy ) {
 		$deploy = @{
-			Title = "Automated WGC Deployment for $url"
+			Title = "Automated $app Deployment"
+            Application = ";#$app;#"
 			CodeLocation = $src
-			DeploymentSteps = $steps
+			DeploymentSteps = Encode-HTML -body $steps
 			CodeVersion = $code_version
 			VersionNumber = $code_number
-			Notes = "Deployed on $ENV:COMPUTERNAME from $deploy_directory . . .<BR/>"
+			Notes = Encode-HTML -body "Deployed on $ENV:COMPUTERNAME from $deploy_directory . . .<BR/>"
 		}
-		
-		$date = $(Get-Date).ToString("yyyy-MM-ddThh:mm:ssZ")
-		$user = Get-SPUserViaWS -url $team_site -name ($ENV:USERDOMAIN + "\" + $ENV:USERNAME)
-		
+			
 		if( $url -imatch "-uat" ) {
 			$deploy.Add( 'UAT_x0020_Deployment', $date )
 			$deploy.Add( 'UAT_x0020_Deployer', $user )
 		} 
 		else {
-			$deploy.Add( 'Prod_x0020_Deployment', $date )
-			$deploy.Add( 'Prod_x0020_Deployer', $user ) 
+			$deploy.Add( 'PROD_x0020_Deployment', $date )
+			$deploy.Add( 'PROD_x0020_Deployer', $user ) 
 		}
 	
 		WriteTo-SPListViaWebService -url $team_site -list $team_list -Item $deploy
 	}
 	else { 
-		$existing_deploy.Notes += "Deployed on $ENV:COMPUTERNAME from $deploy_directory . . .<BR/>"
-		$existing_deploy.DeploymentSteps += $steps
+        if( $url -imatch "-uat" ) {
+        	$existing_deploy | Add-Member -Type NoteProperty -Name UAT_x0020_Deployment -Value $date 
+			$existing_deploy | Add-Member -Type NoteProperty -Name UAT_x0020_Deployer $user 
+        }
+        else {
+			$existing_deploy | Add-Member -Type NoteProperty -Name PROD_x0020_Deployment -Value $date 
+			$existing_deploy | Add-Member -Type NoteProperty -Name PROD_x0020_Deployer $user 
+        }
+
+		$existing_deploy.Notes = Encode-HTML -body ( $existing_deploy.Notes + "Deployed on $ENV:COMPUTERNAME from $deploy_directory . . .<BR/>" )
+		$existing_deploy.DeploymentSteps = Encode-HTML -body ( $existing_deploy.DeploymentSteps + $steps )
 		Update-SPListViaWebService -url $team_site -list $team_list -Item (Convert-ObjectToHash $existing_deploy) -Id  $existing_deploy.Id	
 	}
 }
@@ -113,8 +141,8 @@ function Deploy-Solutions {
 	)
 	
 	if($record) {
-		$global:deploy_steps += "$deploy_solutions -web_application $url -deploy_directory $deploy_directory -noupgrade"
-		$global:deploy_steps += "$deploy_configs -operation backup -url $url"
+		$global:deploy_steps += "<li>$deploy_solutions -web_application $url -deploy_directory $deploy_directory -noupgrade</li>"
+		$global:deploy_steps += "<li>$deploy_configs -operation backup -url $url</li>"
 	}
 	
 	cd ( Join-Path $ENV:SCRIPTS_HOME "DeploySolutions" )
@@ -127,8 +155,8 @@ function Deploy-Solutions {
 function Deploy-Config {
 	
 	if($record) {
-		$global:deploy_steps += "$deploy_configs -operation deploy -url $url"
-		$global:deploy_steps += "$deploy_configs -operation validate -url $url"
+		$global:deploy_steps += "<li>$deploy_configs -operation deploy -url $url</li>"
+		$global:deploy_steps += "<li>$deploy_configs -operation validate -url $url</li>"
 	}
 	
 	Write-Host "[ $(Get-Date) ] - Deploying Solutions for $url . . ."
@@ -141,7 +169,7 @@ function Deploy-Config {
 function Enable-Features {
 
 	if($record) {
-		$global:deploy_steps += "$enable_features -webApp $url"		
+		$global:deploy_steps += "<li>$enable_features -webApp $url</li>"		
 	}
 	
 	Write-Host "[ $(Get-Date) ] - Enabling Features for $url . . ."
@@ -156,7 +184,7 @@ function Install-MSIFile {
 	)
 
 	if($record) {
-		$global:deploy_steps += "dir $deploy_directory -filter *.msi | % { Start-Process -FilePath msiexec.exe -ArgumentList /i, $_.FullName -Wait  }"
+		$global:deploy_steps += "<li>dir $deploy_directory -filter *.msi | % { Start-Process -FilePath msiexec.exe -ArgumentList /i, $_.FullName -Wait  }</li>"
 	}
 	
 	dir $deploy_directory -Filter *.msi | % { 
@@ -171,7 +199,7 @@ function Uninstall-MSIFile {
 	)
 
 	if($record) {
-		$global:deploy_steps += "Get-Content (Join-Path $deploy_directory uninstall.txt) | % { Start-Process -FilePath msiexec.exe -ArgumentList /x,$_,/qn -Wait  }"
+		$global:deploy_steps += "<li>Get-Content (Join-Path $deploy_directory uninstall.txt) | % { Start-Process -FilePath msiexec.exe -ArgumentList /x,$_,/qn -Wait  }</li>"
 	}
 
 	Get-Content (Join-Path $deploy_directory "uninstall.txt") | % { 
@@ -189,7 +217,7 @@ function DeployTo-GAC {
     $ans = [String]::Empty
 
 	if($record) {
-		$global:deploy_steps += "(Join-Path $ENV:SCRIPTS_HOME Misc-SPScripts\Install-Assemblies-To-GAC.ps1) -src $deploy_directory"
+		$global:deploy_steps += "<li>(Join-Path $ENV:SCRIPTS_HOME Misc-SPScripts\Install-Assemblies-To-GAC.ps1) -src $deploy_directory</li>"
 	}
 
     if( $interactive ) { 
@@ -222,7 +250,7 @@ function Display-Menu {
 	$deploy_directory = (Join-Path $deploy_home (Get-Item $src | Select -Expand Name))
 
 	if( $ans -match "Y|y" ) {
-		if( Test-Path $deploy_directory ) { move $deploy_directory ( $deploy_directory + "." +  $(Get-Date).ToString("yyyyMMddhhmmss") ) -Verbose }
+		if( Test-Path $deploy_directory ) { move $deploy_directory ( $deploy_directory + "-bak." +  $(Get-Date).ToString("yyyyMMddhhmmss") ) -Verbose }
 		xcopy /e/v/f/s $src "$deploy_directory\"
 	} 
 	else { 
