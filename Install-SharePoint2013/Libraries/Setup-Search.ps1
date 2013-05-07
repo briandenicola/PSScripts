@@ -17,7 +17,7 @@ function Create-EnterpriseSearch
 		$search_app = New-SPEnterpriseSearchServiceApplication -Name $app_name `
             -ApplicationPool $search_app_pool `
             -DatabaseName $cfg.Database.Name `
-            -DatabaseServer $cfg.Databse.Instance 
+            -DatabaseServer $cfg.Databse.Instance `
             -Verbose
 
 		New-SPEnterpriseSearchServiceApplicationProxy -Name $proxy_nmae -SearchApplication $search_app -Verbose
