@@ -2,8 +2,7 @@
 [void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SharePoint")
 [void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.Office.Server.Search") 
 [void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.Office.Server") 
-
-. (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Variables.ps1")
+#[void][System.Reflection.Assembly]::LoadFrom("D:\Scripts\Libraries\Lists.dll")
 
 $siteTypes = @{}
 $siteTypes.Add("Team Site","STS#0")
@@ -22,25 +21,25 @@ $auditTypes['SearchSiteContent'] = 8192
 $auditTypes['UserSecurity'] = 256
 
 
-function Get-SharePointServersWS
+function Get-SharePointServersWS()
 {
 	param(
 		[string] $version = "2010"
 	)
 	
 	if( $version -eq "2007" ) {
-		return(	get-SPListViaWebService -Url $global:SharePoint_url -list Servers -View $global:SharePoint_2007_View  | Select SystemName, Farm, Environment )
+		return(	get-SPListViaWebService -Url http://teamadmin.gt.com/sites/ApplicationOperations/ -list Servers -View '{17029C2D-ABD2-45F8-9FE5-17A5F3C0DCBC}' | Select SystemName, Farm, Environment, ApplicationName)
 	} else { 
-		return(	get-SPListViaWebService -Url $global:SharePoint_url -list Servers  | Select SystemName, Farm, Environment )
+		return(	get-SPListViaWebService -Url http://teamadmin.gt.com/sites/ApplicationOperations/ -list Servers  | Select SystemName, Farm, Environment, ApplicationName)
 	}
 }
 
-function Get-SharePointCentralAdmins
+function Get-SharePointCentralAdmins()
 {
-	return(	get-SPListViaWebService -Url $global:SharePoint_url -list Servers -view $global:SharePoint_Central_Admin_View | Select SystemName, Farm, Environment, "Central Admin Address" )
+	return(	get-SPListViaWebService -Url http://teamadmin.gt.com/sites/ApplicationOperations/ -list Servers -view "{3ADCF3C7-5CCE-459C-89A8-D361B7C71CB1}" | Select SystemName, Farm, Environment, "Central Admin Address" )
 }
 
-function Get-LatestLog
+function Get-LatestLog()
 {
 	begin {
 		$log_path = "\Logs\Trace\"
@@ -56,7 +55,8 @@ function Get-LatestLog
 	}
 }
 
-function Get-SharePointSolutions
+
+function Get-SharePointSolutions()
 {
 	return (Get-SPFarm | Select -Expand Solutions | Select Name, Deployed, DeployedWebApplications, DeployedServers, ContainsGlobalAssembly, ContainsCasPolicy, SolutionId, LastOperationEndTime)
 }
@@ -65,20 +65,23 @@ function Get-WebServiceURL( [String] $url )
 {
 	$listWebService = "_vti_bin/Lists.asmx?WSDL"
 	
-	if( -not $url.EndsWith($listWebService) ) {
+	if( -not $url.EndsWith($listWebService) )
+	{
 		return $url.Substring( 0, $url.LastIndexOf("/") ) + "/" + $listWebService
-	} 
-    else {
+	} else
+	{
 		return $url
 	}
 
 }
 
-function Get-SPListViaWebService( [string] $url, [string] $list, [string] $view = $null )
+function Get-SPListViaWebService([string] $url, [string] $list, [string] $view = $null )
 {
 	begin {
-		$listData = @()	
+		$listData = @()
+		
 		$service = New-WebServiceProxy (Get-WebServiceURL -url $url) -Namespace List -UseDefaultCredential
+		
 		$FieldsWS = $service.GetList( $list )
 		$Fields = $FieldsWS.Fields.Field | where { $_.Hidden -ne "TRUE"} | Select DisplayName, StaticName -Unique
 		$data = $service.GetListItems( $list, $view, $null, $null, $null, $null, $null )
@@ -137,7 +140,7 @@ function WriteTo-SPListViaWebService ( [String] $url, [String] $list, [HashTable
 			if( -not [String]::IsNullOrEmpty($TitleField) -and $key -eq $TitleField ) {
 				$key = "Title"
 			}
-			$listItem += ("<Field Name='{0}'>{1}</Field>`n" -f $key,$value)   
+			$listItem += ("<Field Name='{0}'>{1}</Field>`n" -f $key, [system.net.webutility]::htmlencode($value) )
 		}   
   
 		$batch = [xml]($xml -f $listInfo.View.Name,$listItem)   
@@ -155,6 +158,7 @@ function WriteTo-SPListViaWebService ( [String] $url, [String] $list, [HashTable
 		
 	}
 }
+
 
 function Update-SPListViaWebService ( [String] $url, [String] $list, [int] $id, [HashTable] $Item, [String] $TitleField )
 {
@@ -180,7 +184,7 @@ function Update-SPListViaWebService ( [String] $url, [String] $list, [int] $id, 
 			if( -not [String]::IsNullOrEmpty($TitleField) -and $key -eq $TitleField ) {
 				$key = "Title"
 			}
-			$listItem += ("<Field Name='{0}'>{1}</Field>`n" -f $key,$value)   
+			$listItem += ("<Field Name='{0}'>{1}</Field>`n" -f $key,[system.net.webutility]::htmlencode($value))  
 		}   
   
 		$xml = ($xml -f $listInfo.View.Name,$id, $listItem)
@@ -205,7 +209,40 @@ function Update-SPListViaWebService ( [String] $url, [String] $list, [int] $id, 
 	}
 }
 
-function Get-SSPSearchContext
+function Get-MOSSProfileDetails([string]$SiteURL, [string]$UserLogin) 
+{ 
+    [Void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.Office.Server.UserProfiles")
+
+    $site = Get-SPSite - url $SiteURL
+
+    $srvContext = [Microsoft.Office.Server.ServerContext]::GetContext($site) 
+    Write-Host "Status", $srvContext.Status 
+    $userProfileManager = new-object Microsoft.Office.Server.UserProfiles.UserProfileManager($srvContext) 
+
+    Write-Host "Profile Count:", $userProfileManager.Count 
+
+    $UserProfile = $userProfileManager.GetUserProfile($UserLogin) 
+
+    #Basic Data 
+    Write-Host "SID :", $UserProfile["SID"].Value 
+    Write-Host "Name :", $UserProfile["PreferredName"].Value 
+    Write-Host "Email :", $UserProfile["WorkEmail"].Value 
+
+    #Detailed Data 
+    Write-Host "Logon Name :", $UserProfile["AccountName"].Value 
+    Write-Host "SID :", $UserProfile["SID"].Value 
+    Write-Host "Name :", $UserProfile["PreferredName"].Value 
+    Write-Host "Job Title :", $UserProfile["Title"].Value 
+    Write-Host "Department :", $UserProfile["Department"].Value 
+    Write-Host "SIP Address :", $UserProfile["WorkEmail"].Value 
+    Write-Host "Picture :", $UserProfile["PictureURL"].Value 
+    Write-Host "About Me :", $UserProfile["AboutMe"].Value 
+    Write-Host "Country :", $UserProfile["Country"].Value
+
+    $site.Dispose() 
+} 
+
+function Get-SSPSearchContext( )
 {
 	$context = [Microsoft.Office.Server.ServerContext]::Default
  	$searchContext = [Microsoft.Office.Server.Search.Administration.SearchContext]::GetContext($context)
@@ -214,7 +251,7 @@ function Get-SSPSearchContext
 	return $content
 }
 
-function Get-SSPSearchContentSources
+function Get-SSPSearchContentSources ( )
 {
  	return $(Get-SSPSearchContext).ContentSources
 }
@@ -261,7 +298,6 @@ function Stop-SSPCrawl( [String] $name )
 		throw "Invalid Crawl State. Crawl should be idle but is not"
 	}
 }
-
 function Get-CrawlHistory
 {
     $serverContext = [Microsoft.Office.Server.ServerContext]::Default
@@ -298,7 +334,7 @@ function Set-SPReadOnly ([bool] $state )
 	}
 }
 
-function Get-SPAudit
+function Get-SPAudit( ) 
 {	
 	param(
 		[Object] $obj
@@ -337,11 +373,10 @@ function Get-SPWebApplication( [string] $name )
 	return ( $webApplications | where { $_.Name.ToLower() -like "*"+$name.ToLower()+"*" } | select -Unique )
 }
 
-function Get-SPFarm
+function Get-SPFarm()
 {
 	return [microsoft.sharepoint.administration.spfarm]::local
 }
-
 function Get-SPSite ( [String] $url )
 {
 	return new-object Microsoft.SharePoint.SPSite($url)
@@ -363,8 +398,7 @@ function Get-SPWeb( [String] $url )
 	return ( $site.OpenWeb() )
 }
 
-function UploadTo-Sharepoint 
-{
+function UploadTo-Sharepoint {
 	param ( 
 		[string] $lib,
 		[string] $file
@@ -376,8 +410,7 @@ function UploadTo-Sharepoint
 	$wc.UploadFile($uploadname,"PUT", $file) 
 }
 
-
-function Update-SPListEntry( [String] $url, [string] $list, [int] $entryID, [HashTable] $entry )
+function Update-SPListEntry([String] $url, [string] $list, [int] $entryID, [HashTable] $entry)
 {
 	$web = Get-SPWeb -url $url
 	
@@ -392,7 +425,7 @@ function Update-SPListEntry( [String] $url, [string] $list, [int] $entryID, [Has
 	$web.Dispose()
 }
 
-function Add-ToSPList( [String] $url, [string] $list, [HashTable] $entry )
+function Add-ToSPList ( [String] $url, [string] $list, [HashTable] $entry)
 {
 	$web = Get-SPWeb -url $url
 	
@@ -407,7 +440,7 @@ function Add-ToSPList( [String] $url, [string] $list, [HashTable] $entry )
 	$web.Dispose()
 }
 
-function Get-SPList( [string] $url, [string] $list, [string] $filter="all" )
+function Get-SPList ( [string] $url, [string] $list, [string] $filter="all")
 {
 	begin{
 		$rtList = @()
@@ -469,14 +502,14 @@ function Get-SPGroup( [String] $Url, [string] $GroupName )
 	return ( $siteGroups | where { $_.Name -like $GroupName } )
 }
 	
-function Get-SPUser( [String] $url, [string] $User ) 
+function Get-SPUser ( [String] $url, [string] $User ) 
 {
 	$web = Get-SPWeb -url $url
 	if( $user.Contains("\") ) { $loginName = $user } else { $loginName = "*\$user" }
 	return ( $web.AllUsers | where { $_.LoginName -like $loginName } )
 }
 
-function Add-SPGroupPermission( [String] $url, [string] $GroupName, [string] $perms )
+function Add-SPGroupPermission( [String] $url, [string] $GroupName, [string] $perms)
 {
 	$web = Get-SPWeb -url $url
 	
@@ -490,7 +523,7 @@ function Add-SPGroupPermission( [String] $url, [string] $GroupName, [string] $pe
 	$web.Dispose()
 }
 
-function Add-MemberToSPGroup( [String] $url, [string] $LoginName , [string] $GroupName ) 
+function Add-MemberToSPGroup (  [String] $url, [string] $LoginName , [string] $GroupName) 
 {
 	$web = Get-SPWeb -url $url
 	$spGroup = Get-spGroup -url $web -GroupName $GroupName
@@ -529,16 +562,20 @@ function Add-SPGroup( [string] $url, [string] $GroupName, [string] $owner, [stri
 	$web.Dispose()
 }
 
-function Add-SPWeb( [string] $url, [string]$WebUrl, [string]$Title, [string]$Description, [string]$Template, [bool] $Inherit ) 
+function Add-SPWeb([string] $url, [string]$WebUrl, [string]$Title, [string]$Description, [string]$Template, [bool] $Inherit) 
 {
+    # Create our SPSite object
     $spsite = Get-SPSite $url
+
+	# Add a site
     $web = $spsite.Allwebs.Add($WebUrl, $Title, $Description ,[int]1033, $siteTypes.Item($Template), $Inherit, $false)
+	
 	$spsite.Dispose()
 	
 	return $web	
 }
 
-function Set-AccessRequestEmail( [String] $url, [string] $email )
+function Set-AccessRequestEmail([String] $url, [string] $email)
 {
 	$web = Get-SPWeb -url $url
 	$web.RequestAccessEmail = $email
@@ -547,7 +584,7 @@ function Set-AccessRequestEmail( [String] $url, [string] $email )
 	$web.Dispose()
 }
 
-function Set-Inheritance( [String] $url, [bool] $unique )
+function Set-Inheritance( [String] $url, [bool] $unique)
 {
 	$web = Get-SPWeb -url $url
 	$web.HasUniquePerm = $unique
@@ -555,7 +592,7 @@ function Set-Inheritance( [String] $url, [bool] $unique )
 	$web.Dispose()
 }
 
-function Set-SharedNavigation( [String] $url, [bool] $shared )
+function Set-SharedNavigation( [String] $url, [bool] $shared)
 {
 	$web = Get-SPWeb -url $url
 	$web.Navigation.UseShared = $shared
@@ -563,7 +600,7 @@ function Set-SharedNavigation( [String] $url, [bool] $shared )
 	$web.Dispose()
 }
 
-function Set-SPAssociatedGroups( [String] $url, [string] $owners, [string] $members, [string] $visitors )
+function Set-spAssociatedGroups( [String] $url, [string] $owners, [string] $members, [string] $visitors)
 {
 	$web = Get-SPWeb -url $url
 	$web.AssociatedOwnerGroup = Get-spGroup -url $web -GroupName $owners
@@ -572,3 +609,288 @@ function Set-SPAssociatedGroups( [String] $url, [string] $owners, [string] $memb
 	$web.Update()
 	$web.Dispose()
 }
+function Get-LookupFieldData
+{
+param
+(
+[String] $field
+)
+	$fieldarray = $field.split(";")
+	[String[]] $out = @()
+			$re = [regex]'^#\D'
+            Foreach($fieldline in $fieldarray)
+			{
+                if ($re.Match($fieldline.toString()).success -eq $true)
+				{
+					$out += $fieldline.substring(1,($fieldline.length -1))
+				}
+			}
+	
+	return $out
+}
+Function Get-Servers
+{
+param
+(
+[String] $env = $(throw 'Please Enter an environment'),
+[String[]] $exclude,
+[String] $list = "Web"
+)
+Switch ($list)
+{
+"Web"{
+		$view = '''{8B5CF22A-914F-47DE-9722-133CCFBAF14C}'''
+		$listurl = '''http://teamadmin.gt.com/sites/ApplicationOperations/applicationsupport/'''
+		$listname = '''appservers'''
+	}
+
+}
+$filter = '$_.Updates -eq ''1'' -and $_.Environment -eq '''+$env+'''' 
+if ($exclude -ne $null)
+{
+foreach ($ex in $exclude)
+{
+$filter = $filter+' -and $_.Application -notlike ''*'+$ex+''''
+}
+
+}
+$exclusion = $executioncontext.invokecommand.NewScriptBlock($filter)
+$appinfo = Get-SPListViaWebService -url $listurl -list $listname -view $view  | Where  [ScriptBlock]::Create($filter)  
+if ($exclude -ne $null)
+{
+foreach ($ex in $exclude)
+{
+$filter = $filter+' -and $_.Application -notlike ''*'+$ex+''''
+}
+}
+$a = @()
+$b = @()
+Foreach ($server in $appinfo)
+{
+if (-not (ping $server."SystemName"))
+{
+$a += $server
+}
+else
+{
+$application = Get-LookupFieldData -field $server.Application
+$b += $server.SystemName+","+$application
+}
+$a | out-file ".\NoLongerAlive.txt"
+$b | Out-File ".\ServerstoPatch.txt"
+}
+}
+
+
+Function new-ListObject {
+New-Object PSObject -Property @{
+         SPWEbList = ''
+         SPDocumentType = ''
+		 SPPSize = ''
+		 SPCSize = ''
+}
+}
+Function Audit-SPList
+{
+param(
+[string] $basesite,
+[int] $samplesize,
+[string] $sourcecsv
+
+)
+Add-PSSnapin Microsoft.Sharepoint.Powershell
+$x = Import-Csv $sourcecsv
+$y = 1
+$length = $x.count
+$rand = New-Object System.Random
+$splistcollection = @()
+$webs = @()
+while ($y -le $samplesize)
+{
+$sitename = $x[$rand.Next(0,$length+1)].url 
+Write-Host "Sample Number: "$y
+Write-Host "Now Sampling" $sitename
+$site = Get-SPSite ($basesite+$sitename) #http://team-uat.gt.com/sites/appops
+$webs = $site.allwebs | ? {$_.serverrelativeURL -match "(/sites/)([\w\d\-_]*)([\w\d\-_]*)"} | select serverrelativeurl
+if (($webs | measure-object | Select -ExpandProperty count) -eq 1)
+#if ([String]::IsNullOrEmpty($matches[3]))
+{
+   Write-Host "The client has 0 webs"
+   $weblist = Get-SPWeb ($basesite+$webs.serverrelativeurl)
+    Write-Host "now Processing: "$weblist.Url
+    $list = $weblist.lists["Document Library"]
+    Write-Host "Item count: "$list.items.count
+    if ($list.items.count -ne 0)
+    {
+        foreach ($listitem in $list.items){
+            write-host "Creating List Items"
+            #$listitem
+            $splistitem = new-ListObject
+            $splistitem.SPWebList = $web.serverrelativeurl
+            #$listitem.name
+            $doctype = $listitem.name -match "(\.\w*$)"
+            $splistitem.SPDocumentType = $matches[0]
+            $splistitem.SPPSize = [math]::Round(($listitem.file.length/1MB),2) 
+            $compare = $listitem.file.length/1MB
+            if ($compare -lt 1) { 
+                $splistitem.SPCsize = "S"
+            }
+            if (($compare -gt 1) -and ($compare -lt 10)) { 
+                $splistitem.SPCsize = "M"
+            }
+            if ($compare -gt 10) { 
+                $splistitem.SPCsize = "L"
+            }
+            #$splistitem
+            $splistcollection += $splistitem
+        } 
+    #$splistcollection += $splistitem
+    } 
+}
+else
+{
+Write-Host "This Client Has this many Webs:"$webs.count
+foreach ($web in $webs){
+    #Write-host "Web:"$web.serverrelativeurl
+    $checkroot = $web.serverrelativeURL -match "(/sites/)([\w\d\-_]*)(/[\w\d\-_]*)"
+    #$checkroot
+    
+    if (-not([String]::IsNullOrEmpty($matches[3])))  
+    {
+       
+        $weblist = Get-SPWeb ($basesite+$web.serverrelativeurl)
+        Write-Host "now Processing: "$weblist.Url
+        $list = $weblist.lists["Document Library"]
+        Write-Host "Item count: "$list.items.count
+        if ($list.items.count -ne 0)
+        {
+            foreach ($listitem in $list.items){
+                write-host "Creating List Items"
+                #$listitem
+                $splistitem = new-ListObject
+                $splistitem.SPWebList = $web.serverrelativeurl
+                #$listitem.name
+                $doctype = $listitem.name -match "(\.\w*$)"
+                $splistitem.SPDocumentType = $matches[0]
+                $splistitem.SPPSize = [math]::Round(($listitem.file.length/1MB),2) 
+                $compare = $listitem.file.length/1MB
+                if ($compare -lt 1) { 
+                    $splistitem.SPCsize = "S"
+                }
+                if (($compare -gt 1) -and ($compare -lt 10)) { 
+                    $splistitem.SPCsize = "M"
+                }
+                if ($compare -gt 10) { 
+                    $splistitem.SPCsize = "L"
+                }
+                #$splistitem
+                $splistcollection += $splistitem
+            } 
+            #$splistcollection += $splistitem
+        }
+    }
+    else
+    {
+    Write-Host "The following site is a root site no proccessing done:"$web.serverrelativeURL
+    }
+}
+
+}
+$y++
+}
+return $splistcollection
+}
+
+
+Function get-restoreinfo
+{
+param
+(
+ $sitename,
+ [switch] $extend
+)
+$found = $false
+$a = Import-Csv \\cdc-spa-p09\d$\logs\sharepoint2010_sitecollections.csv | ? {$_.URL -eq $sitename}
+if ($a.count -eq 0)
+{
+    write-host "Site is not in Current Archive Log"
+    $files = gci \\cdc-spa-p09\d$\logs\sitecollection-archive\ | sort LastWriteTime -Descending
+    $x = 0
+    
+	while ($stop -ne $true)
+    { 
+        if ($x -ne 14)
+        {  
+            Write-host "Checking" $files[$x].FullName 
+            $a = Import-Csv $files[$x].FullName | ? {$_.URL -eq $sitename}
+            if ($a.count -ne 0)
+            {
+                $stop = $true
+				$found = $true
+			}
+            $x++
+        }
+        else
+        {
+            $stop=$true
+			$found = $false
+            Write-Host " Site not found in Archives"
+        }
+
+    }
+	if ($found -ne $true)
+	{
+		Write-Host "Checking older archives"
+		$stop=$false
+        $files = gci \\cdc-nas-fs01\EntAppData\WGC\Logs\CDC-SPA-P09\Extracted\ | sort LastWriteTime -Descending
+        $x = 0
+        #$x = $files.count-1
+        Write-host $x
+        while ($stop -ne $true)
+        {
+        if ($x -lt ($files.count-1))
+        {  
+            Write-host "Checking" $files[$x].FullName 
+            $a = Import-Csv $files[$x].FullName | ? {$_.URL -eq $sitename}
+            if ($a.count -ne 0)
+            {
+                $stop = $true
+				$found = $true
+			}
+            $x++
+        }
+        else
+        {
+            $stop=$true
+			$found = $false
+            Write-Host " Site not found in Archives"
+        }
+
+        }
+
+    }
+		
+ }
+ else
+ {
+    $current = $true
+ }
+ if ($a.count -ne 0)
+    {
+        $date = $a.LastItemModifiedDate
+        if ($current)
+		{
+			write-host ("Please request the backup from: "+(gci "\\cdc-spa-p09\d$\logs\sharepoint2010_sitecollections.csv").LastWriteTime)
+		}
+		else
+		{
+			Write-Host "Please restore the backup file to \\cdc-spb-p01\restore"
+			write-host "Please request the backup from: " $files[($x-1)].LastWriteTime
+        }
+		write-host "But no older than: " $a.LastItemModifiedDate
+        $instance = $a.DatabaseInstance -match "(\d)$"
+        Write-host ('From Instance: CDC-SPD-C02i'+$matches[0])
+        Write-Host "Content Database: "$a.Database
+        Write-Host "For Restore of:" $a.URL
+ }
+ }
