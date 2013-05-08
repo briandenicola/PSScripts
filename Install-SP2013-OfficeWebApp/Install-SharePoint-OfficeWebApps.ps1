@@ -1,5 +1,6 @@
 ﻿[CmdletBinding(SupportsShouldProcess=$true)]
 param(
+    [ValidateSet("all", "copy", "base", "iis", "dotnet", "install", "config")] [string] $operation = "all",
     [string] $config = ".\Configs\owa_setup.xml",
 	[switch] $record
 )
@@ -92,13 +93,23 @@ function Update-Audit
 
 function Install-OWA
 {
-    $pwd = $PWD.Path
-    Mount-DiskImage $cfg.Settings.Common.Setup
-    $drive = Get-Volume | Where FileSystemLabel -imatch "15.0.4420" | Select -ExpandProperty DriveLetter
-    Set-Location "$drive`:\"
-    .\setup.exe 
-    Set-Location $pwd
-    DisMount-DiskImage $cfg.Settings.Common.Setup
+    $setup = Get-ChildItem $cfg.Settings.Common.Setup
+
+    if( $setup.Extension -imatch "iso" ) {
+        $pwd = $PWD.Path
+        Mount-DiskImage $cfg.Settings.Common.Setup
+        $drive = Get-Volume | Where FileSystemLabel -imatch "15.0.4420" | Select -ExpandProperty DriveLetter
+        Set-Location "$drive`:\"
+        .\setup.exe 
+        Set-Location $pwd
+        DisMount-DiskImage $cfg.Settings.Common.Setup
+    }
+    elseif( $setup.Extension -imatch "exe" ) {
+        &$cfg.Settings.Common.Setup
+    }
+    else {
+        throw "Unknown Setup path"
+    }
 }
 
 function Config-OWA
@@ -120,12 +131,17 @@ function main
 	$log = ".\Logs\System-Setup-" + $ENV:COMPUTERNAME + "-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log"
 	&{Trap{continue};Start-Transcript -Append -Path $log}
         
-	Copy-Files
-	Setup-Base
-	Setup-IIS
-    Setup-DotNet
-    Install-OWA
-    Read-Host "Press any key to continue after the binaries are installed."
+	if( $operation -eq "all" -or $operation -eq "copy" ) { Copy-Files; $operation = "all" }
+	if( $operation -eq "all" -or $operation -eq "base" ) { Setup-Base; $operation = "all" }
+	if( $operation -eq "all" -or $operation -eq "iis" ) { Setup-IIS; $operation = "all" }
+    if( $operation -eq "all" -or $operation -eq "dotnet" ) { Setup-DotNet; $operation = "all" }
+   
+    if( $operation -eq "all" -or $operation -eq "install" ) { 
+        Install-OWA
+        Write-Host "[ $(Get-Date) ] - Installation is Complete but now Powershell must be relaunched to load the proper modules . . ."
+        Write-Host "[ $(Get-Date) ] - Please launch Powershell as Administrator and start the with $($MyInvocation.InvocationName) -operation config . . ." 
+        return $?
+    }
     Config-OWA	
 
     if( $record ) { Update-Audit } 

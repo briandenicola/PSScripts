@@ -154,7 +154,7 @@ function Setup-DatabaseAlias
 	    }
     }
     catch {
-          throw "Error creating SQL Alias"
+          throw ( "Error creating SQL Alias with " + $_.Exception.ToString() )
     }      
 }
 
@@ -165,7 +165,7 @@ function Install-SharePointBinaries
 	    .\Modules\Install-SharePointBits.ps1 -config $cfg.SharePoint.setup.setup_configs.$global:farm_type -setup $cfg.SharePoint.Setup.setup_path
     }
     catch {
-        throw "Error installing SharePoint"
+        throw ( "Error installing SharePoint with " + $_.Exception.ToString() )
     }
 }
 
@@ -185,14 +185,14 @@ function Setup-Farm
 	    }
     }
     catch { 
-        throw "Error creating or joining the SharePoint Farm"
+        throw ( "Error creating or joining the SharePoint Farm with " + $_.Exception.ToString() )
     }
 }
 
 function main
 {	
     if( $HOST.Version.Major -ne 3 ) {
-        throw "POwerShell Version 3 is required to run these scripts"
+        throw "PowerShell Version 3 is required to run these scripts"
     }
 
 	#Start Log

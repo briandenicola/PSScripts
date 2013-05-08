@@ -1,6 +1,5 @@
 ﻿[CmdletBinding(SupportsShouldProcess=$true)]
 param(
-	
 	[ValidateSet("all", "copy", "base", "iis", "dotnet", "farm")] [string] $operation = "all",
     [ValidateSet("create", "join")]	[string] $farm = "join",
 	[switch] $record
@@ -106,14 +105,12 @@ function Create-ServiceBusFarm
         
     }
     catch {
-         throw "Error creating Service Bus Farm"
+         throw ( "Error creating Service Bus Farm with " + $_.Exception.ToString() )
     }
 }
 
 function Create-WorkflowFarm
 {
-    $cert_key = ConvertTo-SecureString -AsPlainText -Force -String $cfg.Settings.Workflow.passphrase
-
     try {
         Write-Host "[ $(Get-Date) ] - Creating Workflow Farm . . ."
         
@@ -137,7 +134,7 @@ function Create-WorkflowFarm
         New-WFFarm @wf_params -Verbose
     }
     catch {
-         throw "Error creating Workflow Farm"
+         throw ( "Error creating Workflow Farm with " + $_.Exception.ToString() )
     }
 }
 
@@ -145,7 +142,6 @@ function Join-ServiceBusFarm
 {
     try {
         $cred = Get-Credential ( $cfg.Settings.ServiceBus.service_account )
-        $cert_key = ConvertTo-SecureString -AsPlainText -Force -String $cfg.Settings.ServiceBus.passphrase
 
         Write-Host "[ $(Get-Date) ] - Joining Service Bus Farm . . ."
         $sb_params = @{
@@ -173,7 +169,7 @@ function Join-ServiceBusFarm
         }
     }
     catch {
-         throw "Error joining the Service Bus Farm"
+            throw ( "Error joining the Service Bus Farm with " + $_.Exception.ToString() )
     }
 }
 
@@ -181,8 +177,6 @@ function Join-WorkflowFarm
 {
     try {
         $cred = Get-Credential ( $cfg.Settings.Workflow.service_account )
-        $cert_key = ConvertTo-SecureString -AsPlainText -Force -String $cfg.Settings.Workflow.passphrase
-
         $sb_config = Get-SBClientConfiguration -Namespace $cfg.Settings.ServiceBus.Name_space -Verbose
 
         Write-Host "[ $(Get-Date) ] - Joining Workflow Farm . . ."
@@ -200,7 +194,7 @@ function Join-WorkflowFarm
         Add-WFHost @wf_params -Verbose
     }
     catch {
-         throw "Error joining the Workflow Farm"
+         throw ( "Error joining the Workflow Farm with " + $_.Exception.ToString() )
     }
 }
 
@@ -229,7 +223,7 @@ function main
 	
     if( $operation -eq "farm" ) {
         if( $farm -eq "create" ) { 
-            Create-ServiceFarm 
+            Create-ServiceBusFarm 
             Create-WorkflowFarm
         }
         Join-ServiceBusFarm
