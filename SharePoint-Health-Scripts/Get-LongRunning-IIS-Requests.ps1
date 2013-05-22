@@ -1,7 +1,8 @@
 ﻿param (
-	[string[]] $servers = $sp.Filter("ext","pro","spw|p10|p11"),
+    [Alias("ComputerName")]
+	[string[]] $servers,
     [int] $duration = "10000",
-    [string] $appPool = "AppPool - team.gt.com"
+    [string] $appPool
 )
 
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")

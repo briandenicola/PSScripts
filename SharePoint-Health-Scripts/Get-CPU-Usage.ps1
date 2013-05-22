@@ -1,6 +1,7 @@
 param (
-	[int] $count = 5,
-	[string[]] $servers
+    [Alias("ComputerName")]
+    [string[]] $servers,
+	[int] $count = 5
 )
 
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")

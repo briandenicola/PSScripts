@@ -1,4 +1,5 @@
 param (
+    [Alias("ComputerName")]
 	[string[]] $servers,
 	[string] $process = "w3wp.exe"
 )
