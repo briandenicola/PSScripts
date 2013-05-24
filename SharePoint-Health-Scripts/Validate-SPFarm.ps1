@@ -11,8 +11,8 @@ param (
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 
-$global:logFile = Join-Path $PWD.PATH ( Join-Path "logs" ($env + "-environmental-validation-" + $(Get-Date).ToString("yyyyMMddmmhhss") + ".log" ) )
-$url = "http://example.com/sites/AppOps/"
+$global:logFile = Join-Path $PWD.PATH ( Join-Path "logs" ($env + "-" + $farm + "-environmental-validation-" + $(Get-Date).ToString("yyyyMMddmmhhss") + ".log" ) )
+$url = "http://teamadmin.gt.com/sites/ApplicationOperations/"
 
 function log ( [string] $txt )
 {
@@ -126,6 +126,65 @@ $check_db_size = {
 	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
 	Get-SPDatabaseSize
 }
+
+$check_server_admins = {
+    . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
+
+    return ( New-Object PSObject -Property @{
+        Computer = $env:COMPUTERNAME
+        Users = Get-LocalAdmins -computer .
+    })
+}
+
+$check_managed_accounts = {
+    . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
+
+    Get-SPShellAdmin
+    Get-SPManagedAccount | Select UserName
+}
+
+$check_trusted_certs_store = {
+    . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
+    Get-SPTrustedRootAuthority | Select Certificate, Name | Format-List
+    Get-SPTrustedServiceTokenIssuer | Select Name, SigningCertificate | Format-list
+}
+
+$get_farm_account_sb = { 
+    . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
+    . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
+    
+    $farm_user = Get-FarmAccount .   
+
+    net localgroup administrators ($ENV:userdomain + "\" + $farm_user.User) /add
+
+    return (New-Object PSObject -Property @{
+        User = $farm_user.User
+        Password = Get-SPManageAccountPassword $farm_user.User
+    })
+}
+
+$check_user_profile_sb = {
+    . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
+    . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
+
+     $farm_user = Get-FarmAccount . 
+
+    $site = Get-SPSite ( Get-SPWebApplication | Select -Last 1 -Expand Url )
+    $srvContext = Get-SPServiceContext $site
+
+    $ups_manager = New-Object Microsoft.Office.Server.UserProfiles.UserProfileManager($srvContext) 
+    
+    $ups_config_manager = New-Object Microsoft.Office.Server.UserProfiles.UserProfileConfigManager($srvContext) 
+    $sync = $ups_config_manager.GetSynchronizationStatus() | Select Stage, BeginTime, EndTime, State, Updates    
+
+    net localgroup administrators ($ENV:userdomain + "\" + $farm_user.User) /delete
+
+    return (New-Object PSObject -Property @{
+        Count = $ups_manager.Count
+        IsSyncing = $ups_config_manager.IsSynchronizationRunning()
+        State = $ups_config_manager.GetSynchronizationStatus() | Select Stage, BeginTime, EndTime, State, Updates    
+    })
+}
 #EndRegion
 
 #Region Get Servers
@@ -181,6 +240,28 @@ $server_session = New-PSSession -Computer $servers -Authentication CredSSP -Cred
 $ca_session = New-PSSession -ComputerName $ca_servers -Authentication Credssp -Credential (Get-Creds)
 #EndRegion 
 
+#Region Check Accounts
+log -txt "Checking for Server Administrators"
+Invoke-Command -Session $server_session -ScriptBlock $check_server_admins | 
+    Select Computer, Users | ForEach-Object { 
+        $_.Computer | Out-File -Append -Encoding ASCII $global:logFile
+	    $_.Users | Out-File -Append -Encoding ASCII $global:logFile
+        [String]::Empty | Out-File -Append -Encoding ASCII $global:logFile
+    }
+
+log -txt "Checking for SharePoint Managed Accounts"
+Invoke-Command -Session $ca_session -ScriptBlock $check_managed_accounts | 
+    Select UserName |
+	Out-File -Append -Encoding ASCII $global:logFile
+#EndRegion
+
+#Region Check Accounts
+log -txt "Checking for SharePoint Trust Certificats"
+Invoke-Command -Session $ca_session -ScriptBlock $check_trusted_certs_store | 
+	Out-File -Append -Encoding ASCII $global:logFile
+#EndRegion
+
+
 #Region Check AppPools
 log -txt "Checking Web Site State"
 Get-IISWebState -computers $servers | Sort Name | Out-File -Append -Encoding ASCII $global:logFile
@@ -231,6 +312,14 @@ if($farm -eq "2010-" -or $farm -eq "2010-Services") {
 			Format-List |
 			Out-File -Append -Encoding ASCII $global:logFile	
 	}
+
+    log -txt "Checking User Profile Services"
+    $user = Invoke-Command -ComputerName $services_farm_ca -Authentication Credssp -Credential (Get-Creds) -ScriptBlock $get_farm_account_sb
+    $password = ConvertTo-SecureString -AsPlainText -Force $user.Password
+    $farm_creds = New-Object System.Management.Automation.PSCredential ( ($ENV:userdomain + "\" + $user.User) , $password )
+    Invoke-Command -ComputerName $services_farm_ca -Authentication Credssp -Credential $farm_creds -ScriptBlock $check_user_profile_sb |
+        Out-File -Append -Encoding ASCII $global:logFile
+
 }
 #EndRegion
 
