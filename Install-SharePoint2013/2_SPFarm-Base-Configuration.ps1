@@ -59,6 +59,12 @@ function main()
 	Write-Host "[ $(Get-Date) ] - Configure Logging"
 	Config-Logging -servers $sharepoint_servers
 
+    Write-Host "[ $(Get-Date) ] - Configure Diagnostics Rules"
+	Config-TimerJobs 
+
+    Write-Host "[ $(Get-Date) ] - Configure SharePoint Health Rules"
+	Config-HealthRules 
+
     Write-Host "[ $(Get-Date) ] -------------------------------------------------------------"
     Write-Host "[ $(Get-Date) ] - Configuring Service Applications"
 

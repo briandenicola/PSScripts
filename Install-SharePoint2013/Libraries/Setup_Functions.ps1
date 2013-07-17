@@ -139,6 +139,32 @@ function Config-FarmAdministrators
 	
 }
 
+function Config-HealthRules
+{
+    $rules = @( "AppServerDrivesAreNearlyFull" )
+    
+    foreach( $rule in $rules ) {
+        Get-SPHealthAnalysisRule $rule | Disable-SPHealthAnalysisRule
+    }
+}
+
+function Config-TimerJobs
+{
+    $jobs = @( "job-diagnostics-blocking-query-provider",
+        "job-diagnostics-site-size-provider",
+        "job-diagnostics-performance-counter-wfe-provider",
+        "job-diagnostics-sql-memory-provider",
+        "job-diagnostics-io-intensive-query-provider",
+        "job-diagnostics-performance-metric-provider",
+        "job-diagnostics-sql-performance-metric-provider",
+        "job-diagnostics-sql-blocking-report-provider"
+    )
+    
+    foreach( $job in $jobs ) {
+        Get-SPTImerJob $job | Enable-SPTimerJob
+    }
+}
+
 function Config-ManagedAccounts
 {
 

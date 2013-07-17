@@ -5,5 +5,5 @@
 $service = New-WebServiceProxy (Get-WebServiceURL -url $url) -Namespace List -UseDefaultCredential
 
 return ( 
-    $service.GetListCollection() | Select -ExpandProperty List | Select Title, ItemCount, Created, Modified
+    $service.GetListCollection() | Select -ExpandProperty List | Select Title, Id, ItemCount, Created, Modified
 )

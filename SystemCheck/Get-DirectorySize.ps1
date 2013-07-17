@@ -3,14 +3,33 @@ param (
 	[string] $folder
 )
 
-$DirUtil = "d:\Utils\DirectorySize.exe"
+$sb = { 
+	param( [string] $root )
+		
+	Get-ChildItem $root | 
+        Where { $_.PsIsContainer -eq $false } | 
+        Measure-Object -Sum -Property Length | 
+        Select-Object @{N="Computer";E={$ENV:ComputerName}},@{N="Folder";E={$root}},@{N="Size (mb)";E={[math]::round($_.Sum/1mb,2)}}
 
-$s = New-PSSession -Computer $computers
+    Get-ChildItem $root |
+         Where { $_.PsIsContainer -eq $true } | 
+         ForEach { 
+	        $folder = $_.FullName
+            Get-ChildItem $folder -Recurse | 
+                Measure-Object -Sum -Property Length | 
+                Select-Object @{N="Computer";E={$ENV:ComputerName}},@{N="Folder";E={$folder}},@{N="Size (mb)";E={[math]::round($_.Sum/1mb,2)}} 
+        }
+	
+}
 
-Invoke-Command -Session $s -Script { 
-	param(
-		$f
-	)
-	Write-Host " **** " $ENV:ComputerName " **** " -foreground green
-	d:\Utils\DirectorySize.exe $f
-} -Args $folder
+function main
+{
+    $ses = New-PSSession -Computer $computers
+    $job = Invoke-Command -Session $ses -ScriptBlock $sb -Args $folder -AsJob
+
+    Get-Job $job.Id | Wait-Job | Out-Null 
+    Receive-Job $job | Select Computer, Folder,'Size (mb)' | Format-Table -GroupBy Computer
+
+    Get-PSSession | Remove-PSSession
+}
+main 
