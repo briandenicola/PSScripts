@@ -24,10 +24,7 @@ Write-Host "`t1.2 Install Web Server Role (IIS8)"
 Add-WindowsFeature -name (gc $iis_modules)
 Add-WindowsFeature -name (gc $iis8_modules)
 
-Write-Host "`t1.3 Install Windows Remote Management Service"
-Add-WindowsFeature -name WSRM
-
-Write-Host "`t1.4 Write Installed Modules to $logFile"
+Write-Host "`t1.3 Write Installed Modules to $logFile"
 Get-WindowsFeature | where { $_.Installed -eq $true } | Out-File -Encoding ascii $logFile
 
 Write-Host "2.0 Create new IIS Folders"
