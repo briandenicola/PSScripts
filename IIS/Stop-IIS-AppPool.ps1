@@ -1,7 +1,10 @@
+[CmdletBinding(SupportsShouldProcess=$true)]
 param (
-	[string[]] $computers,
-	[string[]] $appPools,
-	[switch] $whatif
+    [Parameter(Mandatory=$true)]
+	[string[]] $computer,
+
+    [Parameter(Mandatory=$true)]
+	[string[]] $AppPool
 )
 
 if( $Host.Version.Major -lt 2 ) {
@@ -9,11 +12,14 @@ if( $Host.Version.Major -lt 2 ) {
 	return
 }
 
-Get-WmiObject -Class IISApplicationPool -Namespace "root\microsoftiisv2" -ComputerName $computers -Authentication 6 | where { $appPools -contains $_.Name } | % { 
-	if($whatif) {
-		Write-Host "[WHATIF] Stopping " $_.Name " on " $_.__SERVER -foregroundcolor YELLOW
-	} else {
-		Write-Host "Stopping " $_.Name " on " $_.__SERVER -foregroundcolor RED	
-	 	$_.Stop() 
-	}
+$process =  Get-WmiObject -Class IISApplicationPool -Namespace "root\microsoftiisv2" -ComputerName $computer -Authentication 6 | where { $_.Name -imatch ("W3SVC/APPPOOLS/" + $appPool) }
+
+if( $process ) {
+    if ($pscmdlet.shouldprocess($computers, "Start AppPool - $appPool - on $computer") ) {
+        Write-Host "Stopping $($process.Name) on  $($process.__SERVER)" -foregroundcolor GREEN	
+        $process.Stop() 
+    }
+}
+else { 
+    Write-Error "Could not find $AppPool on $computer ..."
 }
