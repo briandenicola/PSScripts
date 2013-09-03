@@ -8,38 +8,35 @@ param (
 	[string] $filter_type = "all",
 	[string] $filter_value,
 
-    [ValidateSet("test", "uat","prod", "dev")]
-	[string] $env = "prod"
+    [ValidateSet("Test", "Uat","Production", "Dev")]
+	[string] $env = "Production"
 )
 
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 
-$url = "http://teamadmin.gt.com/sites/ApplicationOperations/applicationsupport/"
+$url = "http://documentation.site/"
 $list_servers = "AppServers"
+$list_websites = "Applications - $env"
 
-if( $env -eq "dev" ) {
-    $list_websites = "Applications - Dev"
-} elseif ( $env -eq "uat" ) {
-    $list_websites = "Applications - UAT"
-} elseif ( $env -eq "test") {
-    $list_websites = "Applications - Test"
-} else {
-    $list_websites = "Applications - Production"
+function Get-ObjectProperties
+{
+    param( [object] $psobject )
+    return ( $psobject | Get-Member | Where {$_.MemberType -eq "NoteProperty"} | Select -Expand Name) 
 }
 
-function Get-SPFormattedServers ( [String[]] $computers )
+function Get-SPFormattedServers 
 {
-	$sp_formatted_data = [String]::Empty
-	$sp_server_list = get-SPListViaWebService -url $url -list $list_servers
+    param ( [string[]] $computers )
+
+	$sp_formatted_data = @()
+	$sp_server_list = Get-SPListViaWebService -url $url -list $list_servers
 	
 	foreach( $computer in $computers ) { 
-		$id = $sp_server_list | where { $_.SystemName -eq $computer } | Select -ExpandProperty ID
-		$sp_formatted_data += "#{0};#{1};" -f $id, $computer
+		$sp_formatted_data += "{0};#{1}" -f ($sp_server_list | Where { $_.SystemName -eq $computer }).ID, $computer.ToUpper()
 	}
 	
-	Write-Verbose $sp_formatted_data
-	return $sp_formatted_data.TrimStart("#").TrimEnd(";").ToUpper()
+	return ( [string]::join( ";", $sp_formatted_data ) )
 }
 
 if( $filter_type -eq "name" -and [String]::IsNullOrEmpty($filter_value) ) {
@@ -58,7 +55,7 @@ $iis_audit_sb = {
 
 	$audit = @()
     if( [string]::IsNullOrEmpty($site) ) {
-	    $webApps = Get-WebSite
+	    $webApps = @( Get-WebSite )
     } 
     else {
         $webApps = @( Get-WebSite | Where { $_.Name -eq $site } )
@@ -117,34 +114,41 @@ if( $upload ) {
 	$sites = $audit_results | Group-Object Title -asHashTable
 	
 	foreach( $site in $sites.Keys ) {	
-		$uploaded_site_info = New-Object System.Object
+		$uploaded_site_info = New-Object PSObject -Property  @{
+            Real_x0020_Servers = [string]::empty
+            Title = [string]::empty
+            IISId = [string]::empty
+            LogFileDirectory = [string]::empty
+            LogFileFlags =  [string]::empty 
+            URLs = [string]::empty
+            Internal_x0020_IP = [string]::empty
+            DotNetVersion = [string]::empty
+            VirtualDirectories = [string]::empty
+            IISPath = [string]::empty
+            AppPoolName = [string]::empty
+            AppPoolUser = [string]::empty
+            CertThumbprint = [string]::empty
+        }
 	
 		$sites_are_equal = $true		
-		foreach( $prop in ($sites[$site] | Get-Member | Where {$_.MemberType -eq "NoteProperty" -and $_.Name -ne "RealServers" } | Select -Expand Name) ) {
-			$v = $sites[$site] | Select $prop -Unique
+		foreach( $property in ( Get-ObjectProperties -psobject $sites[$site] | Where $_ -notcontains "RealServers" ) ) {
+			$values = $sites[$site] | Select $property -Unique
 		
-			if( ($v | Measure-Object).Count -ne 1 ) {
-				Write-Host $prop " for " $site " differs between the different servers. . . "  -ForegroundColor Yellow
+			if( ($values | Measure-Object).Count -ne 1 ) {
+				Write-Warning ($property + " for " + $site + " differs between the different servers. . . ")
 				$sites_are_equal = $false
 			}
 
-			$uploaded_site_info | Add-Member -type NoteProperty -Name $prop -Value ( $v | Select -First 1 -ExpandProperty $prop)
-
+			$uploaded_site_info.$property = ($values | Select -First 1 -ExpandProperty $property)
 		}
 
-		if( -not $sites_are_equal ) {	
-			Write-Host "The sites configuration differs between the servers provided. Here is results of the scan . . ."
-			$sites[$site]
-			
-			do {
-				$ans = Read-Host "Do you wish to still upload (y/n) " 
-			} while ( ($ans -ne "y") -and ($ans -ne "n") )
-			
-			if( $ans = "y" ) { $sites_are_equal = $true }
+		if( -not $sites_are_equal ) {
+			$ans = Read-Host "he sites configuration differs between the servers provided.Do you wish to still upload (y/n) " 
+			if( $ans -imatch "y|Y" ) { $sites_are_equal = $true }
 		}
 			
 		if( $sites_are_equal ) {
-			$uploaded_site_info | Add-Member -type NoteProperty -Name Real_x0020_Servers -Value ( Get-SPFormattedServers ( ($sites[$site] | Select -ExpandProperty "RealServers") ) )	
+			$uploaded_site_info.Real_x0020_Servers = ( Get-SPFormattedServers ( ($sites[$site] | Select -ExpandProperty "RealServers") ) )	
 			WriteTo-SPListViaWebService -url $url -list $list_websites -Item (Convert-ObjectToHash $uploaded_site_info ) -TitleField Title 
 		}
 	}
