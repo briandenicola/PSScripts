@@ -4,7 +4,7 @@ param (
 	[String[]] $computers,
 	[switch] $upload,
 	
-	[ValidateSet("all", "name")]
+	[ValidateSet("all", "name", "url")]
 	[string] $filter_type = "all",
 	[string] $filter_value,
 
@@ -15,7 +15,7 @@ param (
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 
-$url = "http://documentation.site/"
+$url = "http://url.to/site/"
 $list_servers = "AppServers"
 $list_websites = "Applications - $env"
 
@@ -36,31 +36,44 @@ function Get-SPFormattedServers
 		$sp_formatted_data += "{0};#{1}" -f ($sp_server_list | Where { $_.SystemName -eq $computer }).ID, $computer.ToUpper()
 	}
 	
-	return ( [string]::join( ";", $sp_formatted_data ) )
+	return ( [string]::join( ";#", $sp_formatted_data ) )
 }
 
-if( $filter_type -eq "name" -and [String]::IsNullOrEmpty($filter_value) ) {
+if( $filter_type -imatch "url|name" -and [String]::IsNullOrEmpty($filter_value) ) {
 	Write-Error "The switch filter_value cannot be null if filter_type is name" 
 	exit
 }
 
 $iis_audit_sb = {
 	param (
-		[string] $site = [string]::empty
+        [string] $filter_type,
+		[string] $filter_value
 	)
+
+    $ErrorActionPreference = "SilentlyContinue"
 
 	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1")
 
-	$audit = @()
-    if( [string]::IsNullOrEmpty($site) ) {
-	    $webApps = @( Get-WebSite )
-    } 
-    else {
-        $webApps = @( Get-WebSite | Where { $_.Name -eq $site } )
+    $audit = @()
+    if( $filter_type -eq "name" ) {
+        $webApps = @( Get-WebSite | Where { $_.Name -eq $filter_value } )
+	}
+    elseif( $filter_type -eq "url" ) {
+        $site = Get-WebBinding -HostHeader $filter_value -ErrorAction SilentlyContinue
+        $webApps = @( Get-WebSite | Where { $_.Name -eq $site.ItemXPath.Split("=")[1].Split("'")[1] } )
     }
-	
+    else {
+        $webApps = @( Get-WebSite )
+    }
+
+
+    if( $webApps.Length -eq 0 ) {
+        throw "Could not find any IIS configuration for $filter_value"
+        return
+    }
+
 	foreach( $webApp in $webApps ){
         
         $app_pool = Get-Item ("IIS:\AppPools\" + $webApp.applicationPool)
@@ -73,8 +86,8 @@ $iis_audit_sb = {
         }
 
         $bindings = @(Get-WebBinding -Name $webApp.Name | Where { $_.Protocol -imatch "http|https" } | Select -ExpandProperty BindingInformation)
-        $vdirs = @(Get-WebVirtualDirectory -Site  $webApp.Name | Select -ExpandProperty Path)
-        $cert =  Get-ChildItem "IIS:\SslBindings" | Where { $_.Sites -eq $webApp.Name } | Select -Expand Thumbprint
+        $vdirs = @(Get-WebVirtualDirectory -Site  $webApp.Name | Select -Expand Path)
+        $cert =  @(Get-ChildItem "IIS:\SslBindings" | Where { $_.Sites -eq $webApp.Name } | Select -Expand Thumbprint)
 
         $ips = @()
         foreach( $binding in $bindings ) {
@@ -107,7 +120,7 @@ $iis_audit_sb = {
     return $audit
 }
 
-$audit_results = Invoke-Command -ComputerName $computers -ScriptBlock $iis_audit_sb  -ArgumentList $filter_value | 
+$audit_results = Invoke-Command -ComputerName $computers -ScriptBlock $iis_audit_sb  -ArgumentList $filter_type, $filter_value | 
     Select RealServers, Title, IISId, LogFileDirectory, LogFileFlags, Urls, Internal_x0020_IP, DotNetVersion, VirtualDirectories, CertThumbprint, IISPath, AppPoolName, AppPoolUser
 
 if( $upload ) {
@@ -131,7 +144,7 @@ if( $upload ) {
         }
 	
 		$sites_are_equal = $true		
-		foreach( $property in ( Get-ObjectProperties -psobject $sites[$site] | Where $_ -notcontains "RealServers" ) ) {
+		foreach( $property in ( Get-ObjectProperties -psobject $sites[$site] | Where { $_ -notcontains "RealServers" } ) ) {
 			$values = $sites[$site] | Select $property -Unique
 		
 			if( ($values | Measure-Object).Count -ne 1 ) {
@@ -149,7 +162,7 @@ if( $upload ) {
 			
 		if( $sites_are_equal ) {
 			$uploaded_site_info.Real_x0020_Servers = ( Get-SPFormattedServers ( ($sites[$site] | Select -ExpandProperty "RealServers") ) )	
-			WriteTo-SPListViaWebService -url $url -list $list_websites -Item (Convert-ObjectToHash $uploaded_site_info ) -TitleField Title 
+			WriteTo-SPListViaWebService -url $url -list $list_websites -Item (Convert-ObjectToHash $uploaded_site_info) -TitleField Title 
 		}
 	}
 }
