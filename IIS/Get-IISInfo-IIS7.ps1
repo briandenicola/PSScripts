@@ -62,7 +62,8 @@ $iis_audit_sb = {
 	}
     elseif( $filter_type -eq "url" ) {
         $site = Get-WebBinding -HostHeader $filter_value -ErrorAction SilentlyContinue
-        $webApps = @( Get-WebSite | Where { $_.Name -eq $site.ItemXPath.Split("=")[1].Split("'")[1] } )
+        $site.ItemXPath -imatch "(.*)@name=`'(\w+).*" | Out-Null
+        $webApps = @( Get-WebSite | Where { $_.Name -eq $matches[2] } )
     }
     else {
         $webApps = @( Get-WebSite )
