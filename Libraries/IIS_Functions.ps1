@@ -432,23 +432,56 @@ function Get-WebDataConnectionString {
 	)
 
 	$connect_string = { 
-		param ( 
-			[string] $site
-		)
+		param ( [string] $site	)
 		
 		. (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1")
 	
+        if( !(Test-Path "IIS:\Sites\$site" ) ) {
+            throw "Could not find $site"
+            return
+        }
+
 		$connection_strings = @()
-		Get-WebConfiguration "IIS:\Sites\$site" -filter /connectionStrings/* | Select -Expand ConnectionString  | % { 
-			$parameters = $_.Split(";")
+        $configs = Get-WebConfiguration "IIS:\Sites\$site" -Recurse -Filter /connectionStrings/* | 
+            Select PsPath, Name, ConnectionString  |
+            Where { $_.ConnectionString -imatch "data source|server" }
+
+		foreach( $config in $configs ) {
 			
-			$connection_string = New-Object System.Object
-			foreach ( $parameter in $parameters ) 
-			{	
-				if( -not ( [String]::IsNullOrEmpty($parameter) ) ) {
-					$key,$value = $parameter.Split("=")
-					$connection_string | Add-Member -Type NoteProperty -Name $key -Value $value
-				}
+            if( [string]::IsNullOrEmpty($config) ) { continue }
+		
+			$connection_string = New-Object PSObject -Property @{
+                Path = $config.PsPath -replace ("MACHINE/WEBROOT/APPHOST")
+                Name = $config.Name
+                Server = [string]::Empty
+                Database = [string]::Empty
+                UserId = [string]::Empty
+                Password = [string]::Empty
+            }
+
+            $parameters = $config.ConnectionString.Split(";")
+			foreach ( $parameter in $parameters ) {	 
+                $key,$value = $parameter.Split("=")
+
+                switch -Regex ($key) {
+                    "Data Source|Server" {
+                        $connection_string.Server = $value	
+                    }
+                    "Initial Catalog|AttachDBFilename" {
+                        $connection_string.Database = $value	
+                    }
+                    "user id" {
+                        $connection_string.UserId = $value	
+                    }
+                    "Integrated Security" {
+                        $connection_string.UserId = "ApplicationPoolIdentity"	
+                        $connection_string.Password = "*" * 5
+                    }
+                    "password" {
+                        $connection_string.Password = $value	
+                    }
+                }
+
 			}
 			$connection_strings += $connection_string
 		}

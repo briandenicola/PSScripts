@@ -15,7 +15,7 @@ param (
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 
-$url = "http://url.to/site/"
+$url = "http://teamadmin.gt.com/sites/ApplicationOperations/applicationsupport/"
 $list_servers = "AppServers"
 $list_websites = "Applications - $env"
 
@@ -62,8 +62,7 @@ $iis_audit_sb = {
 	}
     elseif( $filter_type -eq "url" ) {
         $site = Get-WebBinding -HostHeader $filter_value -ErrorAction SilentlyContinue
-        $site.ItemXPath -imatch "(.*)@name=`'(\w+).*" | Out-Null
-        $webApps = @( Get-WebSite | Where { $_.Name -eq $matches[2] } )
+        $webApps = @( Get-WebSite | Where { $_.Name -eq $site.ItemXPath.Split("=")[1].Split("'")[1] } )
     }
     else {
         $webApps = @( Get-WebSite )
@@ -89,6 +88,7 @@ $iis_audit_sb = {
         $bindings = @(Get-WebBinding -Name $webApp.Name | Where { $_.Protocol -imatch "http|https" } | Select -ExpandProperty BindingInformation)
         $vdirs = @(Get-WebVirtualDirectory -Site  $webApp.Name | Select -Expand Path)
         $cert =  @(Get-ChildItem "IIS:\SslBindings" | Where { $_.Sites -eq $webApp.Name } | Select -Expand Thumbprint)
+        $web_applications = @(Get-WebApplication -Site $webApp.Name | Select @{N="App";E={"({0},{1},{2})" -f $_.Path,$_.PhysicalPath,$_.ApplicationPool}} | Select -ExpandProperty App )
 
         $ips = @()
         foreach( $binding in $bindings ) {
@@ -115,6 +115,7 @@ $iis_audit_sb = {
             AppPoolName = $webApp.applicationPool
             AppPoolUser = $app_pool_user
             CertThumbprint = $cert 
+            WebApplication = [string]::join(";", $web_applications)
         })
 	}
 
@@ -122,7 +123,7 @@ $iis_audit_sb = {
 }
 
 $audit_results = Invoke-Command -ComputerName $computers -ScriptBlock $iis_audit_sb  -ArgumentList $filter_type, $filter_value | 
-    Select RealServers, Title, IISId, LogFileDirectory, LogFileFlags, Urls, Internal_x0020_IP, DotNetVersion, VirtualDirectories, CertThumbprint, IISPath, AppPoolName, AppPoolUser
+    Select RealServers, Title, IISId, LogFileDirectory, LogFileFlags, Urls, Internal_x0020_IP, DotNetVersion, VirtualDirectories, CertThumbprint, IISPath, AppPoolName, AppPoolUser, WebApplication
 
 if( $upload ) {
 	$sites = $audit_results | Group-Object Title -asHashTable
@@ -142,6 +143,7 @@ if( $upload ) {
             AppPoolName = [string]::empty
             AppPoolUser = [string]::empty
             CertThumbprint = [string]::empty
+            WebApplication = [string]::Empty
         }
 	
 		$sites_are_equal = $true		
