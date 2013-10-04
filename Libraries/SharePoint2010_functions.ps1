@@ -1,5 +1,44 @@
 Add-PSSnapin Microsoft.SharePoint.PowerShell –erroraction SilentlyContinue
 
+#http://stuffaboutsharepoint.wordpress.com/2013/04/03/quota-templates-in-powershell/
+function New-SPQuotaTemplate {
+    Param(
+        [Parameter(Mandatory=$true)][String]$Name,
+        [Parameter(Mandatory=$true)][Int64]$StorageMaximumLevelinGB,
+        [Parameter(Mandatory=$true)][System.Double]$StorageWarningLevelinGB,
+        [Parameter(Mandatory=$false)][System.Double]$UserCodeMaximumLevel,
+        [Parameter(Mandatory=$false)][System.Double]$UserCodeWarningLevel
+    )
+
+    $Quota = New-Object Microsoft.SharePoint.Administration.SPQuotaTemplate
+    $Quota.Name = $Name
+    $Quota.StorageMaximumLevel = $StorageMaximumLevelinGB * 1GB
+    $Quota.StorageWarningLevel = $StorageWarningLevelinGB * 1GB
+    $Quota.UserCodeMaximumLevel = $UserCodeMaximumLevel
+    $Quota.UserCodeWarningLevel = $UserCodeWarningLevel
+
+    $Service = [Microsoft.SharePoint.Administration.SPWebService]::ContentService
+    $Service.QuotaTemplates.Add($Quota)
+    $Service.Update()
+
+    Write-Verbose "Quota Template $Name added successfully" 
+}
+ 
+function Get-SPQuotaTemplate {
+    Param(
+        [Parameter(Mandatory=$false)][String]$Name
+    )
+
+    $Templates = [Microsoft.SharePoint.Administration.SPWebService]::ContentService.QuotaTemplates
+    
+    if ($Name) {
+        return ( $Templates | Where-Object {$_.Name -eq $Name} )
+    }
+    else {
+        return $Templates
+    }
+}
+
 function Get-SPStartedServices
 {
     return ( Get-SPServiceInstance | 

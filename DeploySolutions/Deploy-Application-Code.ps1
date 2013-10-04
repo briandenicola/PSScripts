@@ -47,16 +47,6 @@ This script will deploy code for $app  . . .
 `tQ) Quit
 "@
 
-function Encode-HTML
-{
-    param(
-        [string] $body
-    )
-
-    return ( [system.net.webutility]::htmlencode($body) )
-}
-
-
 function Get-SPUserViaWS( [string] $url, [string] $name )
 {
 	$service = New-WebServiceProxy ($url + "_vti_bin/UserGroup.asmx?WSDL") -Namespace User -UseDefaultCredential
@@ -102,10 +92,10 @@ function Record-Deployment {
 			Title = "Automated $app Deployment"
             Application = ";#$app;#"
 			CodeLocation = $src
-			DeploymentSteps = Encode-HTML -body $steps
+			DeploymentSteps = $steps
 			CodeVersion = $code_version
 			VersionNumber = $code_number
-			Notes = Encode-HTML -body "Deployed on $ENV:COMPUTERNAME from $deploy_directory . . .<BR/>"
+			Notes = "Deployed on $ENV:COMPUTERNAME from $deploy_directory . . .<BR/>"
 		}
 			
 		if( $url -imatch "-uat" ) {
@@ -129,8 +119,8 @@ function Record-Deployment {
 			$existing_deploy | Add-Member -Type NoteProperty -Name PROD_x0020_Deployer $user 
         }
 
-		$existing_deploy.Notes = Encode-HTML -body ( $existing_deploy.Notes + "Deployed on $ENV:COMPUTERNAME from $deploy_directory . . .<BR/>" )
-		$existing_deploy.DeploymentSteps = Encode-HTML -body ( $existing_deploy.DeploymentSteps + $steps )
+		$existing_deploy.Notes += "Deployed on $ENV:COMPUTERNAME from $deploy_directory . . .<BR/>"
+		$existing_deploy.DeploymentSteps += $steps 
 		Update-SPListViaWebService -url $team_site -list $team_list -Item (Convert-ObjectToHash $existing_deploy) -Id  $existing_deploy.Id	
 	}
 }
