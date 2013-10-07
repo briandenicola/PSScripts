@@ -206,7 +206,7 @@ function Sync-Files {
 	)
 
     $dst = Read-Host "Enter the Destination Directory to Sync Files to"
-    $servers = Read-Host ("Enter servers to copy files to(separated by a ,) ").Split(",")
+    $servers = Read-Host ("Enter servers to copy files to(separated by a comma) ").Split(",")
 
     $sb = {
         param ( 
@@ -215,7 +215,7 @@ function Sync-Files {
         )
         Write-Host "[ $(Get-Date) ] - Copying files on $ENV:COMPUTER from $src to $dst . . ."
         $log_file = Join-Path "D:\Logs" ("application-deployment-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log")
-		$sync_script = (Join-Path $ENV:SCRIPTS_HOME $ENV:SCRIPTS_HOME "Sync\Sync-Files.ps1")
+		$sync_script = (Join-Path $ENV:SCRIPTS_HOME "Sync\Sync-Files.ps1")
 		&$sync_script -src $src -dst $dst -verbose -logging -log $log_file
     }
 
@@ -223,7 +223,7 @@ function Sync-Files {
 		$global:deploy_steps += "<li>Executed on $servers - (Join-Path $ENV:SCRIPTS_HOME Sync\Sync-Files.ps1) -src $deploy_directory -dst $dst  -verbose -logging </li>"
 	}
 
-    if( ! $global:creds ) {
+    if( ($global:creds).UserName -eq $null ) {
         $global:creds = Get-Credential ($ENV:USERDOMAIN + "\" + $ENV:USERNAME)
     }
     Invoke-Command -Computer $servers -Authentication CredSSP -Credential $global:creds -ScriptBlock $sb -ArgumentList $deploy_directory, $dst
@@ -260,7 +260,7 @@ function DeployTo-GAC {
 				Select -Expand Server | 
 				Select -Expand Address 
 		
-        if( ! $global:creds ) {
+        if( ($global:creds).UserName -eq $null ) {
             $global:creds = Get-Credential ($ENV:USERDOMAIN + "\" + $ENV:USERNAME)
         }
 
@@ -292,7 +292,7 @@ function Display-Menu {
 		Write-Host $menu
 		Write-Host "============================"
 	
-		$ans = Read-Host "Select 1-6"
+		$ans = Read-Host "Select 1-7"
 		
 		switch($ans.ToLower())
 		{
