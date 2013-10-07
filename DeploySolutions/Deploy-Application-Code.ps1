@@ -17,7 +17,7 @@ param (
     [switch] $auto,
 
     [Parameter(ParameterSetName='auto',Mandatory=$true)]
-    [ValidateSet("deploy-solutions", "enable-features", "deploy-configs", "install-msi", "uninstall-msi", "copy-to-gac")]
+    [ValidateSet("deploy-solutions", "enable-features", "deploy-configs", "install-msi", "uninstall-msi", "copy-to-gac", "sync-files")]
     [string[]] $ops
 )
 
@@ -26,6 +26,7 @@ param (
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
 
 $global:deploy_steps = @()
+$global:creds = [System.Management.Automation.PSCredential]
 
 Set-Variable -Name log_home -Value "D:\Logs" -Option Constant
 Set-Variable -Name deploy_home -Value "D:\Deploy\$app" -Option Constant
@@ -44,6 +45,7 @@ This script will deploy code for $app  . . .
 `t4) Install MSI Files
 `t5) Uninstall MSI Files
 `t6) Install Files to GAC
+`t7) Sync Files
 `tQ) Quit
 "@
 
@@ -198,6 +200,35 @@ function Uninstall-MSIFile {
 	} 
 }
 
+function Sync-Files {
+	param( 
+		[string] $deploy_directory
+	)
+
+    $dst = Read-Host "Enter the Destination Directory to Sync Files to"
+    $servers = Read-Host ("Enter servers to copy files to(separated by a ,) ").Split(",")
+
+    $sb = {
+        param ( 
+            [string] $src,
+            [string] $dst
+        )
+        Write-Host "[ $(Get-Date) ] - Copying files on $ENV:COMPUTER from $src to $dst . . ."
+        $log_file = Join-Path "D:\Logs" ("application-deployment-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log")
+		$sync_script = (Join-Path $ENV:SCRIPTS_HOME $ENV:SCRIPTS_HOME "Sync\Sync-Files.ps1")
+		&$sync_script -src $src -dst $dst -verbose -logging -log $log_file
+    }
+
+	if($record) {
+		$global:deploy_steps += "<li>Executed on $servers - (Join-Path $ENV:SCRIPTS_HOME Sync\Sync-Files.ps1) -src $deploy_directory -dst $dst  -verbose -logging </li>"
+	}
+
+    if( ! $global:creds ) {
+        $global:creds = Get-Credential ($ENV:USERDOMAIN + "\" + $ENV:USERNAME)
+    }
+    Invoke-Command -Computer $servers -Authentication CredSSP -Credential $global:creds -ScriptBlock $sb -ArgumentList $deploy_directory, $dst
+}
+
 function DeployTo-GAC {
 
 	param( 
@@ -228,8 +259,12 @@ function DeployTo-GAC {
 				Where { $_.TypeName -eq $type -and $_.Status -eq "Online" } | 
 				Select -Expand Server | 
 				Select -Expand Address 
-		$cred = Get-Credential ($ENV:USERDOMAIN + "\" + $ENV:USERNAME)
-		Invoke-Command -Computer $servers -Authentication CredSSP -Credential $cred -ScriptBlock $sb -ArgumentList $deploy_directory
+		
+        if( ! $global:creds ) {
+            $global:creds = Get-Credential ($ENV:USERDOMAIN + "\" + $ENV:USERNAME)
+        }
+
+		Invoke-Command -Computer $servers -Authentication CredSSP -Credential $global:creds -ScriptBlock $sb -ArgumentList $deploy_directory
 	} else {
 		&$sb -src $deploy_directory
 	}
@@ -267,6 +302,7 @@ function Display-Menu {
 			4 { Install-MSIFile $deploy_directory; break }
 			5 { Uninstall-MSIFile $deploy_directory; break }
 			6 { DeployTo-GAC $deploy_directory; break }
+            7 { Sync-Files $deploy_directory; break }
 			q { if($record) { Record-Deployment $deploy_directory } ; break }
 			default { 
 				Write-Host "Invalid selection"
@@ -296,7 +332,9 @@ function main
             if( $op -eq "install-msi" ) { Install-MSIFile -deploy_directory $src }
             if( $op -eq "uninstall-msi" ) { UnInstall-MSIFile -deploy_directory $src }
             if( $op -eq "copy-to-gac" ) { DeployTo-GAC -deploy_directory $src } 
+            if( $op -eq "sync-files" ) { Sync-Files -deploy_directory $src }
         }
+        if($record) { Record-Deployment $deploy_directory }
     } 
     
 	Stop-Transcript
