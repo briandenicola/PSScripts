@@ -54,6 +54,12 @@ $menu = @(
     @{ "Text" = "Record and Quit"; "ScriptBlock" = "break" }
 )
 
+function Log-Step
+{
+    param( [string] $step )
+    $global:deploy_steps += "<li>" + $step + "</li>"
+}
+
 function Get-SPServers 
 {
     param( [string] $type = "Microsoft SharePoint Foundation Workflow Timer Service" )
@@ -69,12 +75,9 @@ function Get-SPServers
 function Get-SPUserViaWS
 {
     param ( [string] $url, [string] $name )
-
 	$service = New-WebServiceProxy ($url + "_vti_bin/UserGroup.asmx?WSDL") -Namespace User -UseDefaultCredential
-	$user = $service.GetUserInfo("i:0#.w|$name")
-	
-    if( !$user ) { return  [string]::Empty }
-    else { return $user.user.id + ";#" + $user.user.Name }
+	$user = $service.GetUserInfo("i:0#.w|$name") 
+    return $user.user.id + ";#" + $user.user.Name
 }
 
 function Get-SPDeploy
@@ -142,8 +145,8 @@ function Record-Deployment
 
 function Deploy-Solutions
 {
-    $global:deploy_steps += "<li>$deploy_solutions -web_application $url -deploy_directory $src -noupgrade</li>"
-    $global:deploy_steps += "<li>$deploy_configs -operation backup -url $url</li>"
+    Log-Step -step "$deploy_solutions -web_application $url -deploy_directory $src -noupgrade"
+    Log-Step -step "$deploy_configs -operation backup -url $url"
 
     cd ( Join-Path $ENV:SCRIPTS_HOME "DeploySolutions" )
 	&$deploy_solutions -web_application $url -deploy_directory $src -noupgrade
@@ -154,8 +157,8 @@ function Deploy-Solutions
 
 function Deploy-Config
 {
-    $global:deploy_steps += "<li>$deploy_configs -operation deploy -url $url</li>" 
-    $global:deploy_steps += "<li>$deploy_configs -operation validate -url $url</li>" 
+    Log-Step -step "$deploy_configs -operation deploy -url $url" 
+    Log-Step -step "$deploy_configs -operation validate -url $url" 
     
 	cd (Join-Path $ENV:SCRIPTS_HOME "DeployConfig" )
 	&$deploy_configs -operation deploy -url $url
@@ -170,7 +173,7 @@ function Enable-Features
         return
     }
 
-	$global:deploy_steps += "<li>$enable_features -webApp $url</li>"
+	Log-Step -step "$enable_features -webApp $url"
 
 	cd (Join-Path $ENV:SCRIPTS_HOME  "DeploySolutions" )
 	&$enable_features -webApp $url			
@@ -179,7 +182,7 @@ function Enable-Features
 
 function Install-MSIFile
 {
-	$global:deploy_steps += "<li>Get-ChildItem $src -filter *.msi | % { Start-Process -FilePath msiexec.exe -ArgumentList /i, $_.FullName -Wait  }</li>"
+	Log-Step -step "Get-ChildItem $src -filter *.msi | % { Start-Process -FilePath msiexec.exe -ArgumentList /i, $_.FullName -Wait }"
 	
 	foreach( $msi in (Get-ChildItem $src -Filter *.msi) ) {
 		Write-Host "[ $(Get-Date) ] - Installing MSI - $($msi.FullName)  . . ."
@@ -189,7 +192,7 @@ function Install-MSIFile
 
 function Uninstall-MSIFile
 { 
-	$global:deploy_steps += "<li>Get-Content (Join-Path $deploy_directory uninstall.txt) | % { Start-Process -FilePath msiexec.exe -ArgumentList /x,$_,/qn -Wait  }</li>" 
+	Log-Step -step "Get-Content (Join-Path $deploy_directory uninstall.txt) | % { Start-Process -FilePath msiexec.exe -ArgumentList /x,$_,/qn -Wait }" 
 
     $uninstall_file = (Join-Path $deploy_directory "uninstall.txt") 
     if( !( Test-Path $uninstall_file )) {
@@ -208,7 +211,7 @@ function Sync-Files
     $dst = Read-Host "Enter the Destination Directory to Sync Files to"
     $servers = Read-Host ("Enter servers to copy files to(separated by a comma) ").Split(",")
 
-	$global:deploy_steps += "<li>Executed on $servers - (Join-Path $ENV:SCRIPTS_HOME Sync\Sync-Files.ps1) -src $deploy_directory -dst $dst  -verbose -logging </li>"
+	Log-Step -step "Executed on $servers - (Join-Path $ENV:SCRIPTS_HOME Sync\Sync-Files.ps1) -src $deploy_directory -dst $dst  -verbose -logging"
 
     if( ($global:creds).UserName -eq $null ) { $global:creds = Get-Credential ($ENV:USERDOMAIN + "\" + $ENV:USERNAME)  }
     Invoke-Command -Computer $servers -Authentication CredSSP -Credential $global:creds -ScriptBlock $sync_files_script_block -ArgumentList $deploy_directory, $dst, $log_home
@@ -217,7 +220,7 @@ function Sync-Files
 function DeployTo-GAC
 {
     $servers =  Get-SPServers -type "Microsoft SharePoint Foundation Web Application"
-	$global:deploy_steps += "<li>Executed on $servers -(Join-Path $ENV:SCRIPTS_HOME Misc-SPScripts\Install-Assemblies-To-GAC.ps1) -src $src</li>" 
+	Log-Step -step "Executed on $servers -(Join-Path $ENV:SCRIPTS_HOME Misc-SPScripts\Install-Assemblies-To-GAC.ps1) -src $src" 
 	 
     if( ($global:creds).UserName -eq $null ) { $global:creds = Get-Credential ($ENV:USERDOMAIN + "\" + $ENV:USERNAME) }
 	Invoke-Command -Computer $servers -Authentication CredSSP -Credential $global:creds -ScriptBlock $gac_script_block -ArgumentList $deploy_directory
@@ -226,14 +229,14 @@ function DeployTo-GAC
 function Cycle-IIS 
 {
     $servers = Get-SPServers
-    $global:deploy_steps += "<li>Invoke-Command -Computer $servers -ScriptBlock $iisreset_script_block </li>" 
+    Log-Step -step "Invoke-Command -Computer $servers -ScriptBlock $iisreset_script_block" 
     Invoke-Command -Computer $servers -ScriptBlock $iisreset_scipt_block
 }
 
 function Cycle-Timer
 {
     $servers = Get-SPServers
-    $global:deploy_steps += "<li>Invoke-Command -Computer $servers -ScriptBlock $sptimer_script_block </li>" 
+    Log-Step -step "Invoke-Command -Computer $servers -ScriptBlock $sptimer_script_block"
     Invoke-Command -Computer $servers -ScriptBlock $sptimer_script_block
 }
 
