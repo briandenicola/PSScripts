@@ -252,8 +252,8 @@ function main
 	Write-Host "Deployment URL - $url"
 	Write-Host "============================"
 	
-    $global:steps += "Automated with $($MyInvocation.InvocationName) from $ENV:COMPUTERNAME . . .<BR/>"
-    $global:steps += "Steps Taken include - <BR/><HR/>"
+    Log-Step -step "Automated with $($MyInvocation.InvocationName) from $ENV:COMPUTERNAME . . .<BR/>"
+    Log-Step -step "Steps Taken include - <BR/><HR/>"
 
 	do
 	{
