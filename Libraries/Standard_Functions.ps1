@@ -8,6 +8,26 @@ $domain  = "mail.sharepoint.test"
 $AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
 $AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
 
+function Get-BitlyLink
+{
+    param(
+        [Parameter(Mandatory = $True)][string] $url
+    )
+    
+    $encoded_url = [system.web.httputility]::urlencode($url)
+    $bitly_url = "https://api-ssl.bitly.com/v3/user/link_save?access_token={0}&longUrl={1}"
+    $access_token = ""
+    $link = $bitly_url -f $access_token, $encoded_url
+
+    $result = Invoke-RestMethod -Method Get -Uri $link
+
+    if( $result.status_code -ne 200 ) {
+        throw ("Erorr Occured - " + $result.status_txt )
+    }
+    
+    return $result.data.link_save.link 
+}
+
 function Get-RemoteDesktopSessions
 {
     param(

@@ -17,7 +17,7 @@ param (
     [switch] $auto,
 
     [Parameter(ParameterSetName='auto',Mandatory=$true)]
-    [ValidateSet("deploy-solutions", "enable-features", "deploy-configs", "install-msi", "uninstall-msi", "copy-to-gac", "sync-files")]
+    [ValidateSet("deploy-solutions", "enable-features", "deploy-configs", "install-msi", "uninstall-msi", "copy-to-gac", "sync-files", "cycle-timer", "cycle-iis")]
     [string[]] $ops
 )
 
@@ -37,6 +37,7 @@ Set-Variable -Name deploy_solutions -Value (Join-Path $ENV:SCRIPTS_HOME "DeployS
 Set-Variable -Name deploy_configs -Value (Join-Path $ENV:SCRIPTS_HOME "DeployConfig\DeployConfigs.ps1") -Option Constant
 Set-Variable -Name enable_features -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Enable-$app-Features.ps1") -Option Constant
 
+
 $menu = @"
 This script will deploy code for $app  . . .
 `t1) Deploy $app Solutions
@@ -46,8 +47,24 @@ This script will deploy code for $app  . . .
 `t5) Uninstall MSI Files
 `t6) Install Files to GAC
 `t7) Sync Files
+`t8) Cycle IIS On All SharePoint Servers
+`t9) Cycle Timer Service on All SharePoint Servers
 `tQ) Quit
 "@
+
+function Get-SPServers 
+{
+    param(
+        [string] $type = "Microsoft SharePoint Foundation Workflow Timer Service"
+    )
+   
+	$servers = Get-SPServiceInstance | 
+	    Where { $_.TypeName -eq $type -and $_.Status -eq "Online" } | 
+		Select -Expand Server | 
+		Select -Expand Address 
+
+    return $servers
+}
 
 function Get-SPUserViaWS( [string] $url, [string] $name )
 {
@@ -253,13 +270,7 @@ function DeployTo-GAC {
 	}
 	
 	if( $ans -match "sp" ) {
-		Add-PSSnapin Microsoft.SharePoint.Powershell
-		$type = "Microsoft SharePoint Foundation Web Application" 
-		$servers = Get-SPServiceInstance | 
-				Where { $_.TypeName -eq $type -and $_.Status -eq "Online" } | 
-				Select -Expand Server | 
-				Select -Expand Address 
-		
+        $servers =  Get-SPServers -type "Microsoft SharePoint Foundation Web Application" 
         if( ($global:creds).UserName -eq $null ) {
             $global:creds = Get-Credential ($ENV:USERDOMAIN + "\" + $ENV:USERNAME)
         }
@@ -268,6 +279,25 @@ function DeployTo-GAC {
 	} else {
 		&$sb -src $deploy_directory
 	}
+}
+
+function Cycle-IIS 
+{
+    $servers =  Get-SPServers
+
+    if($record) {
+    	$global:deploy_steps += "<li>Invoke-Command -Computer $servers -ScriptBlock { iisreset }</li>"
+	}
+    Invoke-Command -Computer $servers -ScriptBlock { iisreset }
+}
+
+function Cycle-Timer {
+    $servers =  Get-SPServers
+
+    if($record) {
+    	$global:deploy_steps += "<li> Invoke-Command -Computer $servers -ScriptBlock { Restart-Service -Name sptimerv4 -Verbose }</li>"
+	}
+    Invoke-Command -Computer $servers -ScriptBlock { Restart-Service -Name sptimerv4 -Verbose }
 }
 
 function Display-Menu {
@@ -303,6 +333,8 @@ function Display-Menu {
 			5 { Uninstall-MSIFile $deploy_directory; break }
 			6 { DeployTo-GAC $deploy_directory; break }
             7 { Sync-Files $deploy_directory; break }
+            8 { Cycle-IIS; break }
+            9 { Cycle-Timer; break }
 			q { if($record) { Record-Deployment $deploy_directory } ; break }
 			default { 
 				Write-Host "Invalid selection"
@@ -333,6 +365,8 @@ function main
             if( $op -eq "uninstall-msi" ) { UnInstall-MSIFile -deploy_directory $src }
             if( $op -eq "copy-to-gac" ) { DeployTo-GAC -deploy_directory $src } 
             if( $op -eq "sync-files" ) { Sync-Files -deploy_directory $src }
+            if( $op -eq "cycle-iis" ) { DeployTo-GAC -deploy_directory $src } 
+            if( $op -eq "cycle-timer" ) { DeployTo-GAC -deploy_directory $src } 
         }
         if($record) { Record-Deployment $deploy_directory }
     } 
