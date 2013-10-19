@@ -25,7 +25,7 @@ Set-Variable -Name enable_features -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySo
 
 #Script Blocks
 $sptimer_script_block = { Restart-Service -Name sptimerv4 -Verbose }
-$iisreset_scipt_block = { iireset }
+$iisreset_scipt_block = { iisreset }
 $sync_file_script_block = {
     param ( [string] $src, [string] $dst, [string] $log_home  )
     Write-Host "[ $(Get-Date) ] - Copying files on $ENV:COMPUTER from $src to $dst . . ."
