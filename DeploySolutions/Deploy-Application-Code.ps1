@@ -5,13 +5,15 @@ param (
 	[switch] $record
 )
 
+#Load Libraries
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
 
+Import-Module (Join-Path $ENV:SCRIPTS_HOME "\Libraries\Credentials.psm1")
+
 #Global Variables
 $global:deploy_steps = @()
-$global:creds = [System.Management.Automation.PSCredential]
 
 #Constants
 Set-Variable -Name log_home -Value "D:\Logs" -Option Constant
@@ -169,7 +171,7 @@ function Deploy-Config
 function Enable-Features 
 {
     if( !( Test-Path $enable_features ) ) { 
-        throw "Could not find $enable_features script"
+        Write-Error "Could not find $enable_features script"
         return
     }
 
@@ -212,18 +214,14 @@ function Sync-Files
     $servers = Read-Host ("Enter servers to copy files to(separated by a comma) ").Split(",")
 
 	Log-Step -step "Executed on $servers - (Join-Path $ENV:SCRIPTS_HOME Sync\Sync-Files.ps1) -src $deploy_directory -dst $dst  -verbose -logging"
-
-    if( ($global:creds).UserName -eq $null ) { $global:creds = Get-Credential ($ENV:USERDOMAIN + "\" + $ENV:USERNAME)  }
-    Invoke-Command -Computer $servers -Authentication CredSSP -Credential $global:creds -ScriptBlock $sync_files_script_block -ArgumentList $deploy_directory, $dst, $log_home
+    Invoke-Command -Computer $servers -Authentication CredSSP -Credential (Get-Creds) -ScriptBlock $sync_files_script_block -ArgumentList $deploy_directory, $dst, $log_home
 }
 
 function DeployTo-GAC
 {
     $servers =  Get-SPServers -type "Microsoft SharePoint Foundation Web Application"
-	Log-Step -step "Executed on $servers -(Join-Path $ENV:SCRIPTS_HOME Misc-SPScripts\Install-Assemblies-To-GAC.ps1) -src $src" 
-	 
-    if( ($global:creds).UserName -eq $null ) { $global:creds = Get-Credential ($ENV:USERDOMAIN + "\" + $ENV:USERNAME) }
-	Invoke-Command -Computer $servers -Authentication CredSSP -Credential $global:creds -ScriptBlock $gac_script_block -ArgumentList $deploy_directory
+	Log-Step -step "Executed on $servers -(Join-Path $ENV:SCRIPTS_HOME Misc-SPScripts\Install-Assemblies-To-GAC.ps1) -src $src"
+	Invoke-Command -Computer $servers -Authentication CredSSP -Credential (Get-Creds) -ScriptBlock $gac_script_block -ArgumentList $deploy_directory
 }
 
 function Cycle-IIS 
