@@ -40,7 +40,7 @@ function ConvertDictionary-ToObject {
     return $objects
 }
 
-function Update-SPListViaCSOM {
+function Update-SPListItemViaCSOM {
 
     param (
         [Parameter(Mandatory=$true)][string] $site,
@@ -70,7 +70,7 @@ function Update-SPListViaCSOM {
     $ctx.ExecuteQuery()
 }
 
-function Create-SPListViaCSOM {
+function Create-SPListItemViaCSOM {
 
     param (
         [Parameter(Mandatory=$true)][string] $site,
