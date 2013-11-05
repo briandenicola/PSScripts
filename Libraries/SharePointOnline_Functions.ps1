@@ -126,3 +126,17 @@ function Get-SPListViaCSOM {
 
     return ( ConvertDictionary-ToObject $items.FieldValues )
 }
+
+function UploadTo-SharePointOnline{   param (
+        [Parameter(Mandatory=$true)][string] $site,
+        
+        [Parameter(Mandatory=$true)][string] $library,
+
+        [ValidateScript({Test-Path $_ -PathType leaf})] 
+        [Parameter(Mandatory=$true)][string] $file,
+
+        [System.Management.Automation.PSCredential] $credentials
+    )    $ctx = Connect-SPOnlineServices -site $site -creds $credentials    $sp_list = $ctx.Web.Lists.GetByTitle($library)    $ctx.Load($sp_list.RootFolder)    $ctx.ExecuteQuery()
+    $item = Get-Item $file
+
+    $file_byte_array = Get-Content -Encoding Byte $file        $content = New-Object Microsoft.SharePoint.Client.FileCreationInformation    $content.Content = $file_byte_array    $content.Url = $sp_list.RootFolder.ServerRelativeUrl + "/" + $item.Name     $content.Overwrite = $true    $uploaded_file = $sp_list.RootFolder.Files.Add($content)    $ctx.Load($uploaded_file)    $ctx.ExecuteQuery()}
