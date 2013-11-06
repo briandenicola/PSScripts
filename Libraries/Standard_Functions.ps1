@@ -8,16 +8,50 @@ $domain  = "mail.sharepoint.test"
 $AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
 $AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
 
+function Check-ServerAccess
+{
+    param(
+        [string] $computer
+    )
+
+    Get-WmiObject -Query "Select Name from Win32_ComputerSystem" -ComputerName $computer -ErrorAction SilentlyContinue | Out-Null
+    return $? 
+}
+
+function Create-DBConnectionString 
+{
+    param(
+         [Parameter(Mandatory = $True)][string]$sql_instance,
+         [Parameter(Mandatory = $True)][string]$database,
+
+         [Parameter(Mandatory = $False, ParameterSetName="Integrated")][switch] $integrated_authentication,
+         [Parameter(Mandatory = $true, ParameterSetName="SQL")][string]$user = [string]::empty,
+         [Parameter(Mandatory = $true, ParameterSetName="SQL")][string]$password = [string]::empty
+    )
+    $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder
+    $builder['Data Source'] = $sql_instance
+    $builder['Initial Catalog'] = $database
+
+    if( $integrated_authentication )  { 
+        $builder['Integrated Security'] = $true
+    }
+    else { 
+        $builder['User ID'] = $user
+        $builder['Password'] = $password
+    }
+
+    return $builder.ConnectionString
+}
+
 function Get-BitlyLink
 {
     param(
-        [Parameter(Mandatory = $True)][string] $url
+        [Parameter(Mandatory = $True)][string] $url,
+        [switch] $copy_to_clipboard
     )
     
-    $encoded_url = [system.web.httputility]::urlencode($url)
-    $bitly_url = "https://api-ssl.bitly.com/v3/user/link_save?access_token={0}&longUrl={1}"
-    $access_token = ""
-    $link = $bitly_url -f $access_token, $encoded_url
+    Set-Variable -Name access_token -Value "" -Option Constant
+    $link = [string]::Format( "https://api-ssl.bitly.com/v3/user/link_save?access_token={0}&longUrl={1}", $access_token,  [system.web.httputility]::urlencode($url) )
 
     $result = Invoke-RestMethod -Method Get -Uri $link
 
@@ -25,6 +59,10 @@ function Get-BitlyLink
         throw ("Erorr Occured - " + $result.status_txt )
     }
     
+    if( $copy_to_clipboard ) { 
+        $result.data.link_save.link | Set-Clipboard
+    }
+
     return $result.data.link_save.link 
 }
 

@@ -3,22 +3,35 @@ param (
 	[Parameter(Mandatory=$true)]	
     [string[]] $computers,
     [switch] $upload,
-	[switch] $sharepoint
+	[switch] $sharepoint,
+	[switch] $citrix
 )
 
 . (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-PATH $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 
 if( $sharepoint ) {
-	$global:url =  "http://teamadmin.gt.com/sites/ApplicationOperations/"
+	$global:url =  ""
 	$global:list = "Servers"
 }
+elseif ( $citrix ) { 
+	$global:url =  ""
+	$global:list = "Citrix Servers"
+}
 else { 
-	$global:url =  "http://teamadmin.gt.com/sites/ApplicationOperations/applicationsupport/"
+	$global:url =  ""
 	$global:list = "AppServers"
 }
 
 foreach( $server in $computers ) { 
+
+	Write-Verbose "Working on $($server) . . ."
+
+    if( !(Check-ServerAccess -computer $server ) ){
+        Write-Error "ACCESS DENIED - $server . . ."
+        continue 
+    }
+
 	$properties = audit-Server $server 
 	
 	if( $upload ) {
@@ -26,6 +39,6 @@ foreach( $server in $computers ) {
 		WriteTo-SPListViaWebService -url $global:url -list $global:list -Item $(Convert-ObjectToHash $properties) -TitleField SystemName 
 	}
 	else {
-		return $properties
+		$properties
 	}
 }
