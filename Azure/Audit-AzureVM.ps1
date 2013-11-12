@@ -2,10 +2,10 @@
 param ( 
 	[Parameter(Mandatory=$true)]	
     [string[]] $computers,
-    [switch] $upload,
-	[switch] $sharepoint
+    [switch] $upload
 )
 
+. (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Azure_Functions.ps1")
 . (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-PATH $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 
@@ -18,37 +18,35 @@ else {
 	$global:list = "AppServers"
 }
 
-foreach( $server in $computers ) { 
+foreach( $computer in $computers ) { 
 
-	$audit = New-Object System.Object
-	$computer = Get-WmiObject Win32_ComputerSystem -ComputerName $server
-	$os = Get-WmiObject Win32_OperatingSystem -ComputerName $server
-	$bios = Get-WmiObject Win32_BIOS -ComputerName $server
-	$nics = Get-WmiObject Win32_NetworkAdapterConfiguration -ComputerName $server
-	$cpu = Get-WmiObject Win32_Processor -ComputerName $server | select -first 1 -expand MaxClockSpeed
-	$disks = Get-WmiObject Win32_LogicalDisk -ComputerName $server
-	
-	$audit | add-member -type NoteProperty -name SystemName -Value $computer.Name
-	$audit | add-member -type NoteProperty -name Domain -Value $computer.Domain		
-	$audit | add-member -type NoteProperty -name Model -Value ($computer.Manufacturer + " " + $computer.Model.TrimEnd())
-	$audit | add-member -type NoteProperty -name Processor -Value ($computer.NumberOfProcessors.toString() + " x " + ($cpu/1024).toString("#####.#") + " GHz")
-	$audit | add-member -type NoteProperty -name Memory -Value ($computer.TotalPhysicalMemory/1gb).tostring("#####.#")
-	$audit | add-member -type NoteProperty -name SerialNumber -Value ($bios.SerialNumber.TrimEnd())
-	$audit | add-member -type NoteProperty -name OperatingSystem -Value ($os.Caption + " - " + $os.ServicePackMajorVersion.ToString() + "." + $os.ServicePackMinorVersion.ToString())
-	
-	$localDisks = $disks | where { $_.DriveType -eq 3 } | Select DeviceId, @{Name="FreeSpace";Expression={($_.FreeSpace/1mb).ToString("######.#")}},@{Name="TotalSpace";Expression={($_.Size/1mb).ToString("######.#")}}
-	$audit | add-member -type NoteProperty -name Drives -Value $localDisks
-	
-	$IPAddresses = @()
-	$nics | where { -not [string]::IsNullorEmpty($_.IPAddress)  -and $_.IPEnabled -eq $true -and $_.IpAddress -ne "0.0.0.0" } | % { $IPAddresses += $_.IPAddress }
-	$audit | add-member -type NoteProperty -name IPAddresses -Value $IPAddresses
-	
+    $vm = Get-AzureVM -ServiceName $computer 
+    $os = $vm | Get-AzureOSDisk 
+    $disks = $vm | Get-AzureDataDisk | Select DiskName, MediaLink, LogicalDiskSizeInGB 
+
+    $os_label = Get-AzureVMImage | Where { $_.ImageName -eq $os.SourceImageName  } | Select -ExpandProperty Label
+    $service = Get-AzureService | Where { $_.Label -imatch  $computer }
+
+    $notes = @()
+    $notes += "Affinity Group = " + $service.AffinityGroup
+    $notes += "Date Created = " + $service.DateCreated
+    $notes += "Url = " + $service.Url
+
+	$audit = New-Object PSObject -Property @{
+        SystemName = $vm.Name
+        IPAddresses = $vm.IpAddress
+        Model = $vm.InstanceSize
+        OperatingSystem = $os_label
+        Drives = $disks 
+        SerialNumber = ($os.OS + " - " + $os.SourceImageName )
+        Notes = $notes
+    }	
 	
 	if( $upload ) {
 		Write-Verbose "[ $(Get-Date) ] - Upload was passed on command line. Will upload results to $global:url ($global:list)  . . . "
-		WriteTo-SPListViaWebService -url $global:url -list $global:list -Item $(Convert-ObjectToHash $properties) -TitleField SystemName 
+		WriteTo-SPListViaWebService -url $global:url -list $global:list -Item $(Convert-ObjectToHash $audit) -TitleField SystemName 
 	}
 	else {
-		return $properties
+		return $audit
 	}
 }
