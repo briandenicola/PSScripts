@@ -150,6 +150,12 @@ function Deploy-Solutions
     Log-Step -step "$deploy_solutions -web_application $url -deploy_directory $src -noupgrade"
     Log-Step -step "$deploy_configs -operation backup -url $url"
 
+    Get-SPWebApplication $url -EA Silentlycontinue | Out-Null
+    if( !$? ) {
+        throw ("Could not find " + $url + " this SharePoint farm. Are you sure you're on the right one?")
+        exit
+    }
+
     cd ( Join-Path $ENV:SCRIPTS_HOME "DeploySolutions" )
 	&$deploy_solutions -web_application $url -deploy_directory $src -noupgrade
 	cd (Join-Path $ENV:SCRIPTS_HOME "DeployConfig" )
@@ -194,9 +200,9 @@ function Install-MSIFile
 
 function Uninstall-MSIFile
 { 
-	Log-Step -step "Get-Content (Join-Path $deploy_directory uninstall.txt) | % { Start-Process -FilePath msiexec.exe -ArgumentList /x,$_,/qn -Wait }" 
+	Log-Step -step "Get-Content (Join-Path $src uninstall.txt) | % { Start-Process -FilePath msiexec.exe -ArgumentList /x,$_,/qn -Wait }" 
 
-    $uninstall_file = (Join-Path $deploy_directory "uninstall.txt") 
+    $uninstall_file = (Join-Path $src "uninstall.txt") 
     if( !( Test-Path $uninstall_file )) {
         throw "Could not file the file that contains the MSIs to uninstall at $uninstall_file"
         return
@@ -211,17 +217,19 @@ function Uninstall-MSIFile
 function Sync-Files
 {
     $dst = Read-Host "Enter the Destination Directory to Sync Files to"
-    $servers = Read-Host ("Enter servers to copy files to(separated by a comma) ").Split(",")
+    $servers = (Read-Host "Enter servers to copy files to(separated by a comma) ").Split(",")
 
-	Log-Step -step "Executed on $servers - (Join-Path $ENV:SCRIPTS_HOME Sync\Sync-Files.ps1) -src $deploy_directory -dst $dst  -verbose -logging"
-    Invoke-Command -Computer $servers -Authentication CredSSP -Credential (Get-Creds) -ScriptBlock $sync_files_script_block -ArgumentList $deploy_directory, $dst, $log_home
+	Log-Step -step "Executed on $servers - (Join-Path $ENV:SCRIPTS_HOME Sync\Sync-Files.ps1) -src $src -dst $dst  -verbose -logging"
+
+    Invoke-Command -Computer $servers -Authentication CredSSP -Credential (Get-Creds) -ScriptBlock $sync_file_script_block -ArgumentList $src, $dst, $log_home
 }
 
 function DeployTo-GAC
 {
     $servers =  Get-SPServers -type "Microsoft SharePoint Foundation Web Application"
-	Log-Step -step "Executed on $servers -(Join-Path $ENV:SCRIPTS_HOME Misc-SPScripts\Install-Assemblies-To-GAC.ps1) -src $src"
-	Invoke-Command -Computer $servers -Authentication CredSSP -Credential (Get-Creds) -ScriptBlock $gac_script_block -ArgumentList $deploy_directory
+	Log-Step -step "Executed on $servers -(Join-Path $ENV:SCRIPTS_HOME Misc-SPScripts\Install-Assemblies-To-GAC.ps1) -src $src" 
+	 
+	Invoke-Command -Computer $servers -Authentication CredSSP -Credential (Get-Creds)-ScriptBlock $gac_script_block -ArgumentList $src
 }
 
 function Cycle-IIS 
