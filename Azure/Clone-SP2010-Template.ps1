@@ -13,6 +13,7 @@ Set-Variable -Name vm_size -Value "Medium" -Option Constant
 Set-Variable -Name vm_image -Value "" -Option Constant
 Set-Variable -Name vm_affinity -Value "" -Option Constant
 Set-Variable -Name admin_user -Value "manager" -Option Constant
+Set-Variable -Name subnet -Value "servers" -Option Constant
 
 Import-AzurePublishSettingsFile $settings
 
@@ -39,6 +40,7 @@ while( $status.Status -eq "Pending" ){
 
 $vm = New-AzureVMConfig -Name $vm_name -InstanceSize $vm_size -ImageName $vm_image |
     Add-AzureProvisioningConfig -Windows -Password $password -AdminUsername $admin_user |
+    Set-AzureSubnet -SubnetNames $subnet | 
     Add-AzureDataDisk -ImportFrom -MediaLocation $storage_url -LUN 1 -DiskLabel "DATA"
 
-New-AzureVM -VMs $vm -ServiceName $vm_name -AffinityGroup $vm_affinity 
+New-AzureVM -VMs $vm -ServiceName $vm_name -AffinityGroup $vm_affinity  -VNetName $vm_affinity
