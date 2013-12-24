@@ -3,6 +3,24 @@ Add-PSSnapin WebFarmSnapin -ErrorAction SilentlyContinue
 
 $ENV:PATH += ';C:\Program Files\IIS\Microsoft Web Deploy V2'
 
+function Set-AlwaysRunning
+{
+    param(
+        [string] $app_pool
+    )
+
+    Set-ItemProperty -Path (Join-Path "IIS:\AppPools" $app_pool) -Name startMode -Value "AlwaysRunning"
+
+}
+function Set-PreLoad 
+{
+    param(
+        [string] $site
+    )
+
+    Set-ItemProperty -Path (Join-Path "IIS:\Sites"  $site) -name applicationDefaults.preloadEnabled -value True
+}
+
 function Get-IISAppPoolDetails
 {
     param(
@@ -25,7 +43,7 @@ function Get-IISAppPoolDetails
         QueueLength = $details.queueLength
         AutoStart = $details.autoStart
         StartupMode = $details.startMode
-        RecyleTime = $details.recycling.periodicRestart.time
+        RecyleTimeInHours = $details.recycling.periodicRestart.time.TotalHours
         RecyleMemory = $details.recycling.periodicRestart.Memory
         RecyleRequests = $details.recycling.periodicRestart.Requests
     })

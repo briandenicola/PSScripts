@@ -15,7 +15,7 @@ param (
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 
-$url = ""
+$url = "http://teamadmin.gt.com/sites/ApplicationOperations/applicationsupport/"
 $list_servers = "AppServers"
 $list_websites = "Applications - $env"
 
