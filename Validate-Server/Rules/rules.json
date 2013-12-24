@@ -25,7 +25,7 @@
     { 
         "TypeName":"Environment",
         "Name":"SCRIPTS_HOME",
-		"Value":"C:\\Scripts",
+		"Value":"D:\\Scripts",
         "Description":"Test For Present of Environment Variable - SCRIPTS_HOME",
         "OnError":"Continue" 
     },
@@ -88,6 +88,11 @@
         "TypeName":"Share",
         "ShareName":"Logs",
         "Description":"Test For Present of Share - Logs",
+        "OnError":"Continue" 
+    },
+    { 
+        "TypeName":"Audit",
+        "Description":"Test For Present of the Server in the SharePoint Documentation List",
         "OnError":"Continue" 
     }
 ]

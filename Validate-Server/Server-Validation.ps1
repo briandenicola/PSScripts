@@ -52,6 +52,7 @@ function main {
                 GroupMembership { $result =Test-GroupMemberShip -computer $computer -rule $rule } 
                 Share { $result = Test-Share -computer $computer -rule $rule } 
                 Version { $result = Test-PSVersion -computer $computer -rule $rule }
+                Audit { $result = Test-ServerAudit -computer $computer -rule $rule }
             }
 
             if( !$result -and $rule.OnError -eq "Stop" ) { break }

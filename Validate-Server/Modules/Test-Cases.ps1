@@ -1,6 +1,11 @@
 ﻿Set-Variable -Name results -Value @() -Option AllScope
 Set-Variable -Name session -value $null -Option AllScope
 Set-Variable -Name features -Value $null -Option AllScope
+Set-Variable -name url -Value "http://" -Option AllScope
+Set-Variable -Name sp_server_list -Value "Servers" -Option AllScope 
+Set-Variable -Name app_server_list -Value "AppServers" -Option AllScope
+
+. (Join-Path $env:SCRIPTS_HOME "libraries\SharePoint_Functions.ps1")
 
 #Region - Create PS Remoting Object
 function Create-PSRemoteSession {
@@ -18,6 +23,7 @@ function Delete-PSRemoteSession {
     )
     $features = $null
     $session = $null
+    $sites = $null
     Get-PSSession | Remove-PSSession
 }
 #EndRegion
@@ -224,6 +230,29 @@ function Test-Share {
 }
 #EndRegion
 
+#Region - Test The Version of PowerSHell
+function Test-PSVersion {
+    param(
+        [string] $computer,
+        [Object] $rule 
+    )
+    
+    Write-Host ("[{0}] - Testing Rule - {1} . . ." -f $(Get-Date), $rule.Description)
+    $version = Invoke-Command -Session $session -ScriptBlock {return ($psversiontable.PSVersion)}
+
+    $result = $version.Major -ge $rule.Version
+    $results += New-Object PSObject -Property @{
+        Computer = $computer
+        Text = $rule.Description
+        Result = $result
+    }
+
+
+    Write-Verbose ("Result - " + $result.ToString().ToUpper())
+    return $result
+}
+#EndRegion
+
 
 #Region - Test The Version of PowerSHell
 function Test-PSVersion {
@@ -242,6 +271,52 @@ function Test-PSVersion {
         Result = $result
     }
 
+
+    Write-Verbose ("Result - " + $result.ToString().ToUpper())
+    return $result
+}
+#EndRegion
+
+
+#Region - Test The Version of PowerSHell
+function Test-PSVersion {
+    param(
+        [string] $computer,
+        [Object] $rule 
+    )
+    
+    Write-Host ("[{0}] - Testing Rule - {1} . . ." -f $(Get-Date), $rule.Description)
+    $version = Invoke-Command -Session $session -ScriptBlock {return ($psversiontable.PSVersion)}
+
+    $result = $version.Major -ge $rule.Version
+    $results += New-Object PSObject -Property @{
+        Computer = $computer
+        Text = $rule.Description
+        Result = $result
+    }
+
+
+    Write-Verbose ("Result - " + $result.ToString().ToUpper())
+    return $result
+}
+#EndRegion
+
+#Region - Test for Present of IIS Site
+function Test-ServerAudit { 
+    param(
+        [string] $computer,
+        [Object] $rule 
+    )
+    
+    Write-Host ("[{0}] - Testing Rule - {1} . . ." -f $(Get-Date), $rule.Description)
+    
+    $servers = ((Get-SPListViaWebService -url $url -list $app_server_list) + (Get-SPListViaWebService -url $url -list $sp_server_list)) | Select -ExpandProperty SystemName
+    $result = $servers -contains $computer
+    $results += New-Object PSObject -Property @{
+        Computer = $computer
+        Text = $rule.Description
+        Result = $result
+    }
 
     Write-Verbose ("Result - " + $result.ToString().ToUpper())
     return $result
