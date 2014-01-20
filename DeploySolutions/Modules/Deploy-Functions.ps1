@@ -3,7 +3,7 @@ Set-Variable -Name deploy_solutions -Value (Join-Path $ENV:SCRIPTS_HOME "DeployS
 Set-Variable -Name deploy_configs -Value (Join-Path $ENV:SCRIPTS_HOME "DeployConfig\DeployConfigs.ps1") -Option Constant
 Set-Variable -Name enable_features -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Enable-$app-Features.ps1") -Option Constant
 Set-Variable -Name sptimer_script_block -Value { Restart-Service -Name sptimerv4 -Verbose }
-Set-Variable -Name iisreset_scipt_block -Value { iisreset }
+Set-Variable -Name iisreset_script_block -Value { iisreset }
 Set-Variable -Name sync_file_script_block -Value {
     param ( [string] $src, [string] $dst, [string] $log_home  )
     Write-Host "[ $(Get-Date) ] - Copying files on $ENV:COMPUTER from $src to $dst . . ."
@@ -28,6 +28,8 @@ $menu = @(
     @{ "Text" = "Sync Web Code"; "ScriptBlock" = "Sync-Files" },
     @{ "Text" = "Cycle IIS On All SharePoint Servers"; "ScriptBlock" = "Cycle-IIS" },
     @{ "Text" = "Cycle Timer Service on All SharePoint Servers"; "ScriptBlock" = "Cycle-Timer" },
+    @{ "Text" = "Deploy SSRS Report (BETA)"; "ScriptBlock" = "Deploy-SSRSReport"},
+    @{ "Text" = "Manual Script Block (BETA)"; "ScriptBlock" = "Execute-ManualScriptBlock"},
     @{ "Text" = "Record and Quit"; "ScriptBlock" = "break" }
 )
 #End Variables 
@@ -124,7 +126,7 @@ function Cycle-IIS
 {
     $servers = Get-SPServers
     Log-Step -step "Invoke-Command -Computer $servers -ScriptBlock $iisreset_script_block" 
-    Invoke-Command -Computer $servers -ScriptBlock $iisreset_scipt_block
+    Invoke-Command -Computer $servers -ScriptBlock $iisreset_script_block
 }
 
 function Cycle-Timer
@@ -132,4 +134,29 @@ function Cycle-Timer
     $servers = Get-SPServers
     Log-Step -step "Invoke-Command -Computer $servers -ScriptBlock $sptimer_script_block"
     Invoke-Command -Computer $servers -ScriptBlock $sptimer_script_block
+}
+
+function Deploy-SSRSReport {
+
+    . (Join-Path $ENV:SCRIPTS_HOME "SSRS\Install-SSRS.ps1")
+    
+    $report_folder  = Read-Host -Prompt "Please Enter the Folder To Deploy Reports To - "
+    $SSRS_WebService = "http://{0}/ReportServer/ReportService2005.asmx?WSDL" -f [string]::Empty
+
+    foreach( $report in ( Get-ChildItem $src | Where { $_.Extension -eq ".rdl" } ) ) {
+        Log-Step -step ("Install-SSRSRDL {0} {1} -reportFolder {2} -force" -f $SSRS_WebService, $report.FullName,$report_folder )
+        Install-SSRSRDL $SSRS_WebService $report.FullName -reportFolder $report_folder -force
+    }
+
+}
+
+function Execute-ManualScriptBlock {
+    $sb = Read-Host -Prompt "Please enter path to file that contains the ScriptBlock - "
+
+    if( (Test-Path $sb) ) { 
+        $script_block_text = Get-Content $sb | Out-String
+        $script_block = [scriptblock]::Create($script_block_text)
+        Log-Step -step ("Manual Powershell Scriptblock - {0}" -f $script_block_text) 
+        &$script_block
+    }
 }
