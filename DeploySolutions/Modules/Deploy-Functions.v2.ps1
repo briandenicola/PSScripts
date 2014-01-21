@@ -1,7 +1,6 @@
 ﻿#Variables
 Set-Variable -Name deploy_solutions -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Deploy-Sharepoint-Solutions.ps1") -Option Constant
 Set-Variable -Name deploy_configs -Value (Join-Path $ENV:SCRIPTS_HOME "DeployConfig\DeployConfigs.ps1") -Option Constant
-Set-Variable -Name enable_features -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Enable-$app-Features.ps1") -Option Constant
 
 Set-Variable -Name sptimer_script_block -Value { Restart-Service -Name sptimerv4 -Verbose }
 Set-Variable -Name iisreset_script_block -Value { iisreset }
@@ -66,6 +65,8 @@ function Enable-Features
         [Xml.XmlElement] $config
     )
 
+    Set-Variable -Name enable_features -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Enable-$app-Features.ps1") -Option Constant
+
     if( !( Test-Path $enable_features ) ) { 
         Write-Error "Could not find $enable_features script"
         return
@@ -83,11 +84,9 @@ function Install-MSIFile
     param( 
         [Xml.XmlElement] $config
     )
-
-	Log-Step -step ("Get-ChildItem {0} -filter *.msi | % { Start-Process -FilePath msiexec.exe -ArgumentList /i, $_.FullName -Wait }" -f $config.Source)
-	
+    	
 	foreach( $msi in (Get-ChildItem $config.Source -Filter *.msi) ) {
-		Write-Host "[ $(Get-Date) ] - Installing MSI - $($msi.FullName)  . . ."
+		Log-Step -step ("Installing MSI - " + $msi.FullName )
 		Start-Process -FilePath msiexec.exe -ArgumentList /i, $msi.FullName -Wait  
 	} 
 }
@@ -98,17 +97,15 @@ function Uninstall-MSIFile
         [Xml.XmlElement] $config
     )
 
-	Log-Step -step ("Get-Content (Join-Path {0} uninstall.txt) | % { Start-Process -FilePath msiexec.exe -ArgumentList /x,$_,/qn -Wait }" -f $config.Source )
-
     $uninstall_file = (Join-Path $config.Source "uninstall.txt") 
     if( !( Test-Path $uninstall_file )) {
         throw "Could not file the file that contains the MSIs to uninstall at $uninstall_file"
         return
     } 
 	
-    Get-Content $uninstall_file | Foreach { 
-		Write-Host "[ $(Get-Date) ] - Removing MSI with ID - $_  . . ."
-		Start-Process -FilePath msiexec.exe -ArgumentList /x,$_,/qn -Wait  
+    foreach( $id in (Get-Content $uninstall_file) ) { 
+		Log-Step -step ("Removing MSI with ID - " +  $id  )
+		Start-Process -FilePath msiexec.exe -ArgumentList /x,$id,/qn -Wait  
 	} 
 }
 
@@ -118,8 +115,9 @@ function Sync-Files
         [Xml.XmlElement] $config
     )
 
-	Log-Step -step ("Executed on {0} - (Join-Path $ENV:SCRIPTS_HOME Sync\Sync-Files.ps1) -src {0} -dst {1}  -verbose -logging" -f $config.Servers, $config.Source, $config.DestinationPath)
-    Invoke-Command -Computer $config.Servers -Authentication CredSSP -Credential (Get-Creds) -ScriptBlock $sync_file_script_block -ArgumentList  $config.Source, $config.DestinationPath, $log_home
+    $servers = $config.DestinationServers.Split(",")
+	Log-Step -step ("Executed on {0} - (Join-Path $ENV:SCRIPTS_HOME Sync\Sync-Files.ps1) -src {1} -dst {2}  -verbose -logging" -f $config.DestinationServers, $config.Source, $config.DestinationPath)
+    Invoke-Command -Computer $servers -Authentication CredSSP -Credential (Get-Creds) -ScriptBlock $sync_file_script_block -ArgumentList  $config.Source, $config.DestinationPath, $log_home
 }
 
 function DeployTo-GAC
@@ -129,8 +127,7 @@ function DeployTo-GAC
     )
 
     $servers =  Get-SPServers -type "Microsoft SharePoint Foundation Web Application"
-	Log-Step -step ("Executed on $servers -(Join-Path $ENV:SCRIPTS_HOME Misc-SPScripts\Install-Assemblies-To-GAC.ps1) -src {0}" -f $config.Source)
-	 
+	Log-Step -step ("Executed on $servers - (Join-Path $ENV:SCRIPTS_HOME Misc-SPScripts\Install-Assemblies-To-GAC.ps1) -src {0}" -f $config.Source)
 	Invoke-Command -Computer $servers -Authentication CredSSP -Credential (Get-Creds)-ScriptBlock $gac_script_block -ArgumentList $config.Source
 }
 
