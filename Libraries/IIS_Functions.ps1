@@ -3,6 +3,46 @@ Add-PSSnapin WebFarmSnapin -ErrorAction SilentlyContinue
 
 $ENV:PATH += ';C:\Program Files\IIS\Microsoft Web Deploy V2'
 
+$global:netfx = @{
+	"1.1x86" = "C:\WINDOWS\Microsoft.NET\Framework\v1.1.4322\CONFIG\machine.config"; 
+    "2.0x86" = "C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727\CONFIG\machine.config";
+	"4.0x86" = "C:\WINDOWS\Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config";
+	"2.0x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v2.0.50727\CONFIG\machine.config";
+	"4.0x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
+}
+
+function Get-CustomHeaders 
+{
+    return ( Get-WebConfiguration //httpProtocol/customHeaders | Select -Expand Collection | Select Name, Value )
+}
+
+function Set-CustomHeader
+{
+    param (
+        [string] $name,
+        [string] $value
+    )
+     Add-WebConfiguration //httpProtocol/customHeaders -Value @{Name=$name;Value=$value}
+}
+
+function Set-AlwaysRunning
+{
+    param(
+        [string] $app_pool
+    )
+
+    Set-ItemProperty -Path (Join-Path "IIS:\AppPools" $app_pool) -Name startMode -Value "AlwaysRunning"
+
+}
+function Set-PreLoad 
+{
+    param(
+        [string] $site
+    )
+
+    Set-ItemProperty -Path (Join-Path "IIS:\Sites"  $site) -name applicationDefaults.preloadEnabled -value True
+}
+
 function Get-IISAppPoolDetails
 {
     param(
@@ -25,7 +65,7 @@ function Get-IISAppPoolDetails
         QueueLength = $details.queueLength
         AutoStart = $details.autoStart
         StartupMode = $details.startMode
-        RecyleTime = $details.recycling.periodicRestart.time
+        RecyleTimeInHours = $details.recycling.periodicRestart.time.TotalHours
         RecyleMemory = $details.recycling.periodicRestart.Memory
         RecyleRequests = $details.recycling.periodicRestart.Requests
     })
@@ -197,20 +237,10 @@ function Start-IISSite
 {
 	param(
 		[String[]] $computers,
-		[String] $site = "Default Web Site",
-		[switch] $record,
-		[switch] $sp
-		
+		[String] $site = "Default Web Site"
 	)
 	
 	Get-IISWebState $computers
-	$list = "Issues Tracker"
-	if ($sp){
-		$url = "http://teamadmin.gt.com/sites/ApplicationOperations/"
-	}
-	else {
-		$url = "http://teamadmin.gt.com/sites/ApplicationOperations/ApplicationSupport/"
-	}
 	Write-Host "`nStarting $site . . . `n" -ForegroundColor blue
 	
 	Invoke-Command -ComputerName $computers -ScriptBlock { 
@@ -231,20 +261,11 @@ function Stop-IISSite
 {
 	param(
 		[String[]] $computers,
-		[String] $site = "Default Web Site",
-		[switch] $record,
-		[switch] $sp
+		[String] $site = "Default Web Site"
 	)
 	Get-IISWebState $computers
-	$list = "Issues Tracker"
-	if ($sp){
-		$url = "http://teamadmin.gt.com/sites/ApplicationOperations/"
-	}
-	else
-	{
-		$url = "http://teamadmin.gt.com/sites/ApplicationOperations/ApplicationSupport/"
-	}
 	Write-Host "`nStoping $site . . . `n" -ForegroundColor blue
+
 	Invoke-Command -ComputerName $computers -ScriptBlock { 
 		param ( [string] $site )
 		. (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1")
@@ -356,37 +377,6 @@ function Create-IISAppPool
 
 }
 
-function Create-IIS7AppPool
-{
-	param (
-		[string] $apppool = $(throw 'An AppPool name is required'),
-		[string] $user,
-		[string] $pass,
-		
-		[ValidateSet("v2.0", "v4.0")]
-		[string] $version = "v2.0"
-	)
-	$poolname = 'AppPools\'+$apppool
-	New-Item $poolname
-	if( -not [String]::IsNullOrEmpty($user)  ) 
-	{
-		if( -not [String]::IsNullOrEmpty($pass) ) 
-		{
-			Set-ItemProperty $poolname -name processModel -value @{userName=$user;password=$pass;identitytype=3}
-		}
-		else 
-		{
-			throw ($pass + " can not be empty if the user variable is defined")
-		}
-	}
-
-	if( -not [String]::IsNullOrEmpty($version) )
-	{
-		Set-ItemProperty $poolname -name managedRuntimeVersion $version
-	}
-
-}
-
 function Set-IISAppPoolforWebSite
 {
 	param (
@@ -422,7 +412,6 @@ function Set-SSLforWebApplication
 	Get-WebBinding $name
 }
 
-
 function Update-SSLforWebApplication
 {
 	param (
@@ -450,71 +439,6 @@ function Set-IISLogging
 	Set-ItemProperty "IIS:\Sites\$site" -name LogFile.Directory -value $path
 	Set-ItemProperty "IIS:\Sites\$site" -name LogFile.logFormat.name -value "W3C"	
 	Set-ItemProperty "IIS:\Sites\$site" -name LogFile.logExtFileFlags -value 131023
-}
-
-$global:netfx = @{
-	"1.1x86" = "C:\WINDOWS\Microsoft.NET\Framework\v1.1.4322\CONFIG\machine.config"; 
-    "2.0x86" = "C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727\CONFIG\machine.config";
-	"4.0x86" = "C:\WINDOWS\Microsoft.NET\Framework\v4.0.30319\CONFIG\machine.config";
-	"2.0x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v2.0.50727\CONFIG\machine.config";
-	"4.0x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
-}
-
-function Generate-MachineKey 
-{
-	param (
-		[int] $keylen
-	) 
-	
-	$buff = new-object "System.Byte[]" $keylen
-	$rnd = new-object System.Security.Cryptography.RNGCryptoServiceProvider
-	$rnd.GetBytes($buff)
-	$result = [String]::Empty
-	
-	for( $i=0; $i -lt $keylen; $i++)
-	{
-		$result += [System.String]::Format("{0:X2}",$buff[$i])
-	}
-	
-	return $result
-}
-
-function Set-MachineKey 
-{
-	param(
-		[string] $version = "2.0x64",
-		[string] $validationKey,
-		[string] $decryptionKey,
-		[string] $validation
-	) 
-	
-    Write-Host "Setting machineKey for $version"
-    $currentDate = (Get-Date).tostring("mmddyyyyhhmms") 
-    $machineConfig = $netfx[$version]
-        
-    if( Test-Path $machineConfig )
-	{
-        $xml = [xml] ( Get-Content $machineConfig )
-        $xml.Save( $machineConfig + "." + $currentDate )
-        $root = $xml.get_DocumentElement()
-        $system_web = $root.system.web
-
-        if ( $system_web.machineKey -eq $nul )
-		{ 
-        	$machineKey = $xml.CreateElement("machineKey") 
-        	$a = $system_web.AppendChild($machineKey)
-        }
-		
-        $system_web.SelectSingleNode("machineKey").SetAttribute("validationKey","$validationKey")
-        $system_web.SelectSingleNode("machineKey").SetAttribute("decryptionKey","$decryptionKey")
-        $system_web.SelectSingleNode("machineKey").SetAttribute("validation","$validation")
-       
-		$xml.Save( $machineConfig )
-    }
-    else
-	{
-		Write-Host "$version is not installed on this machine" -Fore yellow 
-	}
 }
 
 function Get-WebDataConnectionString {
@@ -617,226 +541,41 @@ function Get-MachineKey
 	}
 }
 
-function Set-AppPoolLogging
-{
-	param (
-		[string[]] $Computers = $(throw 'A computer name is required')
-	)
-	foreach($computer in $Computers)
-	{
-		invoke-command -computer $computer -script { cscript d:\inetpub\adminscripts\adsutil.vbs Set w3svc/AppPools/LogEventOnRecycle 255}
-	}
-}
-function Get-AppPoolLogging
-{
-	param (
-		[string[]] $Computers = $(throw 'A computer name is required')
-	)
-	foreach($computer in $Computers)
-	{
-	invoke-command -computer $computer -script { cscript d:\inetpub\adminscripts\adsutil.vbs Get w3svc/AppPools/LogEventOnRecycle}
-	}
-}
-function Set-ShareName
-{
-	param (
-		[string] $path = $(throw 'A path is required')
-	)
 
-	if ($path -match "^[a-z][:]")
-				{
-					$out += $path -replace "[:]","$"
-				}
-			
-	
-	return $out
-}
-
-function Recycle-ApplicationPool
+function Set-MachineKey 
 {
 	param(
-	[string] $app = $(throw 'Application Name Required'),
+		[string] $version = "2.0x64",
+		[string] $validationKey,
+		[string] $decryptionKey,
+		[string] $validation
+	) 
 	
-	[string] $env = $(throw 'environment is required'),
-	
-	[switch]
-	$full,
-	
-	[switch]
-	$record,
-	
-	[string]
-	$description,
-	
-	[string] $servername = 'default'
-)
+    Write-Host "Setting machineKey for $version"
+    $currentDate = (Get-Date).tostring("mmddyyyyhhmms") 
+    $machineConfig = $netfx[$version]
+        
+    if( Test-Path $machineConfig )
+	{
+        $xml = [xml] ( Get-Content $machineConfig )
+        $xml.Save( $machineConfig + "." + $currentDate )
+        $root = $xml.get_DocumentElement()
+        $system_web = $root.system.web
 
-$url = "http://teamadmin.gt.com/sites/ApplicationOperations/"
-$list = "Issues Tracker"
-$kill = {
-	param ( [int] $p ) 
-	Stop-Process -id $p -force
-}
-if ( $servername -eq 'default')
-{
-	Write-Host 'Retrieving Application information for $app'
-	$appinfo = Get-SPListViaWebService -url 'http://teamadmin.gt.com/sites/ApplicationOperations/applicationsupport/' -list "WebSites" -view '{D26D8609-B932-445C-823B-776EF9079285}' | Where {$_.SiteName -eq $apps -and $_.Environment -eq $env}
-	$apppool = '/W3SVC/AppPools/'+$appinfo."AppPoolName"
-	$servernames = Get-LookupFieldData $appinfo."Real Servers"
-	Foreach($servername in $servernames)
+        if ( $system_web.machineKey -eq $nul )
+		{ 
+        	$machineKey = $xml.CreateElement("machineKey") 
+        	$a = $system_web.AppendChild($machineKey)
+        }
+		
+        $system_web.SelectSingleNode("machineKey").SetAttribute("validationKey","$validationKey")
+        $system_web.SelectSingleNode("machineKey").SetAttribute("decryptionKey","$decryptionKey")
+        $system_web.SelectSingleNode("machineKey").SetAttribute("validation","$validation")
+       
+		$xml.Save( $machineConfig )
+    }
+    else
 	{
-		$before = Find-IISProcess -server $servername -app $app
-		Stop-IISAppPool -server $servername -appPools $apppool
-		$after = Find-IISProcess -server $servername -app $app
-		if ( $before -eq $after)
-			{
-			Write-Host -foreground red "Found a process that didn't stop so going to kill PID - " $after " on " $servername
-			Invoke-Command -computer $servername -script $kill -arg $after
-			}
-		if($record)
-		{
-		Set-Record -Title ($app + ' outage') -Description ('Application Pool '+$apppool+' was recycled on '+$servername)
-		}
-	}
-	
-	
-}
-else
-{
-		$before = Find-IISProcess -server $servername -app $app
-		Stop-IISAppPool -server $servername -appPools $apppool
-		$after = Find-IISProcess -server $servername -app $app
-		if ( $before -eq $after)
-			{
-			Write-Host -foreground red "Found a process that didn't stop so going to kill PID - " $after " on " $servername
-			Invoke-Command -computer $servername -script $kill -arg $after
-			}
-		if($record)
-		{
-		Set-Record -Title ($app + ' outage') -Description ('Application Pool '+$apppool+' was recycled on '+$servername)
-		}	
-	
-}
-}
-function Find-IISProcess
-{	
-	param (
-	[string] $server = $(throw 'Server must be specified'),
-	[string] $app = $(throw 'Application must be specified')
-	)
-	[regex]$pattern = "-ap ""(.+)"""
-	$apps= gwmi win32_process -filter 'name="w3wp.exe"' -computer $computers | Select CSName, ProcessId, @{Name="AppPoolID";Expression={$pattern.Match($_.commandline).Groups[1].Value}} | where { $_.AppPoolID.Contains($app) } 
-	return $apps.ProcessId
-	{
-	#	Write-Host -foreground red "Found a process that didn't stop so going to kill PID - " $_.ProcessId " on " $_.CSName 
-	#	Invoke-Command -computer $_.CSName -script $kill -arg $_.ProcessId
+		Write-Host "$version is not installed on this machine" -Fore yellow 
 	}
 }
-function Start-IISAppPool
-{
-param (
-	[string] $server = $(throw 'The server name is required'),
-	[string] $appPools = $(throw 'Application pool name is required'),
-	[switch] $whatif
-)
-$apppool = 'W3SVC/AppPools/'+$appPools
-Get-WmiObject -Class IISApplicationPool -Namespace "root\microsoftiisv2" -ComputerName $server -Authentication 6 | where { $_.Name -eq $apppool } | % { 
-	if($whatif) {
-		Write-Host "[WHATIF] Starting " $_.Name " on " $_.__SERVER -foregroundcolor YELLOW
-	} else {
-		Write-Host "Starting " $_.Name " on " $_.__SERVER -foregroundcolor GREEN	
-	 	$_.Start() 
-	}
-}
-}
-function Stop-IISAppPool
-{
-param (
-	[string] $server = $(throw 'The server name is required'),
-	[string] $appPools = $(throw 'Application pool name is required'),
-	[switch] $whatif
-)
-$apppool = 'W3SVC/AppPools/'+$appPools
-Get-WmiObject -Class IISApplicationPool -Namespace "root\microsoftiisv2" -ComputerName $server -Authentication 6 | where { $_.Name -eq $apppool } | % { 
-	if($whatif) {
-		Write-Host "[WHATIF] Starting " $_.Name " on " $_.__SERVER -foregroundcolor YELLOW
-	} else {
-		Write-Host "Stopping " $_.Name " on " $_.__SERVER -foregroundcolor GREEN	
-	 	$_.Stop() 
-	}
-}
-
-}
-
-function Reset-IIS
-{
-param (
-	[string[]] $servers = $(throw 'At least one server name is required'),
-	[switch] $record
-	
-	)
-	$servers | % { 
-		iisreset $_ /stop
-		Start-sleep 5
-		iisreset $_ /start
-	}
-	if($record)
-	{
-	Set-Record -Title ($app + ' outage') -Description ($_ +' - A Full IIS Reset was performed')
-	}
-}
-function Validate-ApplicationPool
-{
-param (
-	[string] $server = $(throw 'The server name is required'),
-	[string] $app = $(throw 'Application Name is required')
-	)
-$apppool = 'W3SVC/AppPools/'+$app
-$a = Get-WmiObject -Class IISApplicationPool -Namespace "root\microsoftiisv2" -ComputerName $server -Authentication 6 | where { $_.Name -eq $apppool }
-if ($a -ne $null)
-	{
-	return $true
-	}
-else
-	{
-	return $false
-	}
-}
-function Validate-IIS7ApplicationPool
-{
-param (
-	[string] $server = $(throw 'The server name is required'),
-	[string] $app = $(throw 'Application Name is required')
-	)
-$apppool = 'IIS:\AppPools\'+$app
-$a = Select-Object $apppool
-if ($a -ne $null)
-	{
-	return $true
-	}
-else
-	{
-	return $false
-	}
-}
-function get-IISexecution{
-	param(
-	[string] $server,
-	[string] $App
-	)
-$WGCscript = {
-			Import-Module WebAdministration
-			cd "IIS:\AppPools\AppPool - team.gt.com\workerprocesses"
-			$proc = dir | Select ProcessID -First 1
-			$proc
-			$handles= ((get-item $proc.ProcessID).GetRequests(0).Collection) | Sort-Object timeelapsed -Descending | select url,timeelapsed
-			return $handles
-}  
-	$session = New-PSSession -ComputerName $server
-	if ($App -eq "WGC")
-	{
-	Invoke-Command -ComputerName $server -ScriptBlock $WGCscript
-	
-	}
-}
-

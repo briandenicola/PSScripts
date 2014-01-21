@@ -1,0 +1,98 @@
+﻿[
+    { 
+        "TypeName": "CredSSP",
+        "Description": "Test For Basic PowerShell Remoting",
+        "OnError":"Continue" 
+    },
+    { 
+        "TypeName":"Version",
+        "Version":"3",
+        "Description":"Test for the Version of Powershell is at least Version 3",
+        "OnError":"Continue"
+    },
+    { 
+        "TypeName": "Path",
+        "Path": "D:\\Logs",
+        "Description": "Test For Present of Folder - D:\\Logs",
+        "OnError":"Continue" 
+    },
+    { 
+        "TypeName":"Path",
+        "Path": "D:\\Scripts\\Libraries",
+        "Description":"Test For Present of Folder - D:\\Scripts",
+        "OnError":"Continue"
+    },
+    { 
+        "TypeName":"Environment",
+        "Name":"SCRIPTS_HOME",
+		"Value":"D:\\Scripts",
+        "Description":"Test For Present of Environment Variable - SCRIPTS_HOME",
+        "OnError":"Continue" 
+    },
+    { 
+        "TypeName":"ScheduleTask",
+        "Name":"Sync-Scripts",
+        "Description":"Test For Present of Schedule Task - Sync-Scripts",
+        "OnError":"Continue" 
+    },
+    { 
+        "TypeName":"ScheduleTask",
+        "Name":"Housekeeping","Description":"Test For Present of Schedule Task - Housekeeping","OnError":"Continue" },
+    { 
+        "TypeName":"WindowsFeature",
+        "Name":"Web-Server",
+        "Description":"Test For Present of Windows Feature - Web-Server",
+        "OnError":"Continue" 
+    },
+    { 
+        "TypeName":"WindowsFeature",
+        "Name":"Web-Scripting-Tools",
+        "Description":"Test For Present of Windows Feature - Web-Scripting-Tools",
+        "OnError":"Continue"
+    },
+    { 
+        "TypeName":"WindowsFeature",
+        "Name":"Web-Lgcy-Scripting",
+        "Description":"Test For Present of Windows Feature - Web-Lgcy-Scripting",
+        "OnError":"Continue"
+    },
+    { 
+        "TypeName":"WindowsFeature",
+        "Name":"Web-ASP-NET",
+        "Description":"Test For Present of Windows Feature - Web-ASP-NET",
+        "OnError":"Continue" 
+    },
+    { 
+        "TypeName":"Path",
+        "Path": "D:\\Web",
+        "Description":"Test For Present of Folder - D:\\Web",
+        "OnError":"Continue"
+    },
+    { 
+        "TypeName":"GroupMembership",
+        "Group":"Administrators",
+		"Present" : "true",
+        "User" : "Brian",
+        "Description" : "Test for Present of Brian in Administrator's Group",
+        "OnError":"Continue"
+    },
+	{ 
+        "TypeName":"GroupMembership",
+        "Group":"Administrators",
+		"Present" : "true",
+        "User" : "Fred",
+        "Description" : "Test for Absence of Fred in Administrator's Group",
+        "OnError":"Continue"
+    },
+    { 
+        "TypeName":"Share",
+        "ShareName":"Logs",
+        "Description":"Test For Present of Share - Logs",
+        "OnError":"Continue" 
+    },
+    { 
+        "TypeName":"Audit",
+        "Description":"Test For Present of the Server in the SharePoint Documentation List",
+        "OnError":"Continue" 
+    }
+]
