@@ -17,6 +17,21 @@ function Log-Step
     }
 }
 
+function Get-SSRSWebServiceUrl
+{
+    Set-Variable -Name prod -Value ""
+    Set-Variable -Name uat -Value ""
+
+    if( $environment -imatch "prod" ) { 
+        $url = "http://{0}/ReportServer/ReportService2005.asmx?WSDL" -f $prod
+    } 
+    else { 
+        $url = "http://{0}/ReportServer/ReportService2005.asmx?WSDL" -f $uat
+    }
+
+    return $url
+}
+
 function Get-SPServers 
 {
     param( [string] $type = "Microsoft SharePoint Foundation Workflow Timer Service" )
