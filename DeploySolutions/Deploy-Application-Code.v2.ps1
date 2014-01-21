@@ -20,14 +20,14 @@ Set-Variable -Name team_site -Value "http://example.com/sites/AppOps/" -Option C
 Set-Variable -Name team_list -Value "Deployment Tracker" -Option Constant
 Set-Variable -Name team_view -Value '{}' -Option Constant
 
-$log = Join-Path $log_home ("Deploy-For-" + ( $url -replace "http://") + "-From-" + $ENV:COMPUTERNAME + "-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log")
-&{Trap{continue};Start-Transcript -Append -Path $log}
-
 try
 {
     $cfg = [xml] ( Get-Content $cfg )
     Set-Variable -Name app -Value $cfg.Parameters.App -Option AllScope
     Set-Variable -Name environment -Value $cfg.Parameters.Environment -Option AllScope
+    Set-Variable -Name log -Value (Join-Path $log_home ("Deploy-For-" + $app + "-From-" + $ENV:COMPUTERNAME + "-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log"))
+
+    Start-Transcript -Append -Path $log
 
     Log-Step -step "Automated with $($MyInvocation.InvocationName) from $ENV:COMPUTERNAME . . ." -nobullet
     Log-Step -step ("<strong>{0} {1} Steps Taken include - <ol>" -f $app, $environment) -nobullet
@@ -38,7 +38,7 @@ try
     } 
 
     Log-Step -step "</ol><hr/>" -nobullet
-    Record-Deployment
+    Record-Deployment -code_number $cfg.Parameters.BuildNumber -code_version $cfg.Parameters.VersionNumber
     Stop-Transcript
 }
 catch {

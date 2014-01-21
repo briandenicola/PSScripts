@@ -119,7 +119,7 @@ function Sync-Files
     )
 
 	Log-Step -step ("Executed on {0} - (Join-Path $ENV:SCRIPTS_HOME Sync\Sync-Files.ps1) -src {0} -dst {1}  -verbose -logging" -f $config.Servers, $config.Source, $config.DestinationPath)
-    Invoke-Command -Computer $config.Servers -Authentication CredSSP -Credential (Get-Creds) -ScriptBlock $sync_file_script_block -ArgumentList  $config.Source, $config.DestinationPath, "D:\Logs"
+    Invoke-Command -Computer $config.Servers -Authentication CredSSP -Credential (Get-Creds) -ScriptBlock $sync_file_script_block -ArgumentList  $config.Source, $config.DestinationPath, $log_home
 }
 
 function DeployTo-GAC
