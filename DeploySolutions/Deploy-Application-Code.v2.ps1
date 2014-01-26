@@ -40,7 +40,6 @@ try
     Log-Step -step ("<strong>{0} {1} Steps Taken include - <ol>" -f $app, $environment) -nobullet
 
     foreach( $step in $cfg.Deployment.steps.step ) {
-        $step.ScriptBlock
         if( $step.Source ) { $step.Source = (Join-Path $cfg.Deployment.Parameters.MasterDeployLocation $step.Source).ToString() }
         &$step.ScriptBlock -config $step
     } 
