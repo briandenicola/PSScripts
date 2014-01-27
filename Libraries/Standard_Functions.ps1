@@ -196,15 +196,6 @@ function Get-FileEncoding
 
 }
 
-function Get-WindowsServices
-{
-	param (
-		[string] $computer
-	)
-	
-	Get-wmiobject win32_service -computer $computer | Select Name,Startname
-}
-
 function Change-ServiceAccount
 {
 	param (
@@ -544,14 +535,6 @@ function Get-PreviousMonthRange
 	return $Object
 }
 
-function map ($fn, $a)
-{  
-	for ($i = 0; $i -lt $a.length; $i++)
-   	{  
-   		$a[$i] = &$fn $a[$i]
-   	}
-}
-
 function Get-PerformanceCounters
 {
 	param (
@@ -563,16 +546,6 @@ function Get-PerformanceCounters
 	
 	Get-Counter $counters -ComputerName $computers -MaxSamples $samples -SampleInterval $interval | % { $t=$_.TimeStamp; $_.CounterSamples } | Select @{Name="Time";Expression={$t}},Path,CookedValue 
 
-}
-
-function Elevate-Process
-{
-	$file, [string]$arguments = $args;
-	$psi = new-object System.Diagnostics.ProcessStartInfo $file;
-	$psi.Arguments = $arguments;
-	$psi.Verb = "runas";
-	$psi.WorkingDirectory = get-location;
-	[System.Diagnostics.Process]::Start($psi);
 }
 
 function Get-PSSecurePassword
@@ -628,7 +601,7 @@ function Gen-Passwords
 	return $passwords
 }
 
-function Create-SQL2K5Alias( [string] $instance, [int] $port, [string] $alias )
+function Create-SQLAlias( [string] $instance, [int] $port, [string] $alias )
 {
 	[reflection.assembly]::LoadWithPartialName("Microsoft.SqlServer.Smo")
 	$objComputer=New-Object Microsoft.SqlServer.Management.Smo.Wmi.ManagedComputer "."
@@ -830,106 +803,6 @@ function Get-MSMQQueues([String] $Server)
 		
 }
 
-function Get-FrameworkVersion ([Object] $virtual_dir )
-{
-	$maps = $virtual_dir | Select ScriptMaps
-	$version = $maps.ScriptMaps | Select -Uniq -Expand ScriptProcessor | where { $_.ToLower().Contains("microsoft.net") } | Select -First 1
-	
-	return $version 
-}
-
-function Audit-IISServers([String[]] $Servers )
-{
-	Set-Variable -Option Constant -Name WebServerQuery -Value "Select * from IIsWebServerSetting"
-	Set-Variable -Option Constant -Name VirtualDirectoryQuery -Value "Select * from IISWebVirtualDirSetting"
-	Set-Variable -Option Constant -Name AppPoolQuery -Value "Select * from IIsApplicationPoolSetting"
-	Set-Variable -Name iisAudit -Value @()
-	
-	foreach( $server in $Servers ) 
-	{ 
-		Write-Progress -activity "Querying Server" -status "Currently querying $Server . . . "
-		if( ping( $Server ) ) 
-		{
-
-			$wmiWebServerSearcher = [WmiSearcher] $WebServerQuery
-			$wmiWebServerSearcher.Scope.Path = "\\{0}\root\microsoftiisv2" -f $Server
-			$wmiWebServerSearcher.Scope.Options.Authentication = 6
-			$iisSettings = $wmiWebServerSearcher.Get()
-
-			$wmiVirtDirSearcher = [WmiSearcher] $VirtualDirectoryQuery
-			$wmiVirtDirSearcher.Scope.Path = "\\{0}\root\microsoftiisv2" -f $Server
-			$wmiVirtDirSearcher.Scope.Options.Authentication = 6
-			$virtDirSettings = $wmiVirtDirSearcher.Get()
-	
-			$wmiAppPoolSearcher = [WmiSearcher] $AppPoolQuery
-			$wmiAppPoolSearcher.Scope.Path = "\\{0}\root\microsoftiisv2" -f $Server
-			$wmiAppPoolSearcher.Scope.Options.Authentication = 6
-			$appPoolSettings = $wmiAppPoolSearcher.Get()
-
-			$iisSettings | Select Name, ServerComment, LogFileDirectory, ServerBindings | % {
-				$audit = New-Object System.Object
-				
-				$SiteName = $_.Name
-
-				$audit | add-member -type NoteProperty -name ServerName -Value $Server		
-				$audit | add-member -type NoteProperty -name Name -Value $_.ServerComment
-				$audit | add-member -type NoteProperty -name LogFileDirectory -Value $_.LogFileDirectory
-				
-				$hostheaders = @()
-				$_.ServerBindings | Where {[String]::IsNullorEmpty($_.Hostname) -eq $false } | % {
-					$hostheader = New-Object System.Object
-					$hostheader | add-member -type NoteProperty -name HostName -Value $_.Hostname		
-					$hostheader | add-member -type NoteProperty -name IP -Value $_.IP
-					$hostheader | add-member -type NoteProperty -name Port -Value $_.Port
-					$hostheaders += $hostheader
-				}
-				$audit | Add-Member -type NoteProperty -Name HostHeaders -Value $hostheaders
-			
-				$VirtualDirectories = @()
-				$virtDirSettings | where { $_.Name.Contains($SiteName) } | % {
-					$VirtualDirectory = New-Object System.Object
-
-					$VirtualDirectory | add-member -type NoteProperty -name Name -Value $_.Name
-					$VirtualDirectory | add-member -type NoteProperty -name Path -Value $_.Path
-					$VirtualDirectory | add-member -type NoteProperty -name AppFriendlyName -Value $_.AppFriendlyName
-					$VirtualDirectory | add-member -type NoteProperty -name AnonymousUserName -Value $_.AnonymousUserName
-					$VirtualDirectory | add-member -type NoteProperty -name DefaultDocuments -Value $_.DefaultDoc
-					$VirtualDirectory | add-member -type NoteProperty -name AppPoolName -Value $_.AppPoolId
-					$VirtualDirectory | add-member -type NoteProperty -name AuthenticationProviders -Value $_.NTAuthenticationProviders
-					$VirtualDirectory | add-member -type NoteProperty -Name DotNetFrameworkVersion -Value (Get-FrameworkVersion $_ )
-
-					$AppPoolId = $_.AppPoolId
-					$AppPoolAccount = ($appPoolSettings | where { $_.Name.Contains($AppPoolId) } | Select WAMUserName).WAMUserName					
-					$VirtualDirectory | add-member -type NoteProperty -name AppPoolAccount -Value $AppPoolAccount 
-
-					$perms = $nul
-					if( $_.AccessRead -eq $true ) { $perms += "R" }
-					if( $_.AccessWrite -eq $true ) { $perms += "W" }
-					if( $_.AccessExecute -eq $true ) { $perms += "E" }
-					if( $_.AccessScript -eq $true ) { $perms += "S" }
-
-					$auth = $Nul
-					if( $_.AuthAnonymous -eq $true ) { $auth += "Anonymous|" }
-					if( $_.AuthNTLM -eq $true ) { $auth += "Integrated|" }
-					if( $_.AuthBasic -eq $true ) { $auth += "Basic|" }
-
-					$VirtualDirectory | add-member -type NoteProperty -name AccessPermissions -Value $perms
-					$VirtualDirectory | add-member -type NoteProperty -name Authentication -Value $auth.Trim("|")					
-					$VirtualDirectories += $VirtualDirectory 
-				}
-				$audit | add-member -type NoteProperty -name VirtualDirectories -Value $VirtualDirectories
-			
-				$iisAudit += $audit
-			}
-		} else 
-		{
-			Write-Host $_ "appears down. Will not continue with audit"
-		}
-	}
-	
-	return $iisAudit
-}
-
 function Audit-Server( [String] $server )
 {
 	$audit = New-Object System.Object
@@ -959,29 +832,6 @@ function Audit-Server( [String] $server )
 	$audit | Add-Member -type ScriptMethod -Name toCSV -Value $csvScriptBlock
 
 	return $audit
-}
-
-function Audit-Servers([String[]] $Servers, [String] $app, [String] $env)
-{
-	begin {
-		$ErrorActionPreference = "silentlycontinue"
-		$serverAudit = @()
-
-	}
-	process {
-		if ( $_ -ne $null ) { $Servers = $_ }
-		$Servers | % { 
-			Write-Progress -activity "Querying Server" -status "Currently querying $_ . . . "
-			
-			$audit = audit-Server $_
-			$audit | add-member -type NoteProperty -name Farm -Value $app
-			$audit | add-member -type NoteProperty -name Environment -Value $env
-			$serverAudit += $audit
-		}
-	}
-	end {
-		return $serverAudit | where { $_.SystemName -ne $null }
-	}
 }
 
 function Create-WindowsService([string[]] $Servers, [string] $Path, [string] $Service, [string] $User, [string] $Pass)
@@ -1060,13 +910,7 @@ function Get-LoadedModules()
 
 function nslookup ( [string] $name )
 {
- 	$ns = nslookup.exe $name 2>$null
-
-	if( $ns.Length -eq 3 ) {
-		return $false
-	} else {
-		return $ns[$ns.Length - 2].Split(":")[1].TrimStart()
-	}
+ 	return ( [System.Net.Dns]::GetHostAddresses($name) | Select -Expand IPAddressToString )
 }
 
 ## http://poshcode.org/116
@@ -1187,7 +1031,7 @@ function ping ( [string] $computer )
 	}  
 }
 
-Function Read-RegistryHive 
+function Read-RegistryHive 
 {
 	param(
 		[string[]] $servers,
@@ -1196,10 +1040,8 @@ Function Read-RegistryHive
 	)
 	
 	$regPairs = @()
-	$servers | % {
-		$server = $_
-		if( Ping $server )
-		{
+	foreach( $server in $servers ) {
+		if( ping $server ) {
 			$hive = [Microsoft.Win32.RegistryHive]::$rootHive
 			$reg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($hive, $server )
 			$regKey = $reg.OpenSubKey($key)
@@ -1214,8 +1056,8 @@ Function Read-RegistryHive
 			$regKey.GetSubKeyNames() | % {
 				$regPairs += read-RegistryHive -servers $server -key "$key\$_"
 			}
-		} else 
-		{
+		} 
+        else  {
 			Write-Host "Could not ping $_ . . ." -foregroundcolor DarkRed
 		}
 	
@@ -1289,9 +1131,8 @@ function Get-FileVersion()
 		$info = @()
 	}
 	process {
-
 		if( test-path $_ ) {
-   	     		$info += [system.diagnostics.fileversioninfo]::GetVersionInfo($_)
+            $info += [system.diagnostics.fileversioninfo]::GetVersionInfo($_)
 		} else {
 			throw "Invalid Path - $_"
 		}
@@ -1328,22 +1169,6 @@ function Get-FileSize ( [string] $path )
 	return $len
 }
 
-function  flatten( [string[]] $txt, [string] $startString)
-{
-	$rtnVal=@()
-	$tmp=""
-	$txt | % {
-		if( $_ -match $startString) { 
-			$rtnVal += $tmp
-			$tmp = $_ 
-		} else {
-			$tmp += $_ 
-		}	
-	}
-	$rtnVal += $tmp
-	return $rtnVal
-}
-
 function Query-DatabaseTable ( [string] $server , [string] $dbs, [string] $sql )
 {
 	$Columns = @()
@@ -1367,18 +1192,7 @@ function Query-DatabaseTable ( [string] $server , [string] $dbs, [string] $sql )
 	return $res
 }
 
-function BulkWrite-ToSQLDatabase([Object] $table) 
-{
-    $bulkCopy = [Data.SqlClient.SqlBulkCopy] $ConnectionString
-    $bulkCopy.DestinationTableName = $TableName
-    $bulkCopy.WriteToServer($table)		
-}
-
 function Is-64Bit() 
 {   
-	if ( [IntPtr].Size -eq 4 ) { 
-		return $false 
-	}    
-	return $true 
-
+	return ( [IntPtr]::Size -eq 8 ) 
 }

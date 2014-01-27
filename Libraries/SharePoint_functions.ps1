@@ -365,14 +365,20 @@ function Get-SPAudit( )
 	}
 }
 
-function Get-SPWebApplication( [string] $name )
+function Get-SPWebApplication( [string] $url )
 {
 	$WebServiceCollection = new-object microsoft.sharepoint.administration.SpWebServiceCollection( Get-SPFarm )
-	$WebServiceCollection | % { $WebApplications += $_.WebApplications }
+	$webApplications = $WebServiceCollection | Select -Expand WebApplications
 	
-	return ( $webApplications | where { $_.Name.ToLower() -like "*"+$name.ToLower()+"*" } | select -Unique )
+    foreach( $app in $WebApplications ) {
+        $urls = $app.AlternateUrls | Select -Expand IncomingUrl
+        if( $urls -contains $url ) {
+            return $app
+        }
+	}
+    
+    return $null
 }
-
 function Get-SPFarm()
 {
 	return [microsoft.sharepoint.administration.spfarm]::local
