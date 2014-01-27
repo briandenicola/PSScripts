@@ -1,4 +1,4 @@
-Set-Varaible -Name check_search_topology_sb -Value ( [ScriptBlock] {
+Set-Variable -Name check_search_topology_sb -Value ( [ScriptBlock] {
 	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
 	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 	

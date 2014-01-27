@@ -43,7 +43,7 @@ function Get-Servers-To-Process {
 
 function Check-Windows {
     log -txt "Pinging Application and Web Servers"
-    $systems.Servers | ping-multiple
+    $systems.Servers | ping-multiple | Out-File -Append -Encoding ASCII $log_file
     
     $services = @("iisadmin", "SPAdminV4", "SPUserCodeV4", "SPTraceV4", "sptimerv4", "msdtc", "FIMService", "FIMSynchronizationService" , "OSearch14", "SPSearch4")
     log -txt ("Checking the following Windows Services (Make sure at least one Search and FIMSynchronizationService Service is running) - {0}" -f $services)
@@ -53,7 +53,7 @@ function Check-Windows {
 		    Where { $_.StartMode -eq "manual" -or $_.StartMode -eq "auto"} |
 		    Where { $services -contains $_.Name } |
 		    Select @{Name="Server";Expression={$server}}, Name, State | 
-		    Add-Content -Encoding ASCII $log_file
+		    Out-File -Append -Encoding ASCII $log_file
     }   
 }
 
@@ -90,7 +90,7 @@ function Check-SQL {
 
 }
 
-fucntion Check-Security {
+function Check-Security {
     log -txt "Checking for Server Administrators"
     Invoke-Command -Session $server_session -ScriptBlock $check_server_admins | 
         Select Computer, Users | ForEach-Object { 
@@ -163,10 +163,15 @@ function Check-Search {
 }
 
 function Check-UserProfiles {
-    log -txt "Checking User Profile Services"
+
+    log -txt "Getting Farm Account for Services Farm"
     $user = Invoke-Command -ComputerName $systems.ServicesFarmCA -Authentication Credssp -Credential (Get-Creds) -ScriptBlock $get_farm_account_sb
     $password = ConvertTo-SecureString -AsPlainText -Force $user.Password
-    $farm_creds = New-Object System.Management.Automation.PSCredential ( ($ENV:userdomain + "\" + $user.User) , $password )
+    $farm_creds = New-Object System.Management.Automation.PSCredential ( $user.Name , $password )
+    
+    Write-Verbose ("[{0}] - User Profiles Farm Credentials - {1}" -f $(Get-Date), $user.Name )
+
+    log -txt "Checking User Profile Services"
     Invoke-Command -ComputerName $systems.ServicesFarmCA -Authentication Credssp -Credential $farm_creds -ScriptBlock $check_user_profile_sb |
         Out-File -Append -Encoding ASCII $log_file
 }

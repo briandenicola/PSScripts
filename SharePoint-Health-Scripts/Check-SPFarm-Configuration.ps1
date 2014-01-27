@@ -33,16 +33,19 @@ Set-Variable -Name options -Value @(
 )
 
 Set-Variable -Name log_file -Value (Join-Path $PWD.PATH ( Join-Path "logs" ("{0}-{1}-environmental-validation-{2}.log" -f $env,$farm,$(Get-Date).ToString("yyyyMMddmmhhss"))) ) -Option AllScope
-Set-Variable -Name url -Value "http://the.url.to/server/list"
+Set-Variable -Name url -Value "http://teamadmin.gt.com/sites/ApplicationOperations/"
 
 log -txt "Getting SharePoint and SQL servers for $env environment"
-Set-Variable -Name systems -Value (Get-Servers-To-Process) -Option AllScope
+Set-Variable -Name systems -Value (Get-Servers-To-Process -farm $farm -env $env) -Option AllScope
 Set-Variable -Name server_session -Value (New-PSSession -Computer $systems.Servers -Authentication CredSSP -Credential (Get-Creds)) -Option AllScope
 Set-Variable -Name ca_session -Value (New-PSSession -ComputerName $systems.CAServer -Authentication Credssp -Credential (Get-Creds)) -Option AllScope
 
+Write-Host ("Logging Output to {0} . . . " -f $log_file) -ForegroundColor Green
+
 foreach( $operation in $operations ) {
-    Write-Verbose -Message ( "Calling {0} to check on {1} Configuration . . ." -f $options[$operations].Function, $options[$operations].Name)
-    &$options[$option].Function
+    $option = $options | Where { $_.Name -eq $operation }
+    Write-Verbose -Message ( "Calling {0} to check on {1} Configuration . . ." -f $option.Function, $option.Name)
+    &$option.Function
 }
 
 Get-PSSession | Remove-PSSession 

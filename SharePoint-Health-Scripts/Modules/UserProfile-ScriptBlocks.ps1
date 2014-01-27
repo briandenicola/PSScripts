@@ -1,8 +1,8 @@
-Set-Varaible -Name check_user_profile_sb -Value ( [ScriptBlock]  {
+Set-Variable -Name check_user_profile_sb -Value ( [ScriptBlock]  {
     . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
     . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
 
-    $farm_user = Get-FarmAccount . 
+    $farm_user = (Get-SPFarm).DefaultServiceAccount.Name 
 
     $site = Get-SPSite ( Get-SPWebApplication | Select -Last 1 -Expand Url )
     $srvContext = Get-SPServiceContext $site
@@ -12,11 +12,25 @@ Set-Varaible -Name check_user_profile_sb -Value ( [ScriptBlock]  {
     $ups_config_manager = New-Object Microsoft.Office.Server.UserProfiles.UserProfileConfigManager($srvContext) 
     $sync = $ups_config_manager.GetSynchronizationStatus() | Select Stage, BeginTime, EndTime, State, Updates    
 
-    net localgroup administrators ($ENV:userdomain + "\" + $farm_user.User) /delete
+    net localgroup administrators $farm_user /delete
 
     return (New-Object PSObject -Property @{
         Count = $ups_manager.Count
         IsSyncing = $ups_config_manager.IsSynchronizationRunning()
         State = $sync 
+    })
+})
+
+Set-Variable -Name get_farm_account_sb -Value ( [ScriptBlock]  { 
+    . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
+    . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
+    
+    $farm_user = (Get-SPFarm).DefaultServiceAccount.Name  
+
+    net localgroup administrators $farm_user /add
+
+    return (New-Object PSObject -Property @{
+        Name = $farm_user
+        Password = Get-SPManageAccountPassword $farm_user.Split("\")[1]
     })
 })
