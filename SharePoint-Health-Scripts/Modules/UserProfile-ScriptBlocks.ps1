@@ -16,7 +16,10 @@ Set-Variable -Name check_user_profile_sb -Value ( [ScriptBlock]  {
 
     return (New-Object PSObject -Property @{
         Count = $ups_manager.Count
+        ChangeToken = $ups_manager.CurrentChangeToken
         IsSyncing = $ups_config_manager.IsSynchronizationRunning()
+        MySiteHostUrl = $ups_manager.MySiteHostUrl
+        SampleProfileUrl = ($ups_manager.GetUserProfile( $farm_user.Split("\")[1] ) | Select -Expand PersonalURl | Select -Expand OriginalString)
         State = $sync 
     })
 })
@@ -34,3 +37,4 @@ Set-Variable -Name get_farm_account_sb -Value ( [ScriptBlock]  {
         Password = Get-SPManageAccountPassword $farm_user.Split("\")[1]
     })
 })
+
