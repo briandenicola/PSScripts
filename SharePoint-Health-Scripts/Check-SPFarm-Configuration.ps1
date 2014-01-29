@@ -33,7 +33,7 @@ Set-Variable -Name options -Value @(
 )
 
 Set-Variable -Name log_file -Value (Join-Path $PWD.PATH ( Join-Path "logs" ("{0}-{1}-environmental-validation-{2}.log" -f $env,$farm,$(Get-Date).ToString("yyyyMMddmmhhss"))) ) -Option AllScope
-Set-Variable -Name url -Value "http://teamadmin.gt.com/sites/ApplicationOperations/"
+Set-Variable -Name url -Value "http://path.to/site/"
 
 log -txt "Getting SharePoint and SQL servers for $env environment"
 Set-Variable -Name systems -Value (Get-Servers-To-Process -farm $farm -env $env) -Option AllScope
