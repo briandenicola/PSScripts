@@ -1,5 +1,49 @@
 Add-PSSnapin Microsoft.SharePoint.PowerShell –erroraction SilentlyContinue
 
+
+function Set-PermissionMode
+{
+    param(
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true)] 
+        [Alias('WebApplication')]
+        [Microsoft.SharePoint.WebApplication]
+        $web_application
+    )
+    begin {
+        Set-Variable -Name Mode -Value "Permissive" -Option Constant
+    }
+    process {
+        $web_application.BrowserFileHandling = $mode
+        $web_application.Update()
+    }
+    end {
+    }
+}
+
+function Set-SimpleRecoveryMode 
+{ 
+    param(
+        [Parameter(Mandatory=$true,Position=0,ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)] 
+        [string]
+        $database,
+
+        [Parameter(Mandatory=$true,Position=1,ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)] 
+        [string]
+        $server
+    )
+    begin {
+       . (Join-Path $env:SCRIPTS_HOME "libraries\Standard_Functions.ps1")
+       Set-Variable -Name sql -Value "ALTER DATABASE {0} SET RECOVERY SIMPLE" -Option Constant
+       Set-Variable -Name master -Value "master" -Option Constant
+    }
+    process {
+        Query-DatabaseTable -server $server -database $master -sql ($sql -f $database)
+    }
+    end {
+    }
+
+}
+
 #http://stuffaboutsharepoint.wordpress.com/2013/04/03/quota-templates-in-powershell/
 function New-SPQuotaTemplate {
     Param(
