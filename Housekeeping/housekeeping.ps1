@@ -41,13 +41,20 @@ if( $help -or $dir -eq "" )
 $now = Get-Date
 $dPurgeDate = $now.AddDays(-$days)
 
+if($archive)
+{	
+	$ArchiveDir += "\" + $now.ToString("yyyy-MM-dd")
+	mkdir $ArchiveDir
+	
+}
+
 dir $dir -Recurse | where { $_.$Comparison -lt $dPurgeDate -and $_.Extension -like $ext } | ForEach-Object {
 	
 	if($archive -and -not [String]::IsNullOrEmpty($ArchiveDir) )
 	{
 		"[" + $now.ToString() + "] - Archiving: " + $_.Fullname  | Out-File $log -Append -Encoding ASCII
 		Create-Zip $_.FullName
-		Move-Item ($_.FullName + ".zip") $ArchiveDir -Verbose
+		Move-Item ($_.FullName + ".zip") ( $ArchiveDir + "\" + $_.Directory.Name + "-" + $_.BaseName + ".zip") -Verbose
 	}
 	
 	"[" + $now.ToString() + "] - Delete: " + $_.Fullname  | Out-File $log -Append -Encoding ASCII

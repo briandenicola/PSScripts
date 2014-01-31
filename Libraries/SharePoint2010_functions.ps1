@@ -1,18 +1,19 @@
 Add-PSSnapin Microsoft.SharePoint.PowerShell –erroraction SilentlyContinue
 
 
-function Set-PermissionMode
+function Set-PermissiveMode
 {
     param(
         [Parameter(Mandatory=$true,ValueFromPipeline=$true)] 
         [Alias('WebApplication')]
-        [Microsoft.SharePoint.WebApplication]
+        [Microsoft.SharePoint.Administration.SPWebApplication]
         $web_application
     )
     begin {
         Set-Variable -Name Mode -Value "Permissive" -Option Constant
     }
     process {
+    	Write-Verbose ("[{0}] - Setting Browser File Handling to {1} for {1}" -f $(Get-Date), $mode, $web_application.Name)
         $web_application.BrowserFileHandling = $mode
         $web_application.Update()
     }
@@ -22,10 +23,10 @@ function Set-PermissionMode
 
 function Set-SimpleRecoveryMode 
 { 
-    param(
+   param(
         [Parameter(Mandatory=$true,Position=0,ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)] 
         [string]
-        $database,
+        $name,
 
         [Parameter(Mandatory=$true,Position=1,ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)] 
         [string]
@@ -37,7 +38,8 @@ function Set-SimpleRecoveryMode
        Set-Variable -Name master -Value "master" -Option Constant
     }
     process {
-        Query-DatabaseTable -server $server -database $master -sql ($sql -f $database)
+	    Write-Verbose ("[{0}] - Setting {1} to SIMPLE recovery mode on {2}" -f $(Get-Date), $name, $server)
+        Query-DatabaseTable -server $server -database $master -sql ($sql -f $name)
     }
     end {
     }
