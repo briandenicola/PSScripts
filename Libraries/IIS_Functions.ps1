@@ -4,6 +4,8 @@ Add-PSSnapin WebFarmSnapin -ErrorAction SilentlyContinue
 $ENV:PATH += ';C:\Program Files\IIS\Microsoft Web Deploy V2'
 
 Set-Variable -Name cert_path -Value 'cert:\LocalMachine\My' -Option Constant
+Set-Variable -Name app_pool_path -value 'IIS:\AppPools' -Option Constant
+Set-Variable -Name iis_path -value 'IIS:\Sites' -Option Constant
 
 $global:netfx = @{
 	"1.1x86" = "C:\WINDOWS\Microsoft.NET\Framework\v1.1.4322\CONFIG\machine.config"; 
@@ -33,7 +35,7 @@ function Set-AlwaysRunning
         [string] $app_pool
     )
 
-    Set-ItemProperty -Path (Join-Path "IIS:\AppPools" $app_pool) -Name startMode -Value "AlwaysRunning"
+    Set-ItemProperty -Path (Join-Path $app_pool_path $app_pool) -Name startMode -Value "AlwaysRunning"
 
 }
 function Set-PreLoad 
@@ -42,7 +44,7 @@ function Set-PreLoad
         [string] $site
     )
 
-    Set-ItemProperty -Path (Join-Path "IIS:\Sites"  $site) -name applicationDefaults.preloadEnabled -value True
+    Set-ItemProperty -Path (Join-Path $iis_path  $site) -name applicationDefaults.preloadEnabled -value True
 }
 
 function Get-IISAppPoolDetails
@@ -51,12 +53,12 @@ function Get-IISAppPoolDetails
         [string] $app_pool
     )
 
-    if( !(Test-Path (Join-Path "IIS:\AppPools" $app_pool) ) ) {
+    if( !(Test-Path (Join-Path $app_pool_path $app_pool) ) ) {
         throw "Could not find " + $app_pool
         return -1
     }
 
-    $details =  Get-ItemProperty -Path (Join-Path "IIS:\AppPools" $app_pool) | Select startMode, processModel, recycling,  autoStart, managedPipelineMode, managedRuntimeVersion , queueLength                                
+    $details =  Get-ItemProperty -Path (Join-Path $app_pool_path $app_pool) | Select startMode, processModel, recycling,  autoStart, managedPipelineMode, managedRuntimeVersion , queueLength                                
 
     return (New-Object PSObject -Property @{
         UserName = $details.processModel.UserName
@@ -78,8 +80,8 @@ function Get-AppPool-Requests
     param(
         [string] $appPool
     )
-    Set-Location "IIS:\AppPools\$appPool\WorkerProcesses"
-    $process = Get-ChildItem "IIS:\AppPools\$appPool\WorkerProcesses" | Select -ExpandProperty ProcessId
+    Set-Location (Join-Path $app_pool_path "$appPool\WorkerProcesses")
+    $process = Get-ChildItem (Join-Path $app_pool_path "$appPool\WorkerProcesses") | Select -ExpandProperty ProcessId
     $requests = (Get-Item $process).GetRequests(0).Collection | Select requestId, connectionId, url,verb, timeElapsed
 
     return $requests 
@@ -108,12 +110,11 @@ function Create-WebFarm
 	$servers += $members
 	$servers += $primary
 	
-	$servers | % {
+	foreach( $server in $servers ) {
 		$user = $creds.UserName.Split("\")[1] 
-		if( -not ( Get-LocalAdmins -Computer $_ | ? { $_ -imatch $user } ) )
-		{
-			Write-Host "Adding $user to " $_
-			Add-LocalAdmin -Computer $_ -Group $user
+		if( -not ( Get-LocalAdmins -Computer $server | Where { $_ -imatch $user } ) ) {
+			Write-Host "Adding $user to " $server
+			Add-LocalAdmin -Computer $server -Group $user
 		}
 	}
 	
@@ -134,7 +135,9 @@ function Add-ServersToWebFarm
 		[string[]] $members
 	)
 	
-	$members | % { New-Server -WebFarm $name -Address $_ -Enabled }
+    foreach( $computer in $members) {
+	    New-Server -WebFarm $name -Address $computer -Enabled
+    }
 }
 
 function Remove-ServersFromWebFarm
@@ -146,8 +149,10 @@ function Remove-ServersFromWebFarm
 		[Parameter(Mandatory=$true)]
 		[string[]] $members
 	)
-	
-	$members | % { Remove-Server -WebFarm $name -Address $_ }
+
+	foreach( $computer in $members) {
+	    Remove-Server -WebFarm $name -Address $computer 
+    }
 }
 
 function Sync-WebFarm
@@ -300,8 +305,8 @@ function Add-DefaultDoc
 		)
 		
 		. (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1")
-		Add-WebConfiguration //defaultDocument/files "IIS:\sites\$site" -atIndex $pos -Value @{value=$file}
-		Get-WebConfiguration //defaultDocument/files "IIS:\sites\$site" | Select -Expand Collection | Select @{Name="File";Expression={$_.Value}}
+		Add-WebConfiguration //defaultDocument/files (Join-path $iis_path $site) -atIndex $pos -Value @{value=$file}
+		Get-WebConfiguration //defaultDocument/files (Join-path $iis_path $site) | Select -Expand Collection | Select @{Name="File";Expression={$_.Value}}
 	} -ArgumentList $site, $file, $pos
 }
 
@@ -360,21 +365,17 @@ function Create-IISAppPool
 
 	New-WebAppPool -Name $apppool
 
-	if( -not [String]::IsNullOrEmpty($user)  ) 
-	{
-		if( -not [String]::IsNullOrEmpty($pass) ) 
-		{
-			Set-ItemProperty "IIS:\apppools\$apppool" -name processModel -value @{userName=$user;password=$pass;identitytype=3}
+	if( -not [String]::IsNullOrEmpty($user)  ) {
+		if( -not [String]::IsNullOrEmpty($pass) ) {
+			Set-ItemProperty (Join-Path $app_pool_path $apppool) -name processModel -value @{userName=$user;password=$pass;identitytype=3}
 		}
-		else 
-		{
+		else {
 			throw ($pass + " can not be empty if the user variable is defined")
 		}
 	}
 
-	if( -not [String]::IsNullOrEmpty($version) )
-	{
-		Set-ItemProperty "IIS:\AppPools\$apppool" -name managedRuntimeVersion $version
+	if( -not [String]::IsNullOrEmpty($version) ) {
+		Set-ItemProperty (Join-Path $app_pool_path $apppool) -name managedRuntimeVersion $version
 	}
 
 }
@@ -386,13 +387,12 @@ function Set-IISAppPoolforWebSite
 		[string] $site = $(throw 'A site name is required'),
 		[string] $vdir
 	)
-	if( [String]::IsNullOrEmpty($vdir) )
-	{
-		Set-ItemProperty "IIS:\sites\$site" -name applicationPool -value $apppool
+
+	if( [String]::IsNullOrEmpty($vdir) ) {
+		Set-ItemProperty (Join-path $iis_path $site) -name applicationPool -value $apppool
 	}
-	else 
-	{
-		Set-ItemProperty "IIS:\sites\$site\$vdir" -name applicationPool -value $apppool
+	else  {
+		Set-ItemProperty(Join-path $iis_path "$site\$vdir") -name applicationPool -value $apppool
 	}
 }
 
@@ -417,8 +417,8 @@ function Set-SSLforWebApplication
         New-WebBinding -Name $name -IP $ip -Port 443 -Protocol https @options
     }
 
-	Set-Location 'IIS:\SslBindings'
-	Get-item (Join-Path $cert_path $cert_thumbprint) | New-Item -path ('IIS:\SslBindings\{0}!443' -f $ip)
+	Set-Location $cert_path
+	Get-item (Join-Path $cert_path $cert_thumbprint) | New-Item -path ('{0}\{1}!443' -f $cert_path, $ip)
 	Get-WebBinding $name
     Set-Location $pwd
 }
@@ -437,8 +437,8 @@ function Update-SSLforWebApplication
 	
 	$cert_thumprint = Get-ChildItem -path $cert_path | Where { $_.Subject.Contains($common_name) } | Select -Expand Thumbprint
 
-	cd 'IIS:\SslBindings'
-	Get-item (Join-Path $cert_path $cert_thumprint) | Set-Item -path ('IIS:\SslBindings\{0}!443' -f $ip)
+	cd $cert_path
+	Get-item (Join-Path $cert_path $cert_thumprint) | Set-Item -path ('{0}\{1}!443' -f $cert_path, $ip)
 	Get-WebBinding $name
     Set-Location $pwd
 }
@@ -451,9 +451,9 @@ function Set-IISLogging
 		[string] $path = $(throw 'A physical path is required')
 	)
 	
-	Set-ItemProperty "IIS:\Sites\$site" -name LogFile.Directory -value $path
-	Set-ItemProperty "IIS:\Sites\$site" -name LogFile.logFormat.name -value "W3C"	
-	Set-ItemProperty "IIS:\Sites\$site" -name LogFile.logExtFileFlags -value 131023
+	Set-ItemProperty (Join-path $iis_path $site) -name LogFile.Directory -value $path
+	Set-ItemProperty (Join-path $iis_path $site) -name LogFile.logFormat.name -value "W3C"	
+	Set-ItemProperty (Join-path $iis_path $site) -name LogFile.logExtFileFlags -value 131023
 }
 
 function Get-WebDataConnectionString {
@@ -467,13 +467,13 @@ function Get-WebDataConnectionString {
 		
 		. (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1")
 	
-        if( !(Test-Path "IIS:\Sites\$site" ) ) {
+        if( !(Test-Path (Join-path $iis_path $site) ) ) {
             throw "Could not find $site"
             return
         }
 
 		$connection_strings = @()
-        $configs = Get-WebConfiguration "IIS:\Sites\$site" -Recurse -Filter /connectionStrings/* | 
+        $configs = Get-WebConfiguration (Join-path $iis_path $site) -Recurse -Filter /connectionStrings/* | 
             Select PsPath, Name, ConnectionString  |
             Where { $_.ConnectionString -imatch "data source|server" }
 
