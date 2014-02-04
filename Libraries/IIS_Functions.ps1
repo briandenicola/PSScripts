@@ -3,6 +3,8 @@ Add-PSSnapin WebFarmSnapin -ErrorAction SilentlyContinue
 
 $ENV:PATH += ';C:\Program Files\IIS\Microsoft Web Deploy V2'
 
+Set-Variable -Name cert_path -Value 'cert:\LocalMachine\My' -Option Constant
+
 $global:netfx = @{
 	"1.1x86" = "C:\WINDOWS\Microsoft.NET\Framework\v1.1.4322\CONFIG\machine.config"; 
     "2.0x86" = "C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727\CONFIG\machine.config";
@@ -399,33 +401,46 @@ function Set-SSLforWebApplication
 	param (
 		[string] $name,
 		[string] $common_name,
+        [string] $ip = "0.0.0.0",
 		[Object] $options = @{}
 	)
-	
-	Get-WebBinding $name
-	
-	$cert_thumprint = Get-ChildItem -path cert:\LocalMachine\My | Where { $_.Subject.Contains($common_name) } | Select -Expand Thumbprint
-	New-WebBinding -Name $name -IP "*" -Port 443 -Protocol https @options
-	cd IIS:\SslBindings
-	Get-item cert:\LocalMachine\MY\$cert_thumprint | new-item 0.0.0.0!443
+	Set-Variable -Name pwd -value ($PWD.Path)
 
 	Get-WebBinding $name
+	
+	$cert_thumbprint = Get-ChildItem -path $cert_path | Where { $_.Subject.Contains($common_name) } | Select -Expand Thumbprint
+
+    if( $ip -eq "0.0.0.0") { 
+	    New-WebBinding -Name $name -IP "*" -Port 443 -Protocol https @options
+    }
+    else {
+        New-WebBinding -Name $name -IP $ip -Port 443 -Protocol https @options
+    }
+
+	Set-Location 'IIS:\SslBindings'
+	Get-item (Join-Path $cert_path $cert_thumbprint) | New-Item -path ('IIS:\SslBindings\{0}!443' -f $ip)
+	Get-WebBinding $name
+    Set-Location $pwd
 }
 
 function Update-SSLforWebApplication
 {
 	param (
 		[string] $name,
-		[string] $common_name
+		[string] $common_name,
+        [string] $ip = "0.0.0.0"
 	)
 	
-	Get-WebBinding $name
-	
-	$cert_thumprint = Get-ChildItem -path cert:\LocalMachine\My | Where { $_.Subject.Contains($common_name) } | Select -Expand Thumbprint
-	cd IIS:\SslBindings
-	Get-item cert:\LocalMachine\MY\$cert_thumprint | Set-item 0.0.0.0!443
+    Set-Variable -Name pwd -value ($PWD.Path)
 
 	Get-WebBinding $name
+	
+	$cert_thumprint = Get-ChildItem -path $cert_path | Where { $_.Subject.Contains($common_name) } | Select -Expand Thumbprint
+
+	cd 'IIS:\SslBindings'
+	Get-item (Join-Path $cert_path $cert_thumprint) | Set-Item -path ('IIS:\SslBindings\{0}!443' -f $ip)
+	Get-WebBinding $name
+    Set-Location $pwd
 }
 
 
