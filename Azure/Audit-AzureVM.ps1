@@ -10,11 +10,11 @@ param (
 . (Join-PATH $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 
 if( $sharepoint ) {
-	$global:url =  "http://teamadmin.gt.com/sites/ApplicationOperations/"
+	$global:url =  ""
 	$global:list = "Servers"
 }
 else { 
-	$global:url =  "http://teamadmin.gt.com/sites/ApplicationOperations/applicationsupport/"
+	$global:url =  ""
 	$global:list = "AppServers"
 }
 

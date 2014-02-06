@@ -1,20 +1,15 @@
 ﻿#requires -version 3
 Param (
-    [ValidateScript({Test-Path $_})]
-    [string] $file,
-    [string] $blob = [string]::empty,
-    [string] $settings = ".\gt-credentials.publishsettings"
+    [ValidateScript({Test-Path $_})][string] $file,
+    [Parameter(Mandatory=$true)][string] $storage,
+    [Parameter(Mandatory=$true)][string] $container,
+    [string] $blob = [string]::empty
 )
 
-. (Join-Path $ENV:SCRIPTS_HOME "libraries\Azure_Functions.ps1")
+. (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Azure_Functions.ps1")
 
-Import-AzurePublishSettingsFile $settings
+Select-AzureSubscription $global:subscription 
 
-Set-Variable -Name storage -Value "gtiishadoop" -Option Constant
-Set-Variable -Name subscription -Value "Enterprise - Brian, Chris and Erik" -Option Constant
-Set-Variable -Name container -Value "logs"
-
-Select-AzureSubscription $subscription
 $keys = Get-AzureStorageKey $storage | Select -ExpandProperty Primary 
 $storage_context = New-AzureStorageContext -StorageAccountName $storage -StorageAccountKey $keys
 
