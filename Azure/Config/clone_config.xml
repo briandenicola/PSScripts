@@ -1,0 +1,10 @@
+<azure>	
+	<vm_affinity/>
+	<subnet>servers</subnet>
+	<storage/>
+	<vm_image/>
+	<vm_size>Medium</vm_size>	
+	<vm_e_drive_source/>
+	<admin_user>manager</admin_user>
+</azure>
+

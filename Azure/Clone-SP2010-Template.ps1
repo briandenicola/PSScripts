@@ -1,46 +1,34 @@
 ﻿Param (
-    [string] $vm_name,
-    [string] $password,
-    [string] $settings = ""
+    [Parameter(Mandatory=$true)][string] $vm_name,
+    [Parameter(Mandatory=$true)][string] $cloud_service,
+    [Parameter(Mandatory=$true)][string] $password,
+    [Parameter(Mandatory=$false)][string] $config = '.\Config\clone_config.xml'
 )
 
-#. (Join-Path $ENV:SCRIPTS_HOME "Azure_Functions.ps1")
+. (Join-Path $ENV:SCRIPTS_HOME "Azure_Functions.ps1")
 
-Set-Variable -Name vhd_e_drive -Value "" -Option Constant
-Set-Variable -Name storage -Value "" -Option Constant
-Set-Variable -Name subscription -Value "" -Option Constant
-Set-Variable -Name vm_size -Value "Medium" -Option Constant
-Set-Variable -Name vm_image -Value "" -Option Constant
-Set-Variable -Name vm_affinity -Value "" -Option Constant
-Set-Variable -Name admin_user -Value "manager" -Option Constant
-Set-Variable -Name subnet -Value "servers" -Option Constant
+$cfg = [xml] ( Get-Content $config ) 
 
-Import-AzurePublishSettingsFile $settings
+Set-AzureSubscription -SubscriptionName $global:subscription -CurrentStorageAccount $cfg.azure.storage
+Select-AzureSubscription -SubscriptionName $global:subscription
 
-Set-AzureSubscription -SubscriptionName $subscription -CurrentStorageAccount $storage
-Select-AzureSubscription -SubscriptionName $subscription
-
-$e_drive = [string]::Format( "{0}-E-Drive.vhd", $vm_name  )
-$storage_url = [string]::Format( "http://{0}.blob.core.windows.net/vhds/{1}" , $storage, $e_drive )
+$e_drive_destination_blob = [string]::Format( "{0}-E-Drive.vhd", $vm_name  )
+$storage_url = [string]::Format( "http://{0}.blob.core.windows.net/vhds/{1}" , $cfg.azure.storage, $e_drive_destination_blob  )
 
 $container = Get-AzureStorageContainer 
 $params = @{
     SrcContainer = $container.Name
     DestContainer = $container.Name
-    SrcBlob = $vhd_e_drive
-    DestBlob = $e_drive 
+    SrcBlob = $cfg.azure.vm_e_drive_source
+    DestBlob = $e_drive_destination_blob
 }
+
 $job = Start-AzureStorageBlobCopy @params
+$job | Get-AzureStorageBlobCopyState -WaitForComplete
 
-$status = $job | Get-AzureStorageBlobCopyState 
-while( $status.Status -eq "Pending" ){
-  $status = $job | Get-AzureStorageBlobCopyState 
-  Start-Sleep 10
-}
-
-$vm = New-AzureVMConfig -Name $vm_name -InstanceSize $vm_size -ImageName $vm_image |
-    Add-AzureProvisioningConfig -Windows -Password $password -AdminUsername $admin_user |
-    Set-AzureSubnet -SubnetNames $subnet | 
+$vm = New-AzureVMConfig -Name $vm_name -InstanceSize $cfg.azure.vm_size -ImageName $cfg.azure.vm_image |
+    Add-AzureProvisioningConfig -Windows -Password $password -AdminUsername $cfg.azure.admin_user |
+    Set-AzureSubnet -SubnetNames $cfg.azure.subnet | 
     Add-AzureDataDisk -ImportFrom -MediaLocation $storage_url -LUN 1 -DiskLabel "DATA"
 
-New-AzureVM -VMs $vm -ServiceName $vm_name -AffinityGroup $vm_affinity  -VNetName $vm_affinity
+New-AzureVM -VMs $vm -ServiceName $cloud_service -AffinityGroup $cfg.azure.vm_affinity  -VNetName $cfg.azure.vm_affinity

@@ -2,7 +2,12 @@
 Get-ChildItem 'C:\Program Files (x86)\Microsoft SDKs\Windows Azure\PowerShell\Azure\*.psd1' | ForEach-Object {Import-Module $_}
 Import-Module MSOnline -DisableNameChecking
 Import-Module Microsoft.Online.SharePoint.PowerShell -DisableNameChecking
-Pop-Locaton
+Pop-Location
+
+Set-Variable -Name global:subscription -Value "" -Option AllScope, Constant 
+Set-Variable -Name global:publishing_file -Value "" -Option AllScope, Constant 
+
+Import-AzurePublishSettingsFile $global:publishing_file
 
 function Install-WinRmCertificate
 {
