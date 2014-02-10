@@ -4,10 +4,11 @@ Import-Module MSOnline -DisableNameChecking
 Import-Module Microsoft.Online.SharePoint.PowerShell -DisableNameChecking
 Pop-Location
 
-Set-Variable -Name global:subscription -Value "" -Option AllScope, Constant 
-Set-Variable -Name global:publishing_file -Value "" -Option AllScope, Constant 
+Set-Variable -Name global:subscription -Value "" -Option AllScope, Constant -ErrorAction SilentlyContinue
+Set-Variable -Name global:publishing_file -Value "" -Option AllScope, Constant -ErrorAction SilentlyContinue
 
 Import-AzurePublishSettingsFile $global:publishing_file
+Select-AzureSubscription $global:subscription
 
 function Install-WinRmCertificate
 {
