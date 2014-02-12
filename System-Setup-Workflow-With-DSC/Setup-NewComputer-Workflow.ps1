@@ -26,7 +26,7 @@ Set-Variable -Name password     -Value (ConvertTo-SecureString "01000000d08c9ddf
 Set-Variable -Name pull_server  -Value ("dsc." + $domain) -Option Constant
 Set-Variable -Name domain_creds -value (New-Object System.Management.Automation.PSCredential (($domain + "\brian-a"), $password))
 Set-Variable -Name local_creds  -value (New-Object System.Management.Automation.PSCredential ("administrator", $password))
-Set-Variable -Name node         -Value (([guid]::NewGuid().Guid).ToString())
+Set-Variable -Name node         -Value ([guid]::NewGuid() | Select -Expand Guid)
 
 . (Join-Path $PWD.Path "Modules\Setup-Workflow.ps1")
 . (Join-Path $PWD.Path "Modules\IIS-Server-DSC-Template.ps1") -Nodeid $node 
