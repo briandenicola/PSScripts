@@ -12,7 +12,7 @@ param(
 . (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-PATH $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 
-Set-Variable -Name external_ip_addresses -Value @("209.220.64.20","209.220.66.20","216.142.208.222","38.84.128.194") -Option Constant
+Set-Variable -Name external_ip_addresses -Value @() -Option Constant
 
 function Get-SQLAzureDatabaseConnectionString {    
     param(
