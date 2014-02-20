@@ -21,6 +21,7 @@ $global:utils_home = $null
 $global:deploy_home = $null
 $global:sp_version = $null
 $global:audit_url = $null
+$webpi = $null
 
 function Get-Variables
 {
@@ -35,6 +36,8 @@ function Get-Variables
 	$global:sp_version = $cfg.SharePoint.BaseConfig.SPVersion
 	$global:audit_url = $cfg.SharePoint.BaseConfig.AuditUrl
 	
+    $webpi = Join-Path $global:utils_home "WebPI\WebPIv3\WebpiCmd.exe" 
+
 	$xpath = "/SharePoint/Farms/farm/server[@name='" + $ENV:COMPUTERNAME + "']"
 	$node = Select-Xml -xpath $xpath  $cfg 
 	
@@ -108,9 +111,9 @@ function IISSetup
 	cd  "$global:scripts_home\iis\install\"
 	.\install_and_config_iis7.ps1
 	
-	&"$global:utils_home\WebPI\WebpiCmdLine.exe" /Products:NETFramework4 /accepteula /SuppressReboot 
-	&"$global:utils_home\WebPI\WebpiCmdLine.exe" /Products:SQLNativeClient2008 /accepteula /SuppressReboot
-	&"$global:utils_home\WebPI\WebpiCmdLine.exe" /Products:WDeployNoSMO /accepteula /SuppressReboot 
+	&$webpi /install /Products:NETFramework4 /accepteula /SuppressReboot 
+	&$webpi /install /Products:SQLNativeClient2008 /accepteula /SuppressReboot
+	&$webpi /install /Products:WDeployNoSMO /accepteula /SuppressReboot 
 	C:\Windows\Microsoft.NET\Framework64\v4.0.30319\aspnet_regiis.exe -iru
 	
 	#Install Enterprise Library to GAC
