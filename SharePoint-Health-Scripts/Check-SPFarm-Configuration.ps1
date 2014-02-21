@@ -6,8 +6,8 @@ param (
 
 	[string] $farm = "2010",
 
-    [ValidateSet("windows", "sql", "profiles", "search", "services", "iis", "logs", "security", "solutions")]
-	[string[]] $operations = @("windows", "sql", "profiles", "search", "services", "iis", "security", "solutions")
+    [ValidateSet("windows", "sql", "profiles", "search", "services", "iis", "logs", "security", "solutions", "health")]
+	[string[]] $operations = @("windows", "sql", "profiles", "search", "services", "iis", "security", "solutions", "health")
 )
 
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
@@ -29,11 +29,12 @@ Set-Variable -Name options -Value @(
     @{Name="iis"; Function="Check-IIS"},
     @{Name="security"; Function="Check-Security"},
     @{Name="solutions"; Function="Check-solutions"},
-    @{Name="logs"; Function="Check-ULSLogs"}
+    @{Name="logs"; Function="Check-ULSLogs"},
+    @{Name="health"; Function="Check-HealthRule"}
 )
 
 Set-Variable -Name log_file -Value (Join-Path $PWD.PATH ( Join-Path "logs" ("{0}-{1}-environmental-validation-{2}.log" -f $env,$farm,$(Get-Date).ToString("yyyyMMddmmhhss"))) ) -Option AllScope
-Set-Variable -Name url -Value "http://path.to/site/"
+Set-Variable -Name url -Value "http://teamadmin.gt.com/sites/ApplicationOperations/"
 
 log -txt "Getting SharePoint and SQL servers for $env environment"
 Set-Variable -Name systems -Value (Get-Servers-To-Process -farm $farm -env $env) -Option AllScope

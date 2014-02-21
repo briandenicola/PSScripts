@@ -99,6 +99,12 @@ function Check-Security {
             [String]::Empty | Out-File -Append -Encoding ASCII $log_file
         }
 
+    log -txt "Checking for SharePoint Farm Administrators"
+    Invoke-Command -Session $ca_session -ScriptBlock $check_farm_administrators | 
+        Select DisplayName |
+	    Out-File -Append -Encoding ASCII $log_file
+      
+
     log -txt "Checking for SharePoint Managed Accounts"
     Invoke-Command -Session $ca_session -ScriptBlock $check_managed_accounts | 
         Select UserName |
@@ -193,4 +199,14 @@ function Check-ULSLogs {
 	log -txt "Checking ULS Logs"
 	Invoke-Command -Session $server_session -ScriptBlock $check_uls_sb |
 		Out-File -Append -Encoding ASCII $log_file
+}
+
+function Check-HealthRule {
+    log -txt "Check Health Report"
+    Get-SPListViaWebService -url ("http://{0}:10000/" -f $systems.CAServer ) -list "Review problems and solutions" | 
+        Out-File -Append -Encoding ASCII $log_file
+
+	log -txt "List Disable Health Rules"
+    Invoke-Command -Session $ca_session -ScriptBlock $check_disable_healthrules |
+        Out-File -Append -Encoding ASCII $log_file
 }

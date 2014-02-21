@@ -57,3 +57,8 @@ Set-Variable -Name check_db_size -Value ( [ScriptBlock] {
 	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
 	Get-SPDatabaseSize
 })
+
+Set-Variable -Name check_disable_healthrules -Value ( [ScriptBlock] {
+    . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
+    Get-SPHealthAnalysisRule | Where { $_.Enabled -eq $false }
+})
