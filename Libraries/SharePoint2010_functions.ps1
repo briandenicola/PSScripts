@@ -116,7 +116,7 @@ function Get-SPVersion
 }
 
 ##http://www.sharepointlonghorn.com/Lists/Posts/Post.aspx?ID=11
-Function Get-SPManageAccountPassword
+function Get-SPManageAccountPassword
 {
 	param(
 		[string] $user,
@@ -132,12 +132,10 @@ Function Get-SPManageAccountPassword
 
 	$secure_password = $sp_user.GetType().GetField("m_Password", $bindings).GetValue($sp_user);
  
-	if($AsSecureString)
-	{
+	if($AsSecureString)	{
 		return $secure_password.SecureStringValue
 	} 
-	else
-	{
+	else {
 		$intptr = [System.IntPtr]::Zero
 		$unmanagedString = [System.Runtime.InteropServices.Marshal]::SecureStringToGlobalAllocUnicode($secure_password.SecureStringValue)
 		$unsecureString = [System.Runtime.InteropServices.Marshal]::PtrToStringUni($unmanagedString)
@@ -149,47 +147,63 @@ Function Get-SPManageAccountPassword
 }
 
 # ===================================================================================
-# Func: Set-WebAppUserPolicy
-# AMW 1.7.2
-# Desc: Set the web application user policy
 # Refer to http://technet.microsoft.com/en-us/library/ff758656.aspx
 # Updated based on Gary Lapointe example script to include Policy settings 18/10/2010
 # ===================================================================================
-Function Set-WebAppUserPolicy($wa, $userName, $displayName, $perm) 
+function Set-WebAppUserPolicy($wa, $userName, $displayName, $perm) 
 {
     [Microsoft.SharePoint.Administration.SPPolicyCollection]$policies = $wa.Policies
     [Microsoft.SharePoint.Administration.SPPolicy]$policy = $policies.Add($userName, $displayName)
     [Microsoft.SharePoint.Administration.SPPolicyRole]$policyRole = $wa.PolicyRoles | where {$_.Name -eq $perm}
-    If ($policyRole -ne $null) {
+    
+    if ($policyRole -ne $null) {
         $policy.PolicyRoleBindings.Add($policyRole)
     }
+    
     $wa.Update()
 }
 
-#http://autospinstaller.codeplex.com/
-Function Configure-ObjectCache( [string] $url, [string]$superuser)
+function Configure-ObjectCache
 {
-	Try
+    param (
+        [Parameter(Mandatory=$true)]
+        [string] $url, 
+
+        [Parameter(Mandatory=$true)]
+        [ValidatePattern('(?s)^.*\\')]       
+        [string] $superuser,
+
+        [ValidatePattern('(?s)^.*\\')]
+        [string] $superreader = [string]::empty
+    )
+    
+    if( $superreader -eq [string]::Empty ) {
+        Write-Warning "A super reader account was not given so the super reader will be set to the Portal Super user Account. THis is not a best practice"
+        $superreader = $superuser
+    }
+
+	try
 	{
+
 		$wa = Get-SPWebApplication $url
-		# If the web app is using Claims auth, change the user accounts to the proper syntax
-		If ($wa.UseClaimsAuthentication -eq $true) 
-		{
-			$SuperUserAcc = 'i:0#.w|' + $superuser
-			$SuperReaderAcc = 'i:0#.w|' + $superuser
+
+		if ($wa.UseClaimsAuthentication) {
+			$superuser = 'i:0#.w|{0}' -f $superuser
+			$superreader = 'i:0#.w|{0}' -f $superreader
 		}
+
 		Write-Host -ForegroundColor White " - Applying object cache accounts to `"$url`"..."
-        $wa.Properties["portalsuperuseraccount"] = $SuperUserAcc
-	    Set-WebAppUserPolicy $wa $SuperUserAcc "Super User (Object Cache)" "Full Control"
-        $wa.Properties["portalsuperreaderaccount"] = $SuperReaderAcc
-	    Set-WebAppUserPolicy $wa $SuperReaderAcc "Super Reader (Object Cache)" "Full Read"
+        $wa.Properties["portalsuperuseraccount"] = $superuser
+	    Set-WebAppUserPolicy $wa $superuser "Super User (Object Cache)" "Full Control"
+
+        $wa.Properties["portalsuperreaderaccount"] = $superreader
+	    Set-WebAppUserPolicy $wa $superreader "Super Reader (Object Cache)" "Full Read"
+
         $wa.Update()        
     	Write-Host -ForegroundColor White " - Done applying object cache accounts to `"$url`""
 	}
-	Catch
-	{
-		$_
-		Write-Warning " - An error occurred applying object cache to `"$url`""
+	catch {
+		Write-Error ("An error occurred applying object cache to `"$url`" - " + $_.Message.ToString())
 	}
 }
 
@@ -237,9 +251,8 @@ function Audit-SharePointWebApplications
 
 function Get-StartedServices
 {
-	Get-SPServer | % {
-		$server = $_.Address
-		$_.ServiceInstances | where { $_.Status -eq "Online" } | Select @{Name="System";Expression={$server}}, @{Name="Service";Expression={$_.TypeName}}
+	foreach( $server in (Get-SPServer) ) {
+		$server.ServiceInstances | where { $_.Status -eq "Online" } | Select @{Name="System";Expression={$server.Address}}, @{Name="Service";Expression={$_.TypeName}}
 	}
 }
 
