@@ -4,7 +4,7 @@ param(
     [string] $admin_account,
 
     [Parameter(Mandatory=$true)]
-    [string] $site_name,
+    [string[]] $sites,
 
     [Parameter(Mandatory=$true)]
     [string] $owner,
@@ -16,26 +16,27 @@ param(
     [int] $quota = 1000
 )
 
-Set-Variable -Name team_site -Value "http://teamadmin.gt.com/sites/ApplicationOperations/" -Option Constant
-Set-Variable -Name admin_site -Value "https://gtus365-admin.sharepoint.com" -Option Constant
+Set-Variable -Name team_site -Value "" -Option Constant
+Set-Variable -Name admin_site -Value "" -Option Constant
 Set-Variable -Name office365_list -Value "Office365 Sites" -Option Constant
-Set-Variable -Name office365_url -Value "https://gtus365.sharepoint.com/sites/" -Option Constant
+Set-Variable -Name office365_url -Value "" -Option Constant
 
+Import-Module (Join-Path $PWD.Path "Office365_Credentials.psm1")
 Import-Module MSOnline -DisableNameChecking
 Import-Module Microsoft.Online.SharePoint.PowerShell -DisableNameChecking
 
-Connect-SPOService -url $admin_site -Credential $admin_account
+Connect-SPOService -url $admin_site -Credential (Get-Office365Creds -account $admin_account)
 
-$url = $office365_url + $site_name
-New-SPOSite -Url $url -Owner $owner -StorageQuota $quota -Template $template
+foreach( $site in $sites ) {
+    $url = $office365_url + $site
+    New-SPOSite -Url $url -Owner $owner -StorageQuota $quota -Template $template
 
-Get-SPOSite
-
-$site = @{
-		Url = $url
-        Owner = $owner
-        Quota = $quota
-        Template = $template
-        Active = 1
+    if( $? -eq $true ) {
+        $record = @{ Url = $url; Owner = $owner; Quota = $quota; Template = $template; Active = 1 }
+        WriteTo-SPListViaWebService -url $team_site -list $office365_list -Item $record -TitleField Url
+    }
+    else {
+       Write-Error "[$(Get-Date) ] - $url failed to create . . ." 
+    }
 }
-WriteTo-SPListViaWebService -url $team_site -list $office365_list -Item $site -TitleField Url
+Get-SPOSite

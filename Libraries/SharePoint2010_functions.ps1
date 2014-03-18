@@ -1,5 +1,90 @@
 Add-PSSnapin Microsoft.SharePoint.PowerShell –erroraction SilentlyContinue
 
+
+function Set-PermissiveMode
+{
+    param(
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true)] 
+        [Alias('WebApplication')]
+        [Microsoft.SharePoint.Administration.SPWebApplication]
+        $web_application
+    )
+    begin {
+        Set-Variable -Name Mode -Value "Permissive" -Option Constant
+    }
+    process {
+    	Write-Verbose ("[{0}] - Setting Browser File Handling to {1} for {1}" -f $(Get-Date), $mode, $web_application.Name)
+        $web_application.BrowserFileHandling = $mode
+        $web_application.Update()
+    }
+    end {
+    }
+}
+
+function Set-SimpleRecoveryMode 
+{ 
+   param(
+        [Parameter(Mandatory=$true,Position=0,ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)] 
+        [string]
+        $name,
+
+        [Parameter(Mandatory=$true,Position=1,ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)] 
+        [string]
+        $server
+    )
+    begin {
+       . (Join-Path $env:SCRIPTS_HOME "libraries\Standard_Functions.ps1")
+       Set-Variable -Name sql -Value "ALTER DATABASE {0} SET RECOVERY SIMPLE" -Option Constant
+       Set-Variable -Name master -Value "master" -Option Constant
+    }
+    process {
+	    Write-Verbose ("[{0}] - Setting {1} to SIMPLE recovery mode on {2}" -f $(Get-Date), $name, $server)
+        Query-DatabaseTable -server $server -database $master -sql ($sql -f $name)
+    }
+    end {
+    }
+
+}
+
+#http://stuffaboutsharepoint.wordpress.com/2013/04/03/quota-templates-in-powershell/
+function New-SPQuotaTemplate {
+    Param(
+        [Parameter(Mandatory=$true)][String]$Name,
+        [Parameter(Mandatory=$true)][Int64]$StorageMaximumLevelinGB,
+        [Parameter(Mandatory=$true)][System.Double]$StorageWarningLevelinGB,
+        [Parameter(Mandatory=$false)][System.Double]$UserCodeMaximumLevel,
+        [Parameter(Mandatory=$false)][System.Double]$UserCodeWarningLevel
+    )
+
+    $Quota = New-Object Microsoft.SharePoint.Administration.SPQuotaTemplate
+    $Quota.Name = $Name
+    $Quota.StorageMaximumLevel = $StorageMaximumLevelinGB * 1GB
+    $Quota.StorageWarningLevel = $StorageWarningLevelinGB * 1GB
+    $Quota.UserCodeMaximumLevel = $UserCodeMaximumLevel
+    $Quota.UserCodeWarningLevel = $UserCodeWarningLevel
+
+    $Service = [Microsoft.SharePoint.Administration.SPWebService]::ContentService
+    $Service.QuotaTemplates.Add($Quota)
+    $Service.Update()
+
+    Write-Verbose "Quota Template $Name added successfully" 
+}
+ 
+function Get-SPQuotaTemplate {
+    Param(
+        [Parameter(Mandatory=$false)][String]$Name
+    )
+
+    $Templates = [Microsoft.SharePoint.Administration.SPWebService]::ContentService.QuotaTemplates
+    
+    if ($Name) {
+        return ( $Templates | Where-Object {$_.Name -eq $Name} )
+    }
+    else {
+        return $Templates
+    }
+}
+
 function Get-SPStartedServices
 {
     return ( Get-SPServiceInstance | 
@@ -31,7 +116,7 @@ function Get-SPVersion
 }
 
 ##http://www.sharepointlonghorn.com/Lists/Posts/Post.aspx?ID=11
-Function Get-SPManageAccountPassword
+function Get-SPManageAccountPassword
 {
 	param(
 		[string] $user,
@@ -47,12 +132,10 @@ Function Get-SPManageAccountPassword
 
 	$secure_password = $sp_user.GetType().GetField("m_Password", $bindings).GetValue($sp_user);
  
-	if($AsSecureString)
-	{
+	if($AsSecureString)	{
 		return $secure_password.SecureStringValue
 	} 
-	else
-	{
+	else {
 		$intptr = [System.IntPtr]::Zero
 		$unmanagedString = [System.Runtime.InteropServices.Marshal]::SecureStringToGlobalAllocUnicode($secure_password.SecureStringValue)
 		$unsecureString = [System.Runtime.InteropServices.Marshal]::PtrToStringUni($unmanagedString)
@@ -64,47 +147,63 @@ Function Get-SPManageAccountPassword
 }
 
 # ===================================================================================
-# Func: Set-WebAppUserPolicy
-# AMW 1.7.2
-# Desc: Set the web application user policy
 # Refer to http://technet.microsoft.com/en-us/library/ff758656.aspx
 # Updated based on Gary Lapointe example script to include Policy settings 18/10/2010
 # ===================================================================================
-Function Set-WebAppUserPolicy($wa, $userName, $displayName, $perm) 
+function Set-WebAppUserPolicy($wa, $userName, $displayName, $perm) 
 {
     [Microsoft.SharePoint.Administration.SPPolicyCollection]$policies = $wa.Policies
     [Microsoft.SharePoint.Administration.SPPolicy]$policy = $policies.Add($userName, $displayName)
     [Microsoft.SharePoint.Administration.SPPolicyRole]$policyRole = $wa.PolicyRoles | where {$_.Name -eq $perm}
-    If ($policyRole -ne $null) {
+    
+    if ($policyRole -ne $null) {
         $policy.PolicyRoleBindings.Add($policyRole)
     }
+    
     $wa.Update()
 }
 
-#http://autospinstaller.codeplex.com/
-Function Configure-ObjectCache( [string] $url, [string]$superuser)
+function Configure-ObjectCache
 {
-	Try
+    param (
+        [Parameter(Mandatory=$true)]
+        [string] $url, 
+
+        [Parameter(Mandatory=$true)]
+        [ValidatePattern('(?s)^.*\\')]       
+        [string] $superuser,
+
+        [ValidatePattern('(?s)^.*\\')]
+        [string] $superreader = [string]::empty
+    )
+    
+    if( $superreader -eq [string]::Empty ) {
+        Write-Warning "A super reader account was not given so the super reader will be set to the Portal Super user Account. THis is not a best practice"
+        $superreader = $superuser
+    }
+
+	try
 	{
+
 		$wa = Get-SPWebApplication $url
-		# If the web app is using Claims auth, change the user accounts to the proper syntax
-		If ($wa.UseClaimsAuthentication -eq $true) 
-		{
-			$SuperUserAcc = 'i:0#.w|' + $superuser
-			$SuperReaderAcc = 'i:0#.w|' + $superuser
+
+		if ($wa.UseClaimsAuthentication) {
+			$superuser = 'i:0#.w|{0}' -f $superuser
+			$superreader = 'i:0#.w|{0}' -f $superreader
 		}
+
 		Write-Host -ForegroundColor White " - Applying object cache accounts to `"$url`"..."
-        $wa.Properties["portalsuperuseraccount"] = $SuperUserAcc
-	    Set-WebAppUserPolicy $wa $SuperUserAcc "Super User (Object Cache)" "Full Control"
-        $wa.Properties["portalsuperreaderaccount"] = $SuperReaderAcc
-	    Set-WebAppUserPolicy $wa $SuperReaderAcc "Super Reader (Object Cache)" "Full Read"
+        $wa.Properties["portalsuperuseraccount"] = $superuser
+	    Set-WebAppUserPolicy $wa $superuser "Super User (Object Cache)" "Full Control"
+
+        $wa.Properties["portalsuperreaderaccount"] = $superreader
+	    Set-WebAppUserPolicy $wa $superreader "Super Reader (Object Cache)" "Full Read"
+
         $wa.Update()        
     	Write-Host -ForegroundColor White " - Done applying object cache accounts to `"$url`""
 	}
-	Catch
-	{
-		$_
-		Write-Warning " - An error occurred applying object cache to `"$url`""
+	catch {
+		Write-Error ("An error occurred applying object cache to `"$url`" - " + $_.Message.ToString())
 	}
 }
 
@@ -152,9 +251,8 @@ function Audit-SharePointWebApplications
 
 function Get-StartedServices
 {
-	Get-SPServer | % {
-		$server = $_.Address
-		$_.ServiceInstances | where { $_.Status -eq "Online" } | Select @{Name="System";Expression={$server}}, @{Name="Service";Expression={$_.TypeName}}
+	foreach( $server in (Get-SPServer) ) {
+		$server.ServiceInstances | where { $_.Status -eq "Online" } | Select @{Name="System";Expression={$server.Address}}, @{Name="Service";Expression={$_.TypeName}}
 	}
 }
 

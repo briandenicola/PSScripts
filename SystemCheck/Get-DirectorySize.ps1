@@ -1,6 +1,7 @@
 param (
 	[string[]] $computers,
-	[string] $folder
+	[string] $folder,
+    [string] $out = [string]::empty 
 )
 
 $sb = { 
@@ -28,7 +29,13 @@ function main
     $job = Invoke-Command -Session $ses -ScriptBlock $sb -Args $folder -AsJob
 
     Get-Job $job.Id | Wait-Job | Out-Null 
-    Receive-Job $job | Select Computer, Folder,'Size (mb)' | Format-Table -GroupBy Computer
+
+    if(  $out -eq  [string]::empty ) {
+        Receive-Job $job | Select Computer, Folder,'Size (mb)' | Format-Table -GroupBy Computer
+    }
+    else {
+        Receive-Job $job | Select Computer, Folder,'Size (mb)' | Export-Csv -NoTypeInformation -Encoding ASCII -Path $out
+    }
 
     Get-PSSession | Remove-PSSession
 }

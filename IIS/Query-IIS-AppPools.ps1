@@ -32,17 +32,21 @@ foreach( $computer in $computers ) {
 
     foreach( $app_pool in $appPoolSettings ) {
         $name = $app_pool.Name.Split("/")[2]
-        $state = Get-AppPoolState -state $app_pool.AppPoolState 
+        $state = Get-AppPoolState -state $app_pool.AppPoolState
         
-        $obj = New-Object PSObject -Property @{
+        $hash = [ordered] @{
+            Computer = $computer
             Name = $name
-            State = $state
-            User = $app_pool.WAMUserName
-            Process = 0
+            State =  $state
+            User = if( [string]::IsNullOrEmpty($app_pool.WAMUserName) ) { "Application Identity" } else { $app_pool.WAMUserName }
+            Version = if( [string]::IsNullOrEmpty($app_pool.ManagedRuntimeVersion) ) { "v1.1|v2.0" } else { $app_pool.ManagedRuntimeVersion } 
+            ProcessId = 0
             ThreadCount = 0
-            WorkingSetSize = 0
+            MemoryInGB = 0
             CreationDate = $(Get-Date -Date "1/1/1970")
         }
+
+        $obj = New-Object PSObject -Property $hash
         
         if( $state -eq "Running" ) {
             $process = $processes | Where { $_.CommandLine -imatch $name }
@@ -50,8 +54,11 @@ foreach( $computer in $computers ) {
             if( $process ) {
                 $obj.ProcessId = $process.ProcessId
                 $obj.ThreadCount = $process.ThreadCount
-                $obj.WorkingSetSize = $process.WorkingSetSize
+                $obj.MemoryInGB = [math]::round( $process.WorkingSetSize / 1gb, 2)
                 $obj.CreationDate = $process.ConvertToDateTime( $process.CreationDate )
+            } 
+            else {
+                $obj.State = "Idle"
             }
         }
         $app_pools += $obj        

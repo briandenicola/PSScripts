@@ -21,6 +21,7 @@ $global:utils_home = $null
 $global:deploy_home = $null
 $global:sp_version = $null
 $global:audit_url = $null
+$webpi = $null
 
 function Get-Variables
 {
@@ -35,6 +36,8 @@ function Get-Variables
 	$global:sp_version = $cfg.SharePoint.BaseConfig.SPVersion
 	$global:audit_url = $cfg.SharePoint.BaseConfig.AuditUrl
 	
+    $webpi = Join-Path $global:utils_home "WebPI\WebPIv3\WebpiCmd.exe" 
+
 	$xpath = "/SharePoint/Farms/farm/server[@name='" + $ENV:COMPUTERNAME + "']"
 	$node = Select-Xml -xpath $xpath  $cfg 
 	
@@ -108,9 +111,9 @@ function IISSetup
 	cd  "$global:scripts_home\iis\install\"
 	.\install_and_config_iis7.ps1
 	
-	&"$global:utils_home\WebPI\WebpiCmdLine.exe" /Products:NETFramework4 /accepteula /SuppressReboot 
-	&"$global:utils_home\WebPI\WebpiCmdLine.exe" /Products:SQLNativeClient2008 /accepteula /SuppressReboot
-	&"$global:utils_home\WebPI\WebpiCmdLine.exe" /Products:WDeployNoSMO /accepteula /SuppressReboot 
+	&$webpi /install /Products:NETFramework4 /accepteula /SuppressReboot 
+	&$webpi /install /Products:SQLNativeClient2008 /accepteula /SuppressReboot
+	&$webpi /install /Products:WDeployNoSMO /accepteula /SuppressReboot 
 	C:\Windows\Microsoft.NET\Framework64\v4.0.30319\aspnet_regiis.exe -iru
 	
 	#Install Enterprise Library to GAC
@@ -134,12 +137,12 @@ function DatabaseAliasSetup
 
 function SharePointSetup
 {
-	cd "$global:scripts_home\InstallSharePoint2010"
+	cd "$global:scripts_home\Install-SharePoint2010"
 	if( CheckFor-PendingReboot )
 	{
 		#$config = Join-Path $PWD.Path "Configs\master_setup.xml"
 		
-		$script = "cd $global:scripts_home\InstallSharePoint2010;"
+		$script = "cd $global:scripts_home\Install-SharePoint2010;"
 		$script += Join-Path $PWD.Path "1_SPFarm-Master_Install.ps1"
 		$script += " -operation sharepoint-install -config $config"
 		
@@ -170,7 +173,7 @@ function FarmSetup
 	$pass = $cfg.SharePoint.setup.security.$global:farm_type.passphrase
 	$account = $cfg.SharePoint.setup.security.$global:farm_type.farm_account
 	
-	cd "$global:scripts_home\InstallSharePoint2010"
+	cd "$global:scripts_home\Install-SharePoint2010"
 	if( $global:server_type -eq "central-admin" )
 	{	
 		.\Modules\Create-SharePointFarm.ps1 -db $db -passphrase $pass -account $account

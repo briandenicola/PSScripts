@@ -1,0 +1,13 @@
+﻿<IISSites>
+	<WebFarm name="" environment="DEV" />
+	<Site name="Monitoring" url="" port="80">	
+		<path>D:\Web\monitoring</path>
+		<AppPool name="AppPool - Monitoring" user="" pass="" version="v2.0" />
+		<SSL enable="false" />
+		<AdditionalCommands>
+			<command name="Set-WebConfigurationProperty" parameters=" -filter /system.webServer/security/authentication/windowsAuthentication -name enabled -value true -PSPath IIS:\ -location Monitoring" />
+			<command name="Set-WebConfigurationProperty" parameters=" -filter /system.webServer/security/authentication/AnonymousAuthentication -name enabled -value false -PSPath IIS:\ -location Monitoring" />
+			<command name="Add-WebConfiguration" parameters=" -filter /system.webServer/defaultDocument/files -PSPath IIS:\Sites\Monitoring -value monitor.aspx" />
+		</AdditionalCommands>
+	</Site>
+</IISSites>

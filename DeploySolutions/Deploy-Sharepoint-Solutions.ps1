@@ -71,6 +71,7 @@ function Deploy-SPSolution( [Object] $package ) {
 		log_deployment ("Solution  - " + $solution.name + " - installation completed successfully.")
 	}
 	else { 
+        Write-Error ("Solution  - " + $solution.name + " failed with - " + $result.LastOperationDetails )
 		log_deployment ("Solution  - " + $solution.name + " - installation did notcompleted successfully.")
 		log_deployment ("Result @ " + $result.LastOperationEndTime  + " completed with  - " + $result.LastOperationResult + ". Details - " + $result.LastOperationDetails )
 	}
