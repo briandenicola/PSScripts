@@ -2,14 +2,8 @@
     [string] $NodeId
 )
 
-Configuration IISServerSetup {
+Configuration ServerSetup {
     node $NodeId {
-
-        Group GroupExample 
-        {
-            GroupName = "Administrators"
-            Members = "SharePoint-Ops"
-        }
 
         Environment SCRIPTSHOME
         {
@@ -23,13 +17,6 @@ Configuration IISServerSetup {
             Ensure = "Present" 
             Type = "Directory"
             DestinationPath = "D:\Logs"    
-        }
-
-        xSmbShare LogShare 
-        { 
-          Ensure = "Present"  
-          Name   = "Logs" 
-          Path =  "D:\Logs"          
         } 
 
         File DeployDirectory
@@ -56,11 +43,5 @@ Configuration IISServerSetup {
             SourcePath = "\\nas\app-ops\SharePoint-Utils\"
             DestinationPath = "D:\Utils"    
         }
-
-        InstallIIS CustomIISInstall 
-        {
-            Ensure = "Present"    
-        }
     }
 }
-#IISServerSetup 

@@ -1,7 +1,14 @@
 ﻿param(
+    [ParaMeter(Mandatory=$true)]
     [string] $web_site,
+    [ParaMeter(Mandatory=$true)]
     [string] $url,
-    [string] $path
+    [ParaMeter(Mandatory=$true)]
+    [string] $path,
+    [ParaMeter(Mandatory=$true)]
+    [string] $pfx_path,
+    [ParaMeter(Mandatory=$true)]
+    [string] $pfx_pass
 )
 
 Add-WindowsFeature DSC-Service
@@ -33,4 +40,6 @@ cp $pshome/modules/psdesiredstateconfiguration/pullserver/devices.mdb $env:progr
 $cfg = [xml] ( gc (Join-Path $path "web.config") ) foreach( $setting in $settings )  {    $add = $cfg.CreateNode( [System.Xml.XmlNodeType]::Element, "add", $null)
     $add.SetAttribute("key", $setting.Key)
     $add.SetAttribute("value", $setting.Value )
-    $cfg.Configuration.appSettings.AppendChild($add)    $cfg.Save((Join-Path $path "web.config"))}
+    $cfg.Configuration.appSettings.AppendChild($add)    $cfg.Save((Join-Path $path "web.config"))}$secure_pass = ConvertTo-SecureString $pfx_pass -AsPlainText -Force 	
+Import-PfxCertificate -certpath $pfx_path -pfxPass $secure_pass
+Set-SSLforWebApplication -name $web_site -common_name $url
