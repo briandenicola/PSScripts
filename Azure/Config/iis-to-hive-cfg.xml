@@ -1,0 +1,23 @@
+<logparse>
+	<sites>
+		<site>
+			<url></url>
+			<log_path></log_path>
+			<servers>
+					<server></server>				
+			</servers>
+			<hive_table_name></hive_table_name>
+		</site>
+	</sites>
+	<log_file>D:\Logs\iis_log_import.log</log_file>
+	<log_copy_location>
+		<remote></remote>
+		<local>D:\Logs\HIVE\</local>
+	</log_copy_location>
+	<hdinsight>
+		<subscription></subscription>
+		<cluster></cluster>
+		<storage></storage>
+		<container></container>
+	</hdinsight>
+</logparse>
