@@ -7,20 +7,7 @@ function Create-ManagedMetadata
 
 	$proxy_name = $cfg.Name + " Proxy"
 	$app_name = "Managed Metadata Web Service"
-
-    $farm = $cfg.SharePoint.Farms.farm | where { $_.name -eq $env }
-	foreach( $server in $farm.Server | where { $_.role -eq "application" } ) {
-		Write-Host "Working on $($server.name) . . ."	
-
-    	$Guid = Get-SPServiceInstance -Server $server.name  | where {$_.TypeName -eq $app_name} | Select -Expand Id
-        if( $Guid -ne $null ) {
-	        Start-SPServiceInstance -Identity $Guid
-		}
-		else { 
-			Write-Error "Could not find $app_name on $($server.name) . . . "
-		}
-	}
-	
+      	
 	try { 
 		if( (Get-SPServiceApplication | where { $_.DisplayName -eq $cfg.Name }) ) {
 			Write-Host "$($cfg.Name) already exists in this farm" -ForegroundColor Red
@@ -28,9 +15,9 @@ function Create-ManagedMetadata
 		}
 
 		# Start Services
-		foreach( $server in $cfg.Servers.Server.Name ) { 
+		foreach( $server in ( Get-FarmWebServers ) ) { 
 			Write-Host "[$(Get-Date)] - Attempting to start Managed Metadata on $server"
-			Get-SPServiceInstance -Server $server | where { $_.TypeName -eq "Managed Metadata Web Service" } | Start-SPServiceInstance 
+			Get-SPServiceInstance -Server $server | where { $_.TypeName -eq $app_name } | Start-SPServiceInstance 
 		}
 
 		# Create Application Pool

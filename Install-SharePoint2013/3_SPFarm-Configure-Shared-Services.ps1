@@ -11,12 +11,6 @@ Add-PSSnapin Microsoft.SharePoint.PowerShell –erroraction SilentlyContinue
 . .\Libraries\Setup-Search.ps1
 . .\Libraries\Setup_Functions.ps1
 
-function HashTable_Output( [HashTable] $ht )
-{
-	$ht.Keys | % { $output += $_ + ":" + $ht[$_] + "," }
-	return $output.TrimEnd(",")
-}
-
 function main()
 {
 	$log = $cfg.SharePoint.BaseConfig.LogsHome + "\Farm-Shared-Service-Application-Setup-" + $ENV:COMPUTERNAME + "-" + $(Get-Date).ToString("yyyyMMddhhmmss") + ".log"
@@ -30,7 +24,7 @@ function main()
 	$metadata_cfg = $cfg.SharePoint.SharedServices.Service | where { $_.App -eq "Metadata" }
 	if( $metadata_cfg -ne $null ) {
 		Write-Host "[ $(Get-Date) ] - Create Managed Metadata Service Application"
-		Create-ManagedMetadata -cfg $metadata_cfg -env $global:farm_type
+		Create-ManagedMetadata -cfg $metadata_cfg
 	}
 	
 	$search_cfg = $cfg.SharePoint.SharedServices.Service | where { $_.App -eq "EnterpriseSearch" }
@@ -50,7 +44,7 @@ function main()
 		Write-Host "`t 2.) Setup a connection to Active Directory "
 		Write-Host "`t 3.) Setup a Synchronization Schedule"
 		Write-Host "`t 4.) Setup Profile Filters"
-		Create-UserProfile -cfg $user_profile_cfg -env $global:farm_type
+		Create-UserProfile -cfg $user_profile_cfg
 	}	
 	Stop-Transcript
 }

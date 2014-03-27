@@ -6,23 +6,14 @@ function Create-UserProfile
 	)
 	$proxy_name = $cfg.Name + " Proxy"
 	$app_name = "User Profile Service"
-
-    $farm = $cfg.SharePoint.Farms.farm | where { $_.name -eq $env }
-	foreach( $server in $farm.Server | where { $_.role -eq "application" -or $_.role -eq "all" } ) {
-		Write-Host "Working on $($server.name) . . ."	
-
-    	$Guid = Get-SPServiceInstance -Server $server.name  | where {$_.TypeName -eq $app_name} | Select -Expand Id
-        if( $Guid -ne $null ) {
-	        Start-SPServiceInstance -Identity $Guid
-		}
-		else { 
-			Write-Error "Could not find $app_name on $($server.name) . . . "
-		}
-	}
+    $sync_app = "User Profile Synchronization Service"
 
 	try {
-		Write-Host "[ $(Get-Date) ] - Attempting to start User Profile on " $cfg.Server.Name 
-	
+		foreach( $server in ( Get-FarmWebServers ) ) { 
+			Write-Host "[$(Get-Date)] - Attempting to start $app_name on $server"
+			Get-SPServiceInstance -Server $server | where { $_.TypeName -eq $app_name } | Start-SPServiceInstance 
+		}	
+
 		#Start the UPS Instance and Setup Access
 		$farmAccount = (get-SPFarm).DefaultServiceAccount
 		$cred = Get-Credential $farmAccount.Name
@@ -107,12 +98,13 @@ function Create-UserProfile
 		Write-Host "[$(Get-Date)] - Attempting to publish User Profile Service Application "
 		Publish-SPServiceApplication $app
 	
-    	$Guid = Get-SPServiceInstance -Server $server.name  | where {$_.TypeName -eq "User Profile Synchronization Service"} | Select -Expand Id
+    	Write-Host "[ $(Get-Date) ] - Attempting to start User Profile Sync Service on " $cfg.SyncServer.Name 
+    	$Guid = Get-SPServiceInstance -Server $cfg.SyncServer.name  | where {$_.TypeName -eq $sync_app } | Select -Expand Id
         if( $Guid -ne $null ) {
 	        Start-SPServiceInstance -Identity $Guid
 		}
 		else { 
-			Write-Error "Could not find User Profile Synchronization Service on $($server.name) . . . "
+			Write-Error "Could not find User Profile Synchronization Service on $($cfg.SyncServer.name) . . . "
 		}
 
 		Write-Host "[$(Get-Date)] - Starting Activity Feed Timer Job "

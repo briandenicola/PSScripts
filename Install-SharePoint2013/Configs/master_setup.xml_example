@@ -120,7 +120,7 @@
 	<SharedServices>
 		<Service App="UserProfile">
 			<name>User Profile Service Application</name>
-			<Server name="sp-app-04" />
+			<SyncServer name="sp-app-04" />
 			<Databases>
 				<database instance="SharePoint-Ser-UserProfile-DB01" name="SocialDB_001" Type="Social" />
 				<database instance="SharePoint-Ser-UserProfile-DB01" name="ProfileDB_001" Type="Profile" />
@@ -145,9 +145,6 @@
 		</Service>
 		<Service App="Metadata">
 			<name>Managed Metadata Service Application</name>
-			<Servers>
-				<server name="sp-app-04" />
-			</Servers>
 			<Databases>
 				<database instance="SharePoint-Ser-Content-DB01" name="Managed_Metadata_Service_DB" />
 			</Databases>

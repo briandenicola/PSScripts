@@ -1,6 +1,12 @@
 $global:sharepoint_wfe_severs = [String]::Empty
 Add-PSSnapin Microsoft.SharePoint.PowerShell –EA SilentlyContinue
 
+function HashTable_Output( [HashTable] $ht )
+{
+	$ht.Keys | % { $output += $_ + ":" + $ht[$_] + "," }
+	return $output.TrimEnd(",")
+}
+
 function Configure-CentralAdmin-Roles
 {
 	$ca_roles = @(
