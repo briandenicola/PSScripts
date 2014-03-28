@@ -5,9 +5,9 @@ param(
     [string] $admin_account,
 
     [Parameter(Mandatory=$true)]
-    [string[]] $users,
+    [string[]] $users_upn,
 
-    [string] $global_license = "contoso:ENTERPRISEPACK",
+    [string] $global_license = "gtus365:ENTERPRISEPACK",
     [string[]] $licenses = @("SHAREPOINTWAC","SHAREPOINTENTERPRISE")
 )
 
@@ -47,29 +47,21 @@ Connect-MsolService -Credential (Get-Office365Creds -account $admin_account)
 Set-Variable -Name location -Value "US" -Option Constant
 Set-Variable -Name msolicense_options -Value ( New-MsolLicenseOptions -AccountSkuId $global_license -DisabledPlans (Get-DisabledPlans -desired_licenses $licenses) )
 
-foreach( $user in $users ) {
-    $user_upn = Get-QADUser -Name "$user*" | Select -ExpandProperty UserPrincipalName
+foreach( $user_upn in $users_upn ) {
+    $user_licenses = @(Get-MsolUser -UserPrincipalName $user_upn | 
+                            Select -ExpandProperty Licenses |
+                            Select -ExpandProperty ServiceStatus | 
+                            Where { $_.ProvisioningStatus -eq "Success" } |
+                            Select -ExpandProperty ServicePlan | 
+                            Select -Expand ServiceName
+                            )
 
-    if( $user_upn ) {
-        $user_licenses = @(Get-MsolUser -UserPrincipalName $user_upn | 
-                                Select -ExpandProperty Licenses |
-                                Select -ExpandProperty ServiceStatus | 
-                                Where { $_.ProvisioningStatus -eq "Success" } |
-                                Select -ExpandProperty ServicePlan | 
-                                Select -Expand ServiceName
-                                )
-
-        if( !(CheckFor-ExistingLicenses -user_licenses $user_licenses) ) {       
-            Write-Host ("[{0}] - Granting {1} the {2} license . . ." -f $(Get-Date), $user, [string]::joing( ",", $licenses))
-            Set-MsolUser -UserPrincipalName $user_upn -UsageLocation $location
-            Set-MsolUserLicense -UserPrincipalName $user_upn  -AddLicenses $global_license -LicenseOptions $msolicense_options -Verbose
-        }
-        else {
-            Write-Host ("[{0}] - {1} already has all licenses - {2} - granted to them . . ." -f $(Get-Date), $user, $licenses)
-        }
+    if( !(CheckFor-ExistingLicenses -user_licenses $user_licenses) ) {       
+        Write-Host ("[{0}] - Granting {1} the {2} license . . ." -f $(Get-Date), $user, [string]::join( ",", $user_licenses))
+        Set-MsolUser -UserPrincipalName $user_upn -UsageLocation $location
+        Set-MsolUserLicense -UserPrincipalName $user_upn  -AddLicenses $global_license -LicenseOptions $msolicense_options -Verbose
     }
     else {
-        Write-Error ("[{0}] - Coudn not find {1} . . ." -f $(Get-Date), $user)
+        Write-Host ("[{0}] - {1} already has all licenses - {2} - granted to them . . ." -f $(Get-Date), $user_upn, [string]::join( ",", $user_licenses))
     }
 }
-
