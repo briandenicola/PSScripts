@@ -15,6 +15,31 @@ $global:netfx = @{
 	"4.0x64" = "C:\WINDOWS\Microsoft.NET\Framework64\v4.0.30319\CONFIG\machine.config"
 }
 
+function Get-ARRRules
+{
+    Set-Variable -Name filter -Value "/system.webServer/rewrite/globalRules/rule" -Option constant
+    Set-Variable -Name path -Value "MACHINE/WEBROOT/APPHOST"  -Option constant
+
+    $rules = Get-WebConfigurationProperty -Filter $filter -PSPath $path  -Name "."
+
+    $ps_rules_objects = @()
+    foreach( $rule in $rules ) {
+	    foreach( $input in $rule.conditions.collection ) {
+		    $ps_rules_objects += (New-Object PSObject -Property @{
+			    RuleName = $rule.Name
+			    Enabled = $rule.Enabled
+			    Match = $rule.Match.Url
+			    Input = $input.Input
+			    MatchType = $input.MatchType
+			    Pattern = $input.Pattern
+		    })
+	    }
+    }
+
+    return $ps_rules_objects
+}
+
+
 function Get-CustomHeaders 
 {
     return ( Get-WebConfiguration //httpProtocol/customHeaders | Select -Expand Collection | Select Name, Value )
