@@ -45,7 +45,7 @@ try
     } 
 
     Log-Step -step "</ol><hr/>" -nobullet
-    Record-Deployment -code_number $cfg.Parameters.BuildNumber -code_version $cfg.Parameters.VersionNumber
+    Record-Deployment -code_number $cfg.Deployment.Parameters.Build -code_version $cfg.Deployment.Parameters.Version -environment $cfg.Deployment.Parameters
     Stop-Transcript
 }
 catch {

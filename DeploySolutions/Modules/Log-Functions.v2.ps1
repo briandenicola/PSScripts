@@ -63,7 +63,8 @@ function Record-Deployment
 { 	
     param(
         [string] $code_version,
-        [string] $code_number
+        [string] $code_number,
+        [string] $environment
     )
 
 	Write-Host "============================"
@@ -86,7 +87,7 @@ function Record-Deployment
 			Notes = "Deployed on $ENV:COMPUTERNAME from $src . . .<BR/>"
 		}
 			
-		if( $url -imatch "-uat" ) {
+		if( $environment -imatch "uat" ) {
 			$deploy.Add( 'UAT_x0020_Deployment', $date )
 			$deploy.Add( 'UAT_x0020_Deployer', $user )
 		} 
