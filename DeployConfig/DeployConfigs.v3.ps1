@@ -10,71 +10,35 @@ param (
 	[switch] $force,
 
     [Parameter(ParameterSetName="Component",Mandatory=$true)][string] $url,
-    [Parameter(ParameterSetName="Application",Mandatory=$true)][string] $app
+
+    [Parameter(ParameterSetName="Application",Mandatory=$true)][string] $app,
+    [Parameter(ParameterSetName="Application",Mandatory=$true)][string] $environment
 )
 
-Import-Module (Join-Path $PWD.Path "Modules\cache.psm1")
+Import-Module (Join-Path $PWD.Path "Modules\DeploymentMap.psm1")
 Import-Module (Join-Path $ENV:SCRIPTS_HOME "\Libraries\Credentials.psm1")
 
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
-. (Join-Path $PWD.Path "Modules\Deploy_Functions.ps1")
+. (Join-Path $PWD.Path "Modules\ConfigIO_Functions.ps1")
 
-$global:Version = New-Object System.Version "3.0.0"
+Set-Variable -Name global:Version -Value (New-Object System.Version "3.0.2")
+Set-Variable -Name global:LogFile -Value (Join-Path $PWD.Path ("logs\deployment-tracker-{0}.log" -f $(Get-Date).ToString("yyyyMMdd.hhmmss"))) -Option Constant
 
 if( (Get-Creds) -eq $nul ) { Set-Creds } 
 $global:Cred = Get-Creds
 $cfgFile = [xml]( Get-Content $cfg )
 
-function Do-Component 
-{
-    param (
-        [string] $url,
-        [switch] $operation
-    )
-
-    $url = $url -replace ("http://|https://")
-    $cfg = $cfgFile.configs.config | Where { $_.Url -eq $url }
-
-	if( $cfg -eq $nul ) {
-		throw "Could not find an entry for the URL in the XML configuration"
-	}
-	
-	$deployment_map = Get-DeploymentMapCache -url $url 
-	if( $deployment_map -eq $nul -or $force -eq $true )	{
-		$deployment_map = Get-DeploymentMap -url $url -config $cfg
-		Set-DeploymentMapCache -map $deployment_map -url $url
-	}
-
-	if( ($deployment_map | Select -First 1 Source).Source -eq $nul ) {	
-		throw  "Could not find any deployment mappings for the url"
-	}
-		
-	switch($operation)
-	{
-		backup 		{ Backup-Config $deployment_map }
-		validate	{ Validate-Config $deployment_map }
-		deploy		{ Deploy-Config $deployment_map }
-	}
-}
-
-try { 
-    switch ($PsCmdlet.ParameterSetName)
-    { 
-        "Application" { 
-            $app_components = $cfgFile.configs.apps.app | where { $_.Name -eq $app } | Select -Expand Components
-            foreach( $component in $components ) { 
-                Do-Component -url $url -operation $operation
-            } 
-        }
-        
-        "Component" { 
-            Do-Component -url $url -operation $operation
-        }
+switch ($PsCmdlet.ParameterSetName)
+{ 
+    "Application" { 
+        $app_components = $cfgFile.configs.application | where { $_.Name -eq $app -and $_.Environment -eq $environment } | Select -Expand Component
+        foreach( $component in $components ) { 
+            Execute-ComponentCommand -url $url -operation $operation
+        } 
     }
-
-
-}
-catch [Exception] {
-	Write-Error ("Exception has occured with the following message - " + $_.Exception.ToString())
+        
+    "Component" { 
+        Execute-ComponentCommand -url $url -operation $operation
+    }
 }
