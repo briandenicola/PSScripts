@@ -1,6 +1,8 @@
 Set-Variable -Name SCRIPT:map -Value @{}
 Set-Variable -Name sessions -Value @{}
 
+Import-Module (Join-Path $ENV:SCRIPTS_HOME "\Libraries\Credentials.psm1")
+
 Set-Variable -Name sb_servers_to_deploy -Value {
 	param ([string] $type = "Microsoft SharePoint Foundation Web Application")
     . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
@@ -15,14 +17,14 @@ Set-Variable -Name sb_iis_home_directory -Value {
 	return ($zone_settings.Path | Select -Expand FullName)
 }
 
-function Get-RemotePSSession
+function Get-PSRemoteSession
 {
     param(
         [string] $remote_server
     )
 
     if(!$sessions.ContainsKey($remote_server)) {
-        $session = New-PSSession -ComputerName $remote_server -Authentication CredSSP -Credential $global:Cred
+        $session = New-PSSession -ComputerName $remote_server -Authentication CredSSP -Credential (Get-Cred) 
         $sessions.Add($remote_server, $session)
     }
     
@@ -33,14 +35,15 @@ function Get-SPIISHomeDirectory
 {
     param(
         [string] $url, 
-        [string] $server, 
+        [string] $central_admin, 
         [string] $zone
     )
 
-	#Log-Event -txt "Destination set to auto. Going to deteremine the IIS Home Directory for $url in the $zone zone" -toScreen 
-	$home_directory = Invoke-Command -Session (Get-RemotePSSession -remote_server $server) `
+	Write-Verbose -Message ("Destination set to auto. Going to deteremine the IIS Home Directory for $url in the $zone zone")
+	$home_directory = Invoke-Command -Session (Get-PSRemoteSession -remote_server $server) `
         -ScriptBlock $sb_iis_home_directory `
         -ArgumentList $url, $zone
+
     return $home_directory
 }
 
@@ -50,18 +53,11 @@ function Get-SPServersForComponent
         [string] $central_admin
     )
 
-	#Log-Event -txt "Configuration set to auto. Going to determine SharePoint Foundation Web Application servers for the $farm $env farm" -toScreen 
-
-	$servers = Invoke-Command -Session (Get-RemotePSSession -remote_server $central_admin) `
+	Write-Verbose -Message ("Configuration set to auto. Going to determine SharePoint Foundation Web Application servers for the $farm $env farm")
+	$servers = Invoke-Command -Session (Get-PSRemoteSession -remote_server $central_admin) `
         -ScriptBlock $sb_servers_to_deploy 
 
-    if( $servers -ne $null ) {
-        #Log-Event -txt ("Found the following servers that have the Web Application role online - " + $servers) -toScreen
-    } 
-    else {
-	    throw "Could not find any servers on $central_admin for $url"
-    }
-	
+    Write-Verbose -Mesage ("Found the following servers that have the Web Application role online - " + $servers)
 	return $servers
 }
 
@@ -89,7 +85,7 @@ function New-DeploymentMap
 	$map = @()
     foreach( $location in $config.locations.location ) {
 		if( $location.destination -eq "auto" ) {
-			$destination = Get-SPIISHomeDirectory -url $url -server $central_admin -zone $location.name
+			$destination = Get-SPIISHomeDirectory -url $url -central_admin $central_admin -zone $location.name
 		}
         else {
 			$destination = $location.destination

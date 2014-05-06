@@ -1,4 +1,8 @@
-﻿function Log-Event( [string] $txt, [switch] $toScreen ) 
+﻿Import-Module (Join-Path $ENV:SCRIPTS_HOME "\Libraries\Credentials.psm1")
+
+Set-Variable -Name log_file -Value (Join-Path $PWD.Path ("logs\deployment-tracker-{0}.log" -f $(Get-Date).ToString("yyyyMMdd.hhmmss"))) -Option AllScope
+
+function Log-Event( [string] $txt, [switch] $toScreen ) 
 {
 	if( $toScreen ) { Write-Host "[" (Get-Date).ToString() "] - " $txt }
 	"[" + (Get-Date).ToString() + "]," + $txt | Out-File $global:LogFile -Append -Encoding ASCII 
@@ -69,7 +73,7 @@ function Backup-Config( [Object[]] $map )
 			Log-Event -txt ("Backing up " + $config.File + " to " + $backup_file) -toScreen	
             Invoke-Command -ComputerName $backup_server `
                 -Authentication CredSSP `
-                -Credential $global:Cred `
+                -Credential (Get-Cred) `
                 -ScriptBlock $sb_backup `
                 -ArgumentList $source_file, $backup_file
 		}
@@ -96,11 +100,11 @@ function Deploy-Config( [Object[]] $map )
 	foreach( $config in $map ) {
 		$most_recent_file = Join-Path $config.Source (Get-MostRecentFile $config.Source)
 		
-		if ($pscmdlet.shouldprocess($config.Servers, "Deploying $most_recent_file" ) ) {
+		if ($pscmdlet.shouldprocess($config.Servers, "Deploying $(Get-Cred)most_recent_file" ) ) {
 			Log-Event -txt ("Deploying $most_recent_file to " + $config.Destination + " on " + $config.Servers) -toScreen	
 			Invoke-Command -ComputerName $config.Servers `
                 -Authentication CredSSP `
-                -Credential $global:Cred `
+                -Credential (Get-Cred) `
                 -ScriptBlock $sb_deploy `
                 -ArgumentList $most_recent_file, (Join-Path $config.Destination $config.File)
 		}
