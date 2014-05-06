@@ -23,7 +23,7 @@ Import-Module (Join-Path $ENV:SCRIPTS_HOME "\Libraries\Credentials.psm1")
 . (Join-Path $PWD.Path "Modules\ConfigIO_Functions.ps1")
 
 Set-Variable -Name global:Version -Value (New-Object System.Version "3.0.2")
-Set-Variable -Name global:LogFile -Value (Join-Path $PWD.Path ("logs\deployment-tracker-{0}.log" -f $(Get-Date).ToString("yyyyMMdd.hhmmss"))) -Option Constant
+Set-Variable -Name global:LogFile -Value (Join-Path $PWD.Path ("logs\deployment-tracker-{0}.log" -f $(Get-Date).ToString("yyyyMMdd.hhmmss")))
 
 if( (Get-Creds) -eq $nul ) { Set-Creds } 
 $global:Cred = Get-Creds

@@ -1,11 +1,11 @@
 Set-Variable -Name SCRIPT:map -Value @{}
-Set-Variable -Name sessions -Value @{} -Option Private
+Set-Variable -Name sessions -Value @{}
 
 Set-Variable -Name sb_servers_to_deploy -Value {
 	param ([string] $type = "Microsoft SharePoint Foundation Web Application")
     . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
     Get-SPServiceInstance | Where { $_.TypeName -eq $type -and $_.Status -eq "Online" } | Select @{N="Servers";E={$_.Server.Address}} | Select -ExpandProperty Servers
-} -Option Private
+}
 
 Set-Variable -Name sb_iis_home_directory -Value {
 	param ( [string] $url, [string] $zone = "Default" )
@@ -13,7 +13,7 @@ Set-Variable -Name sb_iis_home_directory -Value {
 	$sp_web_application = Get-SPWebApplication ("http://" + $url)
 	$zone_settings = $sp_web_application.IISSettings[$zone]
 	return ($zone_settings.Path | Select -Expand FullName)
-} -Option Private
+}
 
 function Get-RemotePSSession
 {
@@ -37,8 +37,8 @@ function Get-SPIISHomeDirectory
         [string] $zone
     )
 
-	Log-Event -txt "Destination set to auto. Going to deteremine the IIS Home Directory for $url in the $zone zone" -toScreen 
-	$home_directory = Invoke-Command -Session (_Get-RemotePSSession -remote_server $server) `
+	#Log-Event -txt "Destination set to auto. Going to deteremine the IIS Home Directory for $url in the $zone zone" -toScreen 
+	$home_directory = Invoke-Command -Session (Get-RemotePSSession -remote_server $server) `
         -ScriptBlock $sb_iis_home_directory `
         -ArgumentList $url, $zone
     return $home_directory
@@ -50,13 +50,13 @@ function Get-SPServersForComponent
         [string] $central_admin
     )
 
-	Log-Event -txt "Configuration set to auto. Going to determine SharePoint Foundation Web Application servers for the $farm $env farm" -toScreen 
+	#Log-Event -txt "Configuration set to auto. Going to determine SharePoint Foundation Web Application servers for the $farm $env farm" -toScreen 
 
-	$servers = Invoke-Command -Session (_Get-RemotePSSession -remote_server $server) `
+	$servers = Invoke-Command -Session (Get-RemotePSSession -remote_server $central_admin) `
         -ScriptBlock $sb_servers_to_deploy 
 
     if( $servers -ne $null ) {
-        Log-Event -txt ("Found the following servers that have the Web Application role online - " + $servers) -toScreen
+        #Log-Event -txt ("Found the following servers that have the Web Application role online - " + $servers) -toScreen
     } 
     else {
 	    throw "Could not find any servers on $central_admin for $url"
@@ -66,7 +66,7 @@ function Get-SPServersForComponent
 }
 
 
-function Create-DeploymentMap
+function New-DeploymentMap
 {	
     param(
         [Parameter(Position=0,ValueFromPipeline=$true)]
@@ -129,4 +129,4 @@ function Get-DeploymentMapCache {
 	return $SCRIPT:map[$url]
 }
 
-Export-ModuleMember -Function Create-DeploymentMap,Get-DeploymentMapCache, Set-DeploymentMapCache
+Export-ModuleMember -Function New-DeploymentMap,Get-DeploymentMapCache, Set-DeploymentMapCache

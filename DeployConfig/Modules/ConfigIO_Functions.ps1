@@ -20,7 +20,7 @@ function Execute-ComponentCommand
 	
 	$deployment_map = Get-DeploymentMapCache -url $url 
 	if( $deployment_map -eq $nul -or $force -eq $true )	{
-		$deployment_map = Create-DeploymentMap -url $url -config $cfg
+		$deployment_map = New-DeploymentMap -url $url -config $cfg
 		Set-DeploymentMapCache -map $deployment_map -url $url
 	}
 
