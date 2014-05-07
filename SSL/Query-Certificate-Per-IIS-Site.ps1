@@ -47,14 +47,15 @@ $sb = {
         $sites = Get-ChildItem IIS:\SslBindings | Where { $_.Store -eq "MY" } | Select Thumbprint, Sites
 
         $sites_with_certs = @()
-        foreach( $site in ($sites | where { $_.Sites.Value -ne $null }) ) {
-            
-            $sites_with_certs += (New-Object PSObject -Property @{
-                Site = $site.Sites.Value
-                Certificate = ($certs | where { $_.Thumbprint -eq $site.Thumbprint } | Select -ExpandProperty Subject).Split(",")[0].Split("=")[1]
-                Thumbprint = $site.Thumbprint
-                Server = $env:COMPUTERNAME
-            })
+        foreach( $sites_with_same_cert in ($sites | where { $_.Sites -ne $null }) ) {
+            foreach( $site in $sites_with_same_cert.Sites) { 
+                $sites_with_certs += (New-Object PSObject -Property @{
+                    Site = $site.Value
+                    Certificate = ($certs | where { $_.Thumbprint -eq $sites_with_same_cert.Thumbprint } | Select -ExpandProperty Subject).Split(",")[0].Split("=")[1]
+                    Thumbprint = $sites_with_same_cert.Thumbprint
+                    Server = $env:COMPUTERNAME
+                })
+            }
         }
     }
     return $sites_with_certs
