@@ -13,8 +13,9 @@ Set-Variable -Name sb_iis_home_directory -Value {
 	param ( [string] $url, [string] $zone = "Default" )
 	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint2010_Functions.ps1")
 	$sp_web_application = Get-SPWebApplication ("http://" + $url)
-	$zone_settings = $sp_web_application.IISSettings[$zone]
-	return ($zone_settings.Path | Select -Expand FullName)
+	$iisSettings = $sp_web_application.IisSettings			
+	$zoneSettings = $iisSettings.GetEnumerator() | where { $_.Key -eq $zone }
+    return ($zoneSettings.Value.Path).FullName
 }
 
 function Get-PSRemoteSession
@@ -23,8 +24,9 @@ function Get-PSRemoteSession
         [string] $remote_server
     )
 
-    if(!$sessions.ContainsKey($remote_server)) {
-        $session = New-PSSession -ComputerName $remote_server -Authentication CredSSP -Credential (Get-Cred) 
+    if(!$sessions.ContainsKey($remote_server) -or $sessions[$remote_server] -ne [System.Management.Automation.Runspaces.RunspaceState]::Opened) {
+        $sessions.Remove($remote_server)
+        $session = New-PSSession -ComputerName $remote_server -Authentication CredSSP -Credential (Get-Creds) 
         $sessions.Add($remote_server, $session)
     }
     
@@ -40,7 +42,7 @@ function Get-SPIISHomeDirectory
     )
 
 	Write-Verbose -Message ("Destination set to auto. Going to deteremine the IIS Home Directory for $url in the $zone zone")
-	$home_directory = Invoke-Command -Session (Get-PSRemoteSession -remote_server $server) `
+	$home_directory = Invoke-Command -Session (Get-PSRemoteSession -remote_server $central_admin) `
         -ScriptBlock $sb_iis_home_directory `
         -ArgumentList $url, $zone
 
@@ -57,7 +59,7 @@ function Get-SPServersForComponent
 	$servers = Invoke-Command -Session (Get-PSRemoteSession -remote_server $central_admin) `
         -ScriptBlock $sb_servers_to_deploy 
 
-    Write-Verbose -Mesage ("Found the following servers that have the Web Application role online - " + $servers)
+    Write-Verbose -Message ("Found the following servers that have the Web Application role online - " + $servers)
 	return $servers
 }
 
@@ -71,21 +73,20 @@ function New-DeploymentMap
     )
 	
 	Set-Variable -Name servers -Value @()
-
 	if( $config.servers.type -ieq "sharepoint" ) {
-		$servers = Get-SPServersForComponent -central_admin $config.servers.server
+		$servers = @(Get-SPServersForComponent -central_admin $config.servers.server)
 	}
     elseif( $config.servers.type -ieq ".net" ) {
-        $servers = $config.servers.server #Feature is coming but for now treat as manual
+        $servers = @($config.servers.server) #Feature is coming but for now treat as manual
     }
     else {
-		$servers = $config.servers.server
+		$servers = @($config.servers.server)
 	}
-			
+		
 	$map = @()
     foreach( $location in $config.locations.location ) {
 		if( $location.destination -eq "auto" ) {
-			$destination = Get-SPIISHomeDirectory -url $url -central_admin $central_admin -zone $location.name
+			$destination = Get-SPIISHomeDirectory -url $url -central_admin $config.servers.server -zone $location.name
 		}
         else {
 			$destination = $location.destination
@@ -99,11 +100,6 @@ function New-DeploymentMap
 		}
 	}
 
-    if($VerbosePreference) {
-        foreach( $config in $map ) {
-            Write-Verbose -Message ("VERBOSE: Map Section - $($config) ...")
-        }
-    }
 	return $map
 }
 

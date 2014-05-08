@@ -12,11 +12,13 @@ function Execute-ComponentCommand
 {
     param (
         [string] $url,
-        [switch] $operation
+        [string] $operation
     )
 
     $url = $url -replace ("http://|https://")
     $cfg = $cfgFile.configs.components.config | Where { $_.Url -eq $url }
+
+    Write-Verbose -Message ("Executing {0} for {1}" -f $operation, $url)
 
 	if( $cfg -eq $nul ) {
 		throw "Could not find an entry for the URL in the XML configuration"
@@ -31,7 +33,16 @@ function Execute-ComponentCommand
 	if( ($deployment_map | Select -First 1 Source).Source -eq $nul ) {	
 		throw  "Could not find any deployment mappings for the url"
 	}
-		
+
+    Write-Verbose ("Deployment Map for {0} ..." -f $url)
+    foreach( $map in $deployment_map ) {
+        Write-Verbose ("Source - {0}" -f $map.Source)
+        Write-Verbose ("Destination - {0}" -f $map.Destination)
+        Write-Verbose ("Servers - {0}" -f $map.Servers)
+        Write-Verbose ("File - {0}" -f $map.File)
+
+	}
+
 	switch($operation)
 	{
 		backup 		{ Backup-Config $deployment_map }
@@ -116,15 +127,17 @@ function Validate-Config(  [Object[]] $map )
     $sb_validate ={ 
         param( [string] $file )
         . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
-        Write-Host ("[{0}] : {1}" -f $ENV:ComputerName, (Get-Hash1 $file))
+        return ( New-Object PSObject -Property @{ Computer = $ENV:ComputerName; File = $file; Hash = (Get-Hash1 $file) })
     }
 
+    $results = @()
 	foreach( $config in $map ) {
 		$most_recent_file = $config.Source + "\" + ( Get-MostRecentFile $config.Source )
-		Write-Host ("[Source File] : {0} = {1} " -f $most_recent_file,(Get-Hash1 $most_recent_file))
-		
-		Invoke-Command -ComputerName $config.Servers `
+		$results += New-Object PSObject -Property @{ Computer = "[SOURCE FILE]"; File = $most_recent_file; Hash = (Get-Hash1 $most_recent_file) }
+		$results += Invoke-Command -ComputerName $config.Servers `
             -ScriptBlock $sb_validate `
             -ArgumentList (Join-Path $config.Destination $config.File)
 	}
+
+    $results | Select Computer, File, Hash | Format-Table 
 }
