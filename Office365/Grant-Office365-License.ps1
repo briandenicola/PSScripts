@@ -57,7 +57,7 @@ foreach( $user_upn in $users_upn ) {
                             )
 
     if( !(CheckFor-ExistingLicenses -user_licenses $user_licenses) ) {       
-        Write-Host ("[{0}] - Granting {1} the {2} license . . ." -f $(Get-Date), $user, [string]::join( ",", $user_licenses))
+        Write-Host ("[{0}] - Granting {1} the {2} license . . ." -f $(Get-Date), $user_upn, [string]::join( ",", $msolicense_options))
         Set-MsolUser -UserPrincipalName $user_upn -UsageLocation $location
         Set-MsolUserLicense -UserPrincipalName $user_upn  -AddLicenses $global_license -LicenseOptions $msolicense_options -Verbose
     }
