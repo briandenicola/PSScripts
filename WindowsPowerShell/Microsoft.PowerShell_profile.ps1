@@ -24,12 +24,6 @@ New-Alias -name gh -value Get-History
 New-Alias -name i -value Invoke-History
 New-Alias -name ed -value $env:EDITOR
 
-if( (Test-Connection ent-nas-fs01) -and (Test-Path \\ent-nas-fs01.us.gt.com\app-ops) )
-{
-	Write-Host $(Get-Date) " - Setting up Repo to \\ent-nas-fs01.us.gt.com\app-ops" -foreground green
-	New-PSdrive -name Repo -psprovider FileSystem -root \\ent-nas-fs01.us.gt.com\app-ops | Out-Null
-}
-
 function Resize-Screen
 {
 	param (
@@ -223,9 +217,3 @@ function Get-ChildItemColor {
       }
     }
 }
-
-$p = "01000000d08c9ddf0115d1118c7a00c04fc297eb010000008472d4720c6bd04e8012a5900bf3f68d0000000002000000000003660000c0000000100000000d4ae7c5added9bbecc4a05db0fc00480000000004800000a00000001000000017a65532dd8bd8eda2551db1eee32ff4300000004ef279701445e89bd1e8a68bdf08e9232ddb5bf0a182615ccd8660f02e38fc247c9494c35d35dd997d0aa19d4138bf8514000000638fe960622e2daa49173628362b876b0234a433"
-Set-Creds (New-Object System.Management.Automation.PSCredential $ENV:USERNAME, (ConvertTo-SecureString $p))
-
-
-
