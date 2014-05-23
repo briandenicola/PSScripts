@@ -1,31 +1,77 @@
-﻿param (
- [Parameter(Mandatory=$true)]
- [string] $computer_name,
+﻿#requires -version 4
 
- [Parameter(Mandatory=$true)]
- [string] $new_name,
+<#
+.SYNOPSIS
+This PowerShell Script will setup a blank using via PowerShell Workflows and DSC. 
 
- [Parameter(Mandatory=$true)]
- [string] $domain = "sharepoint.test",
+.DESCRIPTION
+Version - 1.0.0
 
- [Parameter(Mandatory=$true)]
- [string] $node,
+This PowerShell Script will setup a blank using via PowerShell Workflows and DSC. The Script will do the following
+*Rename the Computer
+*Define a DNS Server
+*Join the Computer to a Domain
+*Enable RDP
+*Set TimeZone to Central Time Zone
+*Disable UAC
+*Moves CD-ROM drive to Z: drive
+*Format and Mounts all Drives
+*Configure a Computer PowerShell LCM to use a Pull Server
 
- [Parameter(Mandatory=$true)]
- [string] $pull_server = "dsc.sharepoint.test",
+.EXAMPLE
+.\Setup-NewComputer-Workflow.ps1 -computer_ip 1.2.3.4 -new_name "server-1" -local_user "administrator" -local_password "password1234" -domain_user "sharepoint\administrator" -domain_password "password1234"
 
- [Parameter(Mandatory=$true)]
- [string] $local_user,
+.PARAMETER computer_ip
+Specifies the computer to setup. Mandatory parameter
 
- [Parameter(Mandatory=$true)]
- [string] $local_password,
+.PARAMETER new_name
+Specifies the new name of the computer. Mandatory parameter
 
- [Parameter(Mandatory=$true)]
- [string] $domain_user,
+.PARAMETER local_user
+Specifies an administrator on the computer to setup. Default Value = 'administrator'
 
- [Parameter(Mandatory=$true)]
- [string] $domain_password
+.PARAMETER local_password
+Specifies the password of the local_user.
+
+.PARAMETER domain
+Specifies the domain to join. Default Value = 'sharepoint.test'
+
+.PARAMETER domain_user
+Specifies an account that can join the computer to the domain. Must be in the format of "domain\user"
+
+.PARAMETER domain_password
+Specifies the domain user's password
+
+.PARAMETER node
+Specifies a node's GUID for DSC.  If empty, the script will generate a new GUID
+
+.PARAMETER pull_server
+Specifies the DSC Pull server. Default Value = 'dsc.sharepoint.test'
+
+.NOTES
+This script assumes a working DSC Pull Server setup utilizing SSL
+
+#>
+
+[CmdletBinding()]
+param (
+ [Parameter(Mandatory=$true)][string] $computer_ip,
+ [Parameter(Mandatory=$true)][string] $new_name,
+ [Parameter(Mandatory=$true)][string] $domain = "sharepoint.test",
+ [Parameter(Mandatory=$true)][string] $pull_server = "dsc.sharepoint.test",
+ [Parameter(Mandatory=$true)][string] $local_password,
+ 
+ [ValidatePattern("(\w+)\\(\w+)")]
+ [Parameter(Mandatory=$true)][string] $domain_user,
+ [Parameter(Mandatory=$true)][string] $domain_password,
+
+ [ValidateNotNullOrEmpty()] 
+ [string] $local_user = "administrator",
+ [string] $node
 )
+
+. (Join-Path $PWD.Path "Modules\Setup-Workflow.ps1")
+. (Join-Path $PWD.Path "Modules\Server-DSC-Template.ps1") -Nodeid $node 
 
 function Set-MOFHash {
     param (
@@ -55,12 +101,8 @@ if( [string]::IsNullOrEmpty($node) ) {
     Set-Variable -Name node -Value ([guid]::NewGuid() | Select -Expand Guid)
 }
 
-. (Join-Path $PWD.Path "Modules\Setup-Workflow.ps1")
-. (Join-Path $PWD.Path "Modules\Server-DSC-Template.ps1") -Nodeid $node 
-
-Write-Host ("Using Guid - {0} for {1}. Please save. Value will also be saved on the root of the C: parition on {1}." -f $node, $computer_name)
-
-winrm s winrm/config/client ('@{TrustedHosts="' + $computer_name + '"}')
+Write-Output ("Using Guid - {0} for {1}. Please save. Value will also be saved on the root of the C: parition on {1}." -f $node, $computer_ip)
+winrm s winrm/config/client ('@{TrustedHosts="' + $computer_ip + '"}')
 
 #Workflow to Setup Machine
 $options = @{ 
@@ -70,7 +112,7 @@ $options = @{
     guid = $node
     cred = $domain_creds
 }
-Setup-NewComputer @options -PSPersist $true -PSComputerName $computer_name -PSCredential $local_creds -Verbose
+Setup-NewComputer @options -PSPersist $true -PSComputerName $computer_ip -PSCredential $local_creds -Verbose
 
 #DSC To Configure
 ServerSetup
