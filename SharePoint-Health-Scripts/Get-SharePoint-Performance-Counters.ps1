@@ -2,13 +2,17 @@
 param (
 	[Parameter(Mandatory=$true)]
 	[string[]] $computers,
-	[int] $samples = 10,
+
+    [Parameter(Mandatory=$true)]
+    [ValidateSet("Memory","Processor","Disk", "Web","Network","SharePoint")]
+    [string] $counter,
+
 	[string] $file = [String]::Empty
 )
-. (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
+
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 
-$counters = @(
+$all_counters = @(
 	'\ASP.NET\Request Execution Time',
 	'\ASP.NET\Requests Rejected', 
 	'\ASP.NET\Requests Queued ',
@@ -39,25 +43,35 @@ $counters = @(
 	'\SharePoint Foundation(*)\Active Threads'
 )
 
- $results = Get-Counter -computer $computers -counter $counters -SampleInterval 1 -MaxSamples $samples -EA SilentlyContinue  
+if( [string]::IsNullOrEmpty($counter) ) { 
+    $counters = $all_counters
+}
+else {
+    $counters = $all_counters | Where { $_ -imatch $counter } 
+}
 
- $perfmon_results = @()
- foreach( $result in $results )  {
-	$timestamp = $result.TimeStamp	
-	foreach( $value in $result.CounterSamples ) {
-		$perfmon_results += ( New-Object PSObject -Property @{
-			TimeStamp = $timestamp
-			Server = $value.Path.Split("\")[2]
-			Path = [regex]::matches( $value.Path, "\\\\(.*)\\\\(.*)" ).Groups[2].Value
-			Instance = $value.InstanceName
-			Value = $value.CookedValue
-		})
-	}
+Set-Variable -Name samples -Value 10 -Option Constant
+Set-Variable -Name interval -Value 1 -Option Constant 
+
+$results = Get-Counter -computer $computers -counter $counters -SampleInterval $interval -MaxSamples $samples -EA SilentlyContinue  
+
+$perfmon_results = @()
+foreach( $result in $results )  {
+    $timestamp = $result.TimeStamp	
+    foreach( $value in $result.CounterSamples ) {
+	    $perfmon_results += ( New-Object PSObject -Property @{
+		    TimeStamp = $timestamp
+		    Server = $value.Path.Split("\")[2]
+		    Path = [regex]::matches( $value.Path, "\\\\(.*)\\\\(.*)" ).Groups[2].Value
+		    Instance = $value.InstanceName
+		    Value = $value.CookedValue
+	    })
+    }
 }
  
 if( $file -eq [String]::Empty ) { 
-	$perfmon_results
+	return ($perfmon_results | Sort Path -Descending)
 } else {
-	 $perfmon_results | Export-Csv -NoTypeInformation -Encoding Ascii $file
+	$perfmon_results | Export-Csv -NoTypeInformation -Encoding Ascii $file
 }
  
