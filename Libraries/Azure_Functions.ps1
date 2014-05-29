@@ -6,7 +6,7 @@ Import-Module MSOnlineExtended -DisableNameChecking
 Import-Module Microsoft.Online.SharePoint.PowerShell -DisableNameChecking
 Pop-Location
 
-Set-Variable -Name global:subscription -Value "Azure - Node Research" -Option AllScope, Constant -ErrorAction SilentlyContinue
+Set-Variable -Name global:subscription -Value "Denicolafamily" -Option AllScope, Constant -ErrorAction SilentlyContinue
 Set-Variable -Name global:publishing_file -Value $ENV:AZURE_PUBLISH_FILE -Option AllScope, Constant -ErrorAction SilentlyContinue
 
 Import-AzurePublishSettingsFile $global:publishing_file
