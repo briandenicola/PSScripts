@@ -1,12 +1,11 @@
-﻿#Requires -version 3.0
+﻿#Requires -version 2.0
 #Requires –PSSnapin WDeploySnapin3.0
-#Requires -RunAsAdministrator
 
 param (	
 	[Parameter(Mandatory=$true)][string] $tfs_build_dir,	
 	
     [Parameter(ParameterSetName="WebSite",Mandatory=$true)][string] $dst_site,
-	[Parameter(ParameterSetName="WebSite",Mandatory=$true)][string] $farm,
+	[Parameter(ParameterSetName="WebSite",Mandatory=$true)][string[]] $farm_servers,
 	[Parameter(ParameterSetName="WebSite")][switch] $include_webconfig,
 
     [Parameter(ParameterSetName="Service",Mandatory=$true)][string] $service_name,
@@ -15,7 +14,7 @@ param (
 	[string] $log = ".\logs\dotnet_webfarm_code_deploy.log"
 )
 
-Add-PSSnapin WDeploySnapin3.0 -EA Stop
+Add-PSSnapin WDeploySnapin3.0 -EA SilentlyContinue
 
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1")
@@ -36,12 +35,12 @@ function log( [string] $txt )
 function Backup-Site 
 {
 	log -txt "Backup up $dst_site to $backup_directory"
-	Backup-WDSite -Site $dst_site -Output $backup_directory
+	Backup-WDSite -Site $dst_site -Output $backup_directory -IncludeAppPool
 }
 
-function Get-MostRecentFile( [string] $src )
+function Get-MostRecentDeployment( [string] $src )
 {
-	return ( Get-ChildItem $src | Sort LastWriteTime -desc | Select -first 1 | Select -ExpandProperty Name )
+	return ( Get-ChildItem $src | Sort LastWriteTime -desc | Select -first 1 | Select -ExpandProperty FullName )
 }
 
 function Deploy-Site 
@@ -50,32 +49,34 @@ function Deploy-Site
         throw "Could not find $tfs_build_dir"
     }
 
-	$src = Get-MostRecentFile -src $tfs_build_dir
+	$src = Get-MostRecentDeployment -src $tfs_build_dir
 	$dst = Get-WebFilePath ('IIS:\Sites\{0}' -f $dst_site) | Select -Expand FullName
 
     if(!$include_webconfig) {
         $skipfiles = "web.config"
     }
+    	
+    log -txt "Deploying Web Code for IIS Site - $dst_site to - $dst from $src"
+    &${Sync-Files} -src $src -dst $dst -logging -log $log -ignore_files $skipfiles
 
-    $source_manifest = [string]::Format("<sitemanifest><contentPath path=`"{0}`" /></sitemanifest>", $src )
-    $dest_manifest =  [string]::Format("<sitemanifest><contentPath path=`"{0}`" /></sitemanifest>", $dst )
-   
-    $source_manifest_file = Join-Path $ENV:TEMP "source.xml"
-    $dest_manifest_file = Join-Path $ENV:TEMP "destination.xml"
-
-    $source_manifest | Out-File -Encoding ascii $source_manifest_file
-    $dest_manifest | Out-File -Encoding ascii $dest_manifest_file
-
-    Sync-WDManifest $source_manifest_file $dest_manifest_file -SkipFileList $skipfiles
-
-    Remove-Item $source_manifest_file -Force
-    Remove-Item $dest_manifest_file -Force
 }
 
 function Sync-Farm 
 {
-    log -txt "Syncing Farm - $farm"
-	Sync-WebFarm $farm
+    log -txt "Syncing Servers"
+
+    $src_publishing_file = Join-Path $ENV:TEMP ("{0}.publishsettings" -f $ENV:COMPUTERNAME)
+    New-WDPublishSettings -ComputerName $ENV:COMPUTERNAME -AgentType MSDepSvc -FileName $src_publishing_file
+
+	foreach( $computer in ($farm_servers | where { $_ -inotmatch $ENV:COMPUTERNAME} )) {
+        log -txt "Syncing $computer"
+        $dst_publishing_file = Join-Path $ENV:TEMP ("{0}.publishsettings" -f $computer)
+        New-WDPublishSettings -ComputerName $computer -AgentType MSDepSvc -FileName $dst_publishing_file
+        Sync-WDServer -SourcePublishSettings $src_publishing_file -DestinationPublishSettings $dst_publishing_file
+        Remove-Item $dst_publishing_file -Force
+    }
+
+    Remove-Item $src_publishing_file
 }
 
 function Get-ServerEnvironment
@@ -156,7 +157,7 @@ function Deploy-Service
         throw "Could not find $tfs_build_dir"
     }
 
-	$src = Get-MostRecentFile -src $tfs_build_dir
+	$src = Get-MostRecentDeployment -src $tfs_build_dir
 
     log -txt "Deploying Service $service_name to - $install_location"
     &${Sync-Files} -src $src -dst $install_location -logging
