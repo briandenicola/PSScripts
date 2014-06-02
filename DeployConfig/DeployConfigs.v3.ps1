@@ -4,7 +4,7 @@ param (
 	[Parameter(Mandatory=$true)]
     [ValidateSet("backup", "deploy", "validate")]
     [string] $operation,
-	[string] $cfg = '.\config\deploy.xml',
+	[string] $cfg = '.\config\deploy.v3.xml',
 	[switch] $force,
 
     [Parameter(ParameterSetName="Component",Mandatory=$true)][string] $url,
@@ -13,13 +13,14 @@ param (
     [Parameter(ParameterSetName="Application",Mandatory=$true)][string] $environment
 )
 
-Import-Module (Join-Path $PWD.Path "Modules\DeploymentMap.psm1")
+Import-Module (Join-Path $PWD.Path "Modules\DeploymentMap.psm1") -Force
 
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-Path $PWD.Path "Modules\ConfigIO_Functions.ps1")
 
 Set-Variable -Name global:Version -Value (New-Object System.Version "3.0.5")
+Set-Variable -Name global:LogFile -Value (Join-Path $PWD.Path ("logs\deployment-tracker-{0}.log" -f $(Get-Date).ToString("yyyyMMdd.hhmmss")))
 
 $cfgFile = [xml]( Get-Content $cfg )
 
@@ -40,4 +41,4 @@ switch ($PsCmdlet.ParameterSetName)
     }
 }
 
-Get-PSSession | Remove-PSSession
+Get-PSSession | Remove-PSSession 

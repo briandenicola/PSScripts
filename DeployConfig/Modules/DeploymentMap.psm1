@@ -1,7 +1,7 @@
 Set-Variable -Name SCRIPT:map -Value @{}
 Set-Variable -Name sessions -Value @{}
 
-Import-Module (Join-Path $ENV:SCRIPTS_HOME "\Libraries\Credentials.psm1")
+Import-Module (Join-Path $ENV:SCRIPTS_HOME "Libraries\Credentials.psm1")
 
 Set-Variable -Name sb_servers_to_deploy -Value {
 	param ([string] $type = "Microsoft SharePoint Foundation Web Application")
@@ -18,6 +18,13 @@ Set-Variable -Name sb_iis_home_directory -Value {
     return ($zoneSettings.Value.Path).FullName
 }
 
+function Close-PSSessions 
+{
+    foreach( $session in $sessions.Keys ) {
+        Remove-PSSession $sessions[$session]
+    }
+}
+
 function Get-PSRemoteSession
 {
     param(
@@ -25,6 +32,9 @@ function Get-PSRemoteSession
     )
 
     if(!$sessions.ContainsKey($remote_server) -or $sessions[$remote_server] -ne [System.Management.Automation.Runspaces.RunspaceState]::Opened) {
+        if( $sessions[$remote_server] -eq [System.Management.Automation.Runspaces.RunspaceState]::Closed ) {
+            Remove-PSSession $sessions[$remote_server] -ErrorAction SilentlyContinue
+        }
         $sessions.Remove($remote_server)
         $session = New-PSSession -ComputerName $remote_server -Authentication CredSSP -Credential (Get-Creds) 
         $sessions.Add($remote_server, $session)
@@ -99,7 +109,9 @@ function New-DeploymentMap
 			File = $location.file
 		}
 	}
-
+    
+    Close-PSSessions 
+    
 	return $map
 }
 
@@ -121,4 +133,4 @@ function Get-DeploymentMapCache {
 	return $SCRIPT:map[$url]
 }
 
-Export-ModuleMember -Function New-DeploymentMap,Get-DeploymentMapCache, Set-DeploymentMapCache
+Export-ModuleMember -Function New-DeploymentMap, Get-DeploymentMapCache, Set-DeploymentMapCache
