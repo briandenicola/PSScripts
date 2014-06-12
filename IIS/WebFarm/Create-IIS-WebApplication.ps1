@@ -8,8 +8,8 @@ param (
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1")
 
-Set-Variable -Name audit_ssl_script -Value "D:\Scripts\SSL\query_ssl_certificates.ps1" -Option Constant
-Set-Variable -Name audit_iis_script -Value "D:\Scripts\IIS\Get-IISInfo.ps1" -Option Constant
+Set-Variable -Name audit_ssl_script -Value (Join-Path $ENV:SCRIPTS_HOME "SSL\Query-SSL-Certificates.ps1") -Option Constant
+Set-Variable -Name audit_iis_script -Value (Join-Path $ENV:SCRIPTS_HOME "IIS\Get-IISInfo-IIS7.ps1") -Option Constant
 
 function log( [string] $txt ) 
 {
@@ -20,30 +20,28 @@ function log( [string] $txt )
 
 function Get-AppPool( [string] $name )
 {
-	return ( Get-ItemProperty "IIS:\apppools\$name" )
+	return ( Get-ItemProperty ( Join-Path "IIS:\AppPools" $name ) )
 }
 
 function main
 {
-	$farm = $cfg.IISSites.WebFarm.Name
 	$env = $cfg.IISSites.WebFarm.Environment
-	$servers = @($ENV:COMPUTERNAME)
 	
 	try	{
 		foreach( $site in $cfg.IISSites.Site )	{	
-			if( Test-Path ("IIS:\Sites\" + $site.Name) ) {
-                log -txt ( $site.Name + " already exists on this web farm" )
+			if( Test-Path (Join-Path "IIS:\Sites" $site.Name)) {
+                log -txt ( $site.Name + " already exists on this server" )
                 continue
             }
             
-			if( -not (Test-Path ("IIS:\AppPools\" + $site.AppPool.Name)) ) {	
+			if( -not (Test-Path (Join-Path "IIS:\AppPools" $site.AppPool.Name)) ) {	
 				log -txt ( "Creating AppPool " + $site.AppPool.Name + " with user " + $site.AppPool.User )
 				Create-IISAppPool -apppool $site.AppPool.Name -user $site.AppPool.User -pass $site.AppPool.Pass -version $site.AppPool.Version				
 			}
 				
 			if (-not (Test-Path $site.path)) {
 				log -txt ( "Creating Directory for " + $site.Name + " at path " + $site.Path )
-				mkdir $site.path
+				New-Item -ItemType Directory $site.path
 			}
 				
 			log -txt ( "Creating WebSite " + $site.Name + " at path " + $site.Path )
@@ -60,11 +58,11 @@ function main
 				$secure_pass = ConvertTo-SecureString $site.SSL.pass -AsPlainText -Force 	
 				Import-PfxCertificate -certpath $site.SSL.pfx -pfxPass $secure_pass
 				Set-SSLforWebApplication -name $site.Name -common_name $site.SSL.subject
-				cd $working_directory
+				Set-Location $working_directory
 				
 				if( $record ) { 
 					log -txt "Auditing SSL Configuraiton"
-					&$audit_ssl_script -servers $servers -upload -parallel 
+					&$audit_ssl_script -servers $ENV:COMPUTERNAME -upload 
 				}
 			}
 				
@@ -77,15 +75,10 @@ function main
 			Start-IISSite -computers "." -site $site.Name
 			
 			Get-Item ("IIS:\sites\" + $site.Name) | Select *
-			
-			if( ! $nofarm ) {
-				log -txt ( "Syncing Farm " + $site.Name )
-				Sync-WebFarm $farm
-			}
-			
+						
 			if( $record ) { 
 				log -txt ( "Auditing IIS Site for " + $site.Name )
-				&$audit_iis_script -servers $servers -filter_type "url" -filter_value $site.Url -upload -farm $farm -env $env
+				&$audit_iis_script -servers $ENV:COMPUTERNAME -filter_type "url" -filter_value $site.Url -upload -env $env
 			}
 		}
 	} 
