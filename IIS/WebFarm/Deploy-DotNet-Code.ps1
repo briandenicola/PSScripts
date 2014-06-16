@@ -73,13 +73,13 @@ function Sync-Farm
     log -txt "Syncing Servers"
 
     $src_publishing_file = Join-Path $ENV:TEMP ("{0}.publishsettings" -f $ENV:COMPUTERNAME)
-    New-WDPublishSettings -ComputerName $ENV:COMPUTERNAME -AgentType MSDepSvc -FileName $src_publishing_file
+    New-WDPublishSettings -ComputerName $ENV:COMPUTERNAME -AgentType MSDepSvc -FileName $src_publishing_file -Site $dst_site
 
 	foreach( $computer in ($farm_servers | where { $_ -inotmatch $ENV:COMPUTERNAME} )) {
         log -txt "Syncing $computer"
         $dst_publishing_file = Join-Path $ENV:TEMP ("{0}.publishsettings" -f $computer)
         New-WDPublishSettings -ComputerName $computer -AgentType MSDepSvc -FileName $dst_publishing_file
-        Sync-WDServer -SourcePublishSettings $src_publishing_file -DestinationPublishSettings $dst_publishing_file
+        Sync-WDServer -SourcePublishSettings $src_publishing_file -DestinationPublishSettings $dst_publishing_file -Site $dst_site
         Remove-Item $dst_publishing_file -Force
     }
 
