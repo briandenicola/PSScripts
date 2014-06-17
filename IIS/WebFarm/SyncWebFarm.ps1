@@ -6,6 +6,7 @@
 
 Add-PSSnapin WDeploySnapin3.0 -EA SilentlyContinue
 
+$src_publishing_file = Join-Path $ENV:TEMP ("{0}.publishsettings" -f $ENV:COMPUTERNAME)
 $options = @{
     ComputerName = $ENV:COMPUTERNAME
     AgentType = "MSDepSvc"
@@ -16,7 +17,6 @@ if( ![string]::IsNullOrEmpty($site) ) {
     $options.Add("Site", $site)
 }
 
-$src_publishing_file = Join-Path $ENV:TEMP ("{0}.publishsettings" -f $ENV:COMPUTERNAME)
 New-WDPublishSettings @options 
 
 foreach( $computer in ($destination_servers | where { $_ -inotmatch $ENV:COMPUTERNAME} )) {
@@ -33,8 +33,7 @@ foreach( $computer in ($destination_servers | where { $_ -inotmatch $ENV:COMPUTE
         $dst_options.Add("Site", $site)
     }
 
-    New-WDPublishSettings @dst_options
-    
+    New-WDPublishSettings @dst_options    
     Sync-WDServer -SourcePublishSettings $src_publishing_file -DestinationPublishSettings $dst_publishing_file
     Remove-Item $dst_publishing_file -Force
 }
