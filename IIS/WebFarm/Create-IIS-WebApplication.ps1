@@ -45,9 +45,7 @@ function main
 			}
 				
 			log -txt ( "Creating WebSite " + $site.Name + " at path " + $site.Path )
-			Create-IISWebSite -site $site.Name -path $site.Path -port $site.Port 
-			Remove-WebBinding -name $site.Name -Port $site.port
-			New-WebBinding -name $site.Name -Port $site.port -HostHeader $site.url
+			Create-IISWebSite -site $site.Name -path $site.Path -port $site.Port -header $site.url
 				
 			log -txt ( "Setting Site " + $site.Name + " to use AppPool " + $site.AppPool.Name )
 			Set-IISAppPoolforWebSite -site $site.Name -apppool $site.AppPool.Name
