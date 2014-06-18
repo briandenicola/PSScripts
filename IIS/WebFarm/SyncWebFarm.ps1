@@ -24,7 +24,7 @@ foreach( $computer in ($destination_servers | where { $_ -inotmatch $ENV:COMPUTE
 
     $dst_publishing_file = Join-Path $ENV:TEMP ("{0}.publishsettings" -f $computer)
     $dst_options = @{
-        ComputerName = $ENV:COMPUTERNAME
+        ComputerName = $computer
         AgentType = "MSDepSvc"
         FileName = $dst_publishing_file
     }
