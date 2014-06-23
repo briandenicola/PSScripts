@@ -2,17 +2,20 @@
 #Requires –PSSnapin WDeploySnapin3.0
 
 param (	
+    [ValidateSet("tfs_build","directory")]
+    [Parameter(Mandatory=$true)][string] $source_type,
+
+    [ValidateScript({Test-Path $_ -PathType 'Container'})] 
 	[Parameter(Mandatory=$true)][string] $tfs_build_dir,	
 	
     [Parameter(ParameterSetName="WebSite",Mandatory=$true)][string] $dst_site,
 	[Parameter(ParameterSetName="WebSite",Mandatory=$true)][string[]] $farm_servers,
     [Parameter(ParameterSetName="WebSite")][switch] $validate,
 	[Parameter(ParameterSetName="WebSite")][switch] $include_webconfig,
+    [Parameter(ParameterSetName="WebSite")][string] $virtual_directory, 
 
     [Parameter(ParameterSetName="Service",Mandatory=$true)][string] $service_name,
-    [Parameter(ParameterSetName="Service",Mandatory=$true)][string] $install_location,
-    
-	[string] $log = ".\logs\dotnet_webfarm_code_deploy.log"
+    [Parameter(ParameterSetName="Service",Mandatory=$true)][string] $install_location
 )
 
 Add-PSSnapin WDeploySnapin3.0 -EA SilentlyContinue
@@ -26,6 +29,7 @@ Set-Variable -Name list_url -Value "http://example.com/" -Option Constant
 Set-Variable -Name deploy_tracker -Value "Deployment Tracker" -Option Constant
 Set-Variable -Name Sync-Files -Value (Join-Path $ENV:SCRIPTS_HOME "Sync\Sync-Files.ps1") -Option Constant
 Set-Variable -Name Compare-Script -Value (Join-Path $ENV:SCRIPTS_HOME "Comparisons\compare_directories-multiple-systems.ps1") -Option Constant
+Set-Variable -Name log -Value ([string]::Empty)
 
 function log( [string] $txt ) 
 {
@@ -37,12 +41,17 @@ function log( [string] $txt )
 function Backup-Site 
 {
 	log -txt "Backup up $dst_site to $backup_directory"
-	Backup-WDSite -Site $dst_site -Output $backup_directory -IncludeAppPool
+	Backup-WDSite -Site $dst_site -Output $backup_directory
 }
 
 function Get-MostRecentDeployment( [string] $src )
 {
 	return ( Get-ChildItem $src | Sort LastWriteTime -desc | Select -first 1 | Select -ExpandProperty FullName )
+}
+
+function Get-VirtualDirectoryPath( [string] $site, [string] $vdir ) 
+{
+    return ( Get-WebFilePath ( 'IIS:\Sites\{0}\{1}' -f $site, $vdir ) | Select -Expand FullName )
 }
 
 function Get-IISPath( [string] $site ) 
@@ -52,12 +61,20 @@ function Get-IISPath( [string] $site )
 
 function Deploy-Site 
 {
+    param(
+        [string] $src
+    )
+
     if( -not (Test-Path $tfs_build_dir) ) {
         throw "Could not find $tfs_build_dir"
     }
 
-	$src = Get-MostRecentDeployment -src $tfs_build_dir
-	$dst = Get-IISPath -site $dst_site
+    if( [string]::IsNullOrEmpty($virtual_directory) ) {
+	    $dst = Get-IISPath -site $dst_site
+    }
+    else {
+        $dst = Get-VirtualDirectoryPath -site $dst_site -vdir $virtual_directory
+    }
 
     if(!$include_webconfig) {
         $skipfiles = "web.config"
@@ -110,7 +127,7 @@ function Record-Deployment
     $deploy = New-Object PSObject -Property @{
 		    Title = [string]::Empty
 		    DeploymentType = "Full"
-		    Deployment_x0020_Steps = ("Automated with Deploy-DotNet-Code.v2.ps1. Log file located on {0} - {1}" -f $ENV:COMPUTERNAME, (Get-ChildItem $log).FullName)
+		    DeploymentSteps = ("Automated with Deploy-DotNet-Code.ps1. Log file located on {0} - {1}.`n{2}" -f $ENV:COMPUTERNAME, (Get-ChildItem $log).FullName, (Get-Content -Raw $log))
 		    Notes = ("Code Backup location is at {0}" -f $backup_location)
     }
 
@@ -145,8 +162,8 @@ function Get-SPUserViaWS
         [string] $name
     )
 
-	$service = New-WebServiceProxy ($url + "_vti_bin/UserGroup.asmx?WSDL") -Namespace User -UseDefaultCredential
-	$user = $service.GetUserInfo($name)
+	$service = New-WebServiceProxy ($url + "/_vti_bin/UserGroup.asmx?WSDL") -Namespace User -UseDefaultCredential
+	$user = $service.GetUserInfo("i:0#.w|$name")
 	
 	if( $user ) {
 		return ( $user.user.id + ";#" + $user.user.Name )
@@ -178,10 +195,17 @@ function Deploy-Service
 
 function main()
 {
+    if( $source_type -eq "tfs_build" ) {
+        $src = Get-MostRecentDeployment -src $source_directory
+    }
+    else {
+        $src = $source_directory
+    }
+
     switch ($PsCmdlet.ParameterSetName)
     { 
         "WebSite" { 
-
+            $log = Join-Path $PWD.Path ("logs\{0}_deploy-{1}.log" -f $dst_site, $now )
 	        try {   
 		        Backup-Site
 		        Deploy-Site
@@ -194,6 +218,7 @@ function main()
 
         }
         "Service" {
+            $log = Join-Path $PWD.Path ("logs\{0}_deploy-{1}.log" -f $service_name, $now )
             try {   
                 Stop-Service -Name $service_name 
 		        Backup-Service
