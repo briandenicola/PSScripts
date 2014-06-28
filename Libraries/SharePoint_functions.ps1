@@ -2,7 +2,6 @@
 [void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SharePoint")
 [void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.Office.Server.Search") 
 [void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.Office.Server") 
-#[void][System.Reflection.Assembly]::LoadFrom("D:\Scripts\Libraries\Lists.dll")
 
 $siteTypes = @{}
 $siteTypes.Add("Team Site","STS#0")
@@ -20,63 +19,70 @@ $auditTypes['EditContentType'] = 160
 $auditTypes['SearchSiteContent'] = 8192
 $auditTypes['UserSecurity'] = 256
 
+Set-Variable -Name url -Value "http://webapp/site/web" -Option Constant
 
-function Get-SharePointServersWS()
+function Get-SharePointServersWS
 {
 	param(
 		[string] $version = "2010"
 	)
 	
-	if( $version -eq "2007" ) {
-		return(	get-SPListViaWebService -Url http://teamadmin.gt.com/sites/ApplicationOperations/ -list Servers -View '{17029C2D-ABD2-45F8-9FE5-17A5F3C0DCBC}' | Select SystemName, Farm, Environment, ApplicationName)
-	} else { 
-		return(	get-SPListViaWebService -Url http://teamadmin.gt.com/sites/ApplicationOperations/ -list Servers  | Select SystemName, Farm, Environment, ApplicationName)
-	}
+	if( $version -eq "2010" ) { $view = '{}' } else { $view = '{}' }
+
+    return(	Get-SPListViaWebService -Url $url -list Servers -View $view | Select SystemName, Farm, Environment, ApplicationName)
 }
 
-function Get-SharePointCentralAdmins()
+function Get-SharePointCentralAdmins
 {
-	return(	get-SPListViaWebService -Url http://teamadmin.gt.com/sites/ApplicationOperations/ -list Servers -view "{3ADCF3C7-5CCE-459C-89A8-D361B7C71CB1}" | Select SystemName, Farm, Environment, "Central Admin Address" )
+    $view = '{}'
+	return(	Get-SPListViaWebService -Url $url -list Servers -view $url | Select SystemName, Farm, Environment, "Central Admin Address" )
 }
 
-function Get-LatestLog()
+function Get-LatestLog
 {
+    [CmdletBinding()]
+	param(
+		[Parameter(Mandatory=$True,ValueFromPipeline=$True)]
+		[string] $computer
+    )
+
 	begin {
 		$log_path = "\Logs\Trace\"
 	}
 	process {
-		
-		$src = Join-Path ("\\" + $_ ) $log_path
+		$src = Join-Path ("\\$computer" ) $log_path
 		$latest_file =  ( dir $src | sort LastWriteTime -desc | select -first 1 | Select -ExpandProperty Name )
 		
-		Copy-Item (Join-Path $src $latest_file) . -verbose
+		Copy-Item (Join-Path $src $latest_file) $PWD.Path -verbose
 	}
 	end {
 	}
 }
 
-
-function Get-SharePointSolutions()
+function Get-SharePointSolutions
 {
 	return (Get-SPFarm | Select -Expand Solutions | Select Name, Deployed, DeployedWebApplications, DeployedServers, ContainsGlobalAssembly, ContainsCasPolicy, SolutionId, LastOperationEndTime)
 }
 
-function Get-WebServiceURL( [String] $url )
+function Get-WebServiceURL
 {
+    param( [String] $url )
+
 	$listWebService = "_vti_bin/Lists.asmx?WSDL"
 	
-	if( -not $url.EndsWith($listWebService) )
-	{
+	if( -not $url.EndsWith($listWebService) ) {
 		return $url.Substring( 0, $url.LastIndexOf("/") ) + "/" + $listWebService
-	} else
-	{
+	} 
+    else {
 		return $url
 	}
 
 }
 
-function Get-SPListViaWebService([string] $url, [string] $list, [string] $view = $null )
+function Get-SPListViaWebService
 {
+    param ([string] $url, [string] $list, [string] $view = $null )
+
 	begin {
 		$listData = @()
 		
@@ -87,14 +93,12 @@ function Get-SPListViaWebService([string] $url, [string] $list, [string] $view =
 		$data = $service.GetListItems( $list, $view, $null, $null, $null, $null, $null )
 	}
 	process {
-			
 		$ErrorActionPreference = "silentlycontinue"
-		$data.data.row | % {
-			$item = $_
+		foreach( $item in $data.data.row ) {
 			$t = new-object System.Object
-			$Fields | % {
-				$StaticName = "ows_" + $_.StaticName
-				$DisplayName = $_.DisplayName
+			foreach( $field in $Fields ) {
+				$StaticName = "ows_" + $field.StaticName
+				$DisplayName = $field.DisplayName
 				if( $item.$StaticName -ne $nul ) {
 					$t | add-member -type NoteProperty -name $DisplayName.ToString() -value $item.$StaticName
 				}
@@ -103,23 +107,26 @@ function Get-SPListViaWebService([string] $url, [string] $list, [string] $view =
 		}
 	}
 	end {
-			return ( $listData )
+        return ( $listData )
 	}
 }
 
-function Get-FarmAccount( [string[]] $Computername )
+function Get-FarmAccount
 {
+    param ( [string[]] $Computername )
+
 	$farmAccounts = @()
-	$ComputerName | % {
-		$computer = $_
+	foreach( $computer in $ComputerName ) {
 		$farmAccounts += (gwmi Win32_Process -Computer $computer | Where { $_.Caption -eq "owstimer.exe"} ).GetOwner() | Select @{Name="System";Expression={$computer}}, Domain, User
 	}
-	return $farmAccounts
 
+	return $farmAccounts
 }
 
-function WriteTo-SPListViaWebService ( [String] $url, [String] $list, [HashTable] $Item, [String] $TitleField )
+function WriteTo-SPListViaWebService 
 {
+    param( [String] $url, [String] $list, [HashTable] $Item, [String] $TitleField )
+
 	begin {
 		$service = New-WebServiceProxy (Get-WebServiceURL -url $url) -Namespace List -UseDefaultCredential
 	}
@@ -143,25 +150,22 @@ function WriteTo-SPListViaWebService ( [String] $url, [String] $list, [HashTable
 			$listItem += ("<Field Name='{0}'>{1}</Field>`n" -f $key, [system.net.webutility]::htmlencode($value) )
 		}   
   
-		$batch = [xml]($xml -f $listInfo.View.Name,$listItem)   
-				
+		$batch = [xml]($xml -f $listInfo.View.Name,$listItem)   			
 		$response = $service.UpdateListItems($listInfo.List.Name, $batch)   
 		$code = [int]$response.result.errorcode   
 	
- 		if ($code -ne 0) {   
+ 		if ($code -ne 0 ) {   
 			Write-Warning "Error $code - $($response.result.errortext)"     
-		} else {
-			Write-Host "Success"
 		}
 	}
-	end {
-		
-	}
+	end { }
 }
 
 
-function Update-SPListViaWebService ( [String] $url, [String] $list, [int] $id, [HashTable] $Item, [String] $TitleField )
+function Update-SPListViaWebService 
 {
+    param ( [String] $url, [String] $list, [int] $id, [HashTable] $Item, [String] $TitleField )
+
 	begin {
 		$service = New-WebServiceProxy (Get-WebServiceURL -url $url) -Namespace List -UseDefaultCredential
 		$listItem = [String]::Empty
@@ -204,204 +208,214 @@ function Update-SPListViaWebService ( [String] $url, [String] $list, [int] $id, 
 			Write-Error ("Update failed with - " +  $_.Exception.ToString() )
 		}
 	}
-	end {
-		
-	}
+	end {}
 }
 
-function Get-MOSSProfileDetails([string]$SiteURL, [string]$UserLogin) 
+function Get-MOSSProfileDetails
 { 
+    param ([string]$SiteURL, [string]$UserLogin) 
+    
     [Void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.Office.Server.UserProfiles")
 
-    $site = Get-SPSite - url $SiteURL
+    $site = Get-SPSite -url $SiteURL
 
     $srvContext = [Microsoft.Office.Server.ServerContext]::GetContext($site) 
+    
     Write-Host "Status", $srvContext.Status 
     $userProfileManager = new-object Microsoft.Office.Server.UserProfiles.UserProfileManager($srvContext) 
 
     Write-Host "Profile Count:", $userProfileManager.Count 
 
-    $UserProfile = $userProfileManager.GetUserProfile($UserLogin) 
-
-    #Basic Data 
-    Write-Host "SID :", $UserProfile["SID"].Value 
-    Write-Host "Name :", $UserProfile["PreferredName"].Value 
-    Write-Host "Email :", $UserProfile["WorkEmail"].Value 
-
-    #Detailed Data 
-    Write-Host "Logon Name :", $UserProfile["AccountName"].Value 
-    Write-Host "SID :", $UserProfile["SID"].Value 
-    Write-Host "Name :", $UserProfile["PreferredName"].Value 
-    Write-Host "Job Title :", $UserProfile["Title"].Value 
-    Write-Host "Department :", $UserProfile["Department"].Value 
-    Write-Host "SIP Address :", $UserProfile["WorkEmail"].Value 
-    Write-Host "Picture :", $UserProfile["PictureURL"].Value 
-    Write-Host "About Me :", $UserProfile["AboutMe"].Value 
-    Write-Host "Country :", $UserProfile["Country"].Value
+    if( ![string]::IsNullOrEmpty($UserLogin ) ) {
+        $UserProfile = $userProfileManager.GetUserProfile($UserLogin) 
+        
+        Write-Host "SID :", $UserProfile["SID"].Value 
+        Write-Host "Name :", $UserProfile["PreferredName"].Value 
+        Write-Host "Email :", $UserProfile["WorkEmail"].Value 
+        Write-Host "Logon Name :", $UserProfile["AccountName"].Value 
+        Write-Host "SID :", $UserProfile["SID"].Value 
+        Write-Host "Name :", $UserProfile["PreferredName"].Value 
+        Write-Host "Job Title :", $UserProfile["Title"].Value 
+        Write-Host "Department :", $UserProfile["Department"].Value 
+        Write-Host "SIP Address :", $UserProfile["WorkEmail"].Value 
+        Write-Host "Picture :", $UserProfile["PictureURL"].Value 
+        Write-Host "About Me :", $UserProfile["AboutMe"].Value 
+        Write-Host "Country :", $UserProfile["Country"].Value
+    }
 
     $site.Dispose() 
 } 
 
-function Get-SSPSearchContext( )
+function Get-SSPSearchContext
 {
 	$context = [Microsoft.Office.Server.ServerContext]::Default
  	$searchContext = [Microsoft.Office.Server.Search.Administration.SearchContext]::GetContext($context)
-	$content = [Microsoft.Office.Server.Search.Administration.Content]$searchContext
-	
+	$content = [Microsoft.Office.Server.Search.Administration.Content]$searchContext	
 	return $content
 }
 
-function Get-SSPSearchContentSources ( )
+function Get-SSPSearchContentSources
 {
  	return $(Get-SSPSearchContext).ContentSources
 }
 
-function Start-SSPFullCrawl( [String] $name, [switch] $force )
+function Start-SSPFullCrawl
 {
+    param ( [String] $name, [switch] $force )
+
 	$idle = [Microsoft.Office.Server.Search.Administration.CrawlStatus]::Idle
 	
 	$ContentSource = Get-SSPSearchContentSources | where { $_.Name -eq $name }
 	
-	if( $force ) 
-	{
-		Stop-SSPCrawl -name $name
-	}
+	if( $force ) { Stop-SSPCrawl -name $name }
 	
-	if( $ContentSource.CrawlStatus -eq $idle ) 
-	{
+	if( $ContentSource.CrawlStatus -eq $idle ) {
 		$ContentSource.StartFullCrawl()
-	} else {
+	} 
+    else {
 	 	throw "Invalid Crawl state - " +  $ContentSource.CrawlStatus
 	}
 }
 
-function Stop-SSPCrawl( [String] $name )
+function Stop-SSPCrawl
 {
+    param ( [String] $name )
+
 	$idle = [Microsoft.Office.Server.Search.Administration.CrawlStatus]::Idle
 	
 	$ContentSource = Get-SSPSearchContentSources | where { $_.Name -eq $name }
-	
-	if( $ContentSource.CrawlStatus -ne $idle ) 
-	{
+	if( $ContentSource.CrawlStatus -ne $idle ) {
 		$ContentSource.StopCrawl()
 	} 
 	
 	$count = 0
-	while ( $ContentSource.CrawlStatus -ne $idle -or $count -eq 30 )
-	{
-		sleep -Seconds 1
+	while ( $ContentSource.CrawlStatus -ne $idle -or $count -eq 30 ) {
+		Sleep -Seconds 1
 		$count++
 	} 
 
-	if( $ContentSource.CrawlStatus -ne "Idle" )
-	{
+	if( $ContentSource.CrawlStatus -ne "Idle" )	{
 		throw "Invalid Crawl State. Crawl should be idle but is not"
 	}
 }
+
 function Get-CrawlHistory
 {
     $serverContext = [Microsoft.Office.Server.ServerContext]::Default
     $searchContext = [Microsoft.Office.Server.Search.Administration.SearchContext]::GetContext($serverContext)
-    
 	return ( [Microsoft.Office.Server.Search.Administration.CrawlHistory]$searchContext )
 }
 
-function Get-LastCrawlStatus( [String] $name )
+function Get-LastCrawlStatus
 {
+    param ( [String] $name )
 	$history = Get-CrawlHistory	
 	$contentSource = Get-SSPSearchContentSources | where { $_.Name -eq $name } 
 	return ( $history.GetLastCompletedCrawlHistory($contentSource.Id) | Select CrawlId, @{Name="CrawlTimeInHours";Expression={($_.EndTime - $_.StartTime).TotalHours}}, EndTime, WarningCount, ErrorCount, SuccessCount )
 }
  
-function Get-FullCrawlAverage( [string] $name, [int] $days = 7)
+function Get-FullCrawlAverage
 {
+    param ( [string] $name, [int] $days = 7)
 	$history = Get-CrawlHistory
 	$contentSource = Get-SSPSearchContentSources | where { $_.Name -eq $name } 
 	return $history.GetNDayAvgStats($contentSource, 1, $days)
 }
 
-function Set-SPReadOnly ([bool] $state )
+function Set-SPReadOnly
 {
+    [CmdletBinding()]
+    param  (
+    	[Parameter(Mandatory=$True,ValueFromPipeline=$True)]
+		[string] $site,
+        [bool] $state
+    )
+
 	begin{
 	}
 	process{
-		Write-Host "Setting Read-Only flag on Site Collection " $_.ToString() " to " $state
-		$site = Get-SPSite -url $_.ToString()
-		$site.ReadOnly = $state
-		$site.Dispose()
+		Write-Verbose ("Setting Read-Only flag on Site Collection " + $site.ToString() + " to " + $state)
+		$sp_site = Get-SPSite -url $site.ToString()
+		$sp_site.ReadOnly = $state
+		$sp_site.Dispose()
 	}
 	end{
 	}
 }
 
-function Get-SPAudit( ) 
+function Get-SPAudit
 {	
 	param(
+    	[Parameter(Mandatory=$True,ValueFromPipeline=$True)]
+		[string] $site,
 		[Object] $obj
 	)
-	begin{
-		
+	begin{	
 	}
 	process{
-		$flags = $_.Audit.AuditFlags.value__
-		$Audit = ""
+		$flags = $site.Audit.AuditFlags.value__
+		$Audit = [string]::Empty
 			
-		$auditTypes.Keys.GetEnumerator() | % {
-			if( $auditTypes[$_] -band $flags )
-			{
-				$Audit += $_ + "|"
+		foreach( $key in ($auditTypes.Keys.GetEnumerator()) ){
+			if( $auditTypes[$key] -band $flags ) {
+				$Audit += $key + "|"
 			}
 		}
-		if( $Audit -eq "" ) { $Audit = "No Audits Set" }
+		if( [string]::IsNullOrEmpty($Audit) ) { $Audit = "No Audits Set" }
 		
 		$a = new-object System.Object
-		$a | add-member -type NoteProperty -name "SiteName" -value $_.RootWeb.Title
-		$a | add-member -type NoteProperty -name "URL" -value $_.RootWeb.ServerRelativeURL
+		$a | add-member -type NoteProperty -name "SiteName" -value $site.RootWeb.Title
+		$a | add-member -type NoteProperty -name "URL" -value $site.RootWeb.ServerRelativeURL
 		$a | add-member -type NoteProperty -name "Audit" -value $Audit.TrimEnd("|")
 		
-		return $a
 	}
 	end {
+        return $a
 	}
 }
 
-function Get-SPWebApplication( [string] $url )
+function Get-SPWebApplication
 {
+    param ( [string] $url )
 	$WebServiceCollection = new-object microsoft.sharepoint.administration.SpWebServiceCollection( Get-SPFarm )
 	$webApplications = $WebServiceCollection | Select -Expand WebApplications
 	
     foreach( $app in $WebApplications ) {
         $urls = $app.AlternateUrls | Select -Expand IncomingUrl
-        if( $urls -contains $url ) {
-            return $app
-        }
+        if( $urls -contains $url ) { return $app }
 	}
     
     return $null
 }
-function Get-SPFarm()
+
+function Get-SPFarm
 {
 	return [microsoft.sharepoint.administration.spfarm]::local
 }
-function Get-SPSite ( [String] $url )
+
+function Get-SPSite 
 {
+    param( [String] $url )
 	return new-object Microsoft.SharePoint.SPSite($url)
 }
 
-function Get-SPSiteCollections( [Object] $webApp )
+function Get-SPSiteCollections
 {
-	return ( $webApp.Sites )
+    param ( [Object] $webApp )
+	return $webApp.Sites
 }
 
-function Get-SPWebCollections( [Object] $sc )
+function Get-SPWebCollections
 {
-	return ( $sc.AllWebs )
+    param ( [Object] $sc )
+	return $sc.AllWebs 
 }
 
-function Get-SPWeb( [String] $url )
+function Get-SPWeb
 {
+    param( [String] $url )
 	$site = new-object Microsoft.SharePoint.SPSite($url)
-	return ( $site.OpenWeb() )
+	return $site.OpenWeb()
 }
 
 function UploadTo-Sharepoint {
@@ -416,55 +430,59 @@ function UploadTo-Sharepoint {
 	$wc.UploadFile($uploadname,"PUT", $file) 
 }
 
-function Update-SPListEntry([String] $url, [string] $list, [int] $entryID, [HashTable] $entry)
+function Update-SPListEntry
 {
+    param ([String] $url, [string] $list, [int] $entryID, [HashTable] $entry)
+
 	$web = Get-SPWeb -url $url
 	
 	$splist = $web.Lists[$list]	
 	$item = $splist.GetItemByID($entryID)
 	
-	$entry.Keys.GetEnumerator() | % {
-		$item[$_] = $entry[$_]
+	foreach( $key in ($entry.Keys.GetEnumerator()) ){
+		$item[$key] = $entry[$key]
 	}
 	
 	$item.Update()
 	$web.Dispose()
 }
 
-function Add-ToSPList ( [String] $url, [string] $list, [HashTable] $entry)
+function Add-ToSPList 
 {
+    param ( [String] $url, [string] $list, [HashTable] $entry)
+
 	$web = Get-SPWeb -url $url
 	
 	$splist = $web.Lists[$list]
 	$newitem = $splist.items.Add() 
 
-	$entry.Keys.GetEnumerator() | % {
-		$newitem[$_] = $entry[$_]
+	foreach( $key in ($entry.Keys.GetEnumerator()) ) {
+		$newitem[$key] = $entry[$key]
 	}
 	
 	$newitem.update() 
 	$web.Dispose()
 }
 
-function Get-SPList ( [string] $url, [string] $list, [string] $filter="all")
+function Get-SPList 
 {
+    param ( [string] $url, [string] $list, [string] $filter="all")
+
 	begin{
 		$rtList = @()
 		$web = Get-SPWeb -url $url
 		$splist = $web.Lists[$list]
-
 		$Fields = $splist.Fields | where { $_.Hidden -eq $false } | Select Title -Unique
 	}
 
 	process{
 		$ErrorActionPreference = "silentlycontinue"
 		$i=0
-		$splist.Items | % {
-			$item = $_
+		foreach( $item in $splist.Items ) {
 			write-progress -activity "Searching List" -status "Progress:" -percentcomplete ($i/$splist.Items.Count*100)
 			$t = new-object System.Object
-			$Fields | % {
-				$t | add-member -type NoteProperty -name $_.Title.ToString() -value $item[$_.Title]
+			foreach( $field in $Fields ) {
+				$t | add-member -type NoteProperty -name $field.Title.ToString() -value $item[$field.Title]
 			}
 			$i++ 	
 			$rtList += $t
@@ -473,55 +491,65 @@ function Get-SPList ( [string] $url, [string] $list, [string] $filter="all")
 		$web.Dispose()
 	}
 	end {
-		if( $filter -eq "all" ) 
-		{
+		if( $filter -eq "all" ) {
 			return $rtList
-		} else 
-		{
+		} 
+        else  {
 			$key,$value = $filter.Split(":")
 			return ( $rtList | where { $_.$key -like $value } )
 		}
 	}
 }
 
-function Remove-SPGroupRole( [object] $role )
+function Remove-SPGroupRole
 {
-	$role.RoleDefinitionBindings | % { 
-		Write-Host "Removing " $_.ToString()
-		$role.RoleDefinitionBindings.Remove($_) 
-	}
-	$role.Update()
+    param ( 
+        [Parameter(Mandatory=$True,ValueFromPipeline=$True)]
+        [object] $role 
+    )
+
+    begin{}
+    process {
+	    foreach( $binding in $role.RoleDefinitionBindings ) {
+		    Write-Host ("Removing " + $binding.ToString())
+		    $role.RoleDefinitionBindings.Remove($binding) 
+	    }
+	    $role.Update()
+    }
+    end {}
 }
 
 function Remove-AllSPGroupFromSite( [String] $url )
 {
 	$web = Get-SPWeb -url $url
 	$siteGroups = $web.RoleAssignments
-	$web.RoleAssignments | % { remove-spGroupRole( $_ ) }
+	$web.RoleAssignments| Remove-SPGroupRole
 }
 
-function Get-SPGroup( [String] $Url, [string] $GroupName ) 
+function Get-SPGroup
 {
+    param ( [String] $Url, [string] $GroupName ) 
 	$web = Get-SPWeb -url $url
 	$siteGroups = $web.SiteGroups
 	
 	return ( $siteGroups | where { $_.Name -like $GroupName } )
 }
 	
-function Get-SPUser ( [String] $url, [string] $User ) 
+function Get-SPUser 
 {
+    param ( [String] $url, [string] $User ) 
 	$web = Get-SPWeb -url $url
 	if( $user.Contains("\") ) { $loginName = $user } else { $loginName = "*\$user" }
 	return ( $web.AllUsers | where { $_.LoginName -like $loginName } )
 }
 
-function Add-SPGroupPermission( [String] $url, [string] $GroupName, [string] $perms)
+function Add-SPGroupPermission
 {
+    param ( [String] $url, [string] $GroupName, [string] $perms)
+
 	$web = Get-SPWeb -url $url
-	
 	$spRoleAssignment = New-Object Microsoft.SharePoint.spRoleAssignment((Get-spGroup -url $web -GroupName $groupName))
 	$spRoleDefinition = $web.RoleDefinitions[$perms]
-	
 	$spRoleAssignment.RoleDefinitionBindings.Add($spRoleDefinition)
 	$web.RoleAssignments.Add($spRoleAssignment)
 	$web.Update()
@@ -529,8 +557,9 @@ function Add-SPGroupPermission( [String] $url, [string] $GroupName, [string] $pe
 	$web.Dispose()
 }
 
-function Add-MemberToSPGroup (  [String] $url, [string] $LoginName , [string] $GroupName) 
+function Add-MemberToSPGroup  
 {
+    param (  [String] $url, [string] $LoginName , [string] $GroupName)
 	$web = Get-SPWeb -url $url
 	$spGroup = Get-spGroup -url $web -GroupName $GroupName
 	$spGroup.Users.Add($LoginName,$nul,$nul,$nul)
@@ -538,8 +567,9 @@ function Add-MemberToSPGroup (  [String] $url, [string] $LoginName , [string] $G
 	$web.Dispose()
 }
 
-function Add-SPUser( [string] $url, [string] $User )
+function Add-SPUser
 {
+    param ( [string] $url, [string] $User )
 	$web = Get-SPWeb -url $url
 
 	$spRoleAssignment = New-Object Microsoft.SharePoint.spRoleAssignment($User, $nul, $nul, $nul)
@@ -552,37 +582,36 @@ function Add-SPUser( [string] $url, [string] $User )
 	$web.Dispose()
 }
 
-function Add-SPGroup( [string] $url, [string] $GroupName, [string] $owner, [string] $description)
+function Add-SPGroup
 {
+    param ( [string] $url, [string] $GroupName, [string] $owner, [string] $description)
 	$web = Get-SPWeb -url $url
 	$siteGroups = $web.SiteGroups
 	
 	$spUser = Get-spUser -Url $web -User $owner 
 	if( $spUser -eq $null ) { 
-		add-spUser -SiteCollectionUrl $SiteCollectionUrl -User $owner 
+		Add-SPUser -SiteCollectionUrl $SiteCollectionUrl -User $owner 
 		$spUser = Get-spUser -Url $web -User $owner 
 	}
 		
 	$rtValue = $siteGroups.Add( $GroupName, $spUser, $spUser, $description)
-	
 	$web.Dispose()
 }
 
-function Add-SPWeb([string] $url, [string]$WebUrl, [string]$Title, [string]$Description, [string]$Template, [bool] $Inherit) 
+function Add-SPWeb 
 {
-    # Create our SPSite object
-    $spsite = Get-SPSite $url
+    param ([string] $url, [string]$WebUrl, [string]$Title, [string]$Description, [string]$Template, [bool] $Inherit)
 
-	# Add a site
-    $web = $spsite.Allwebs.Add($WebUrl, $Title, $Description ,[int]1033, $siteTypes.Item($Template), $Inherit, $false)
-	
+    $spsite = Get-SPSite $url
+    $web = $spsite.Allwebs.Add($WebUrl, $Title, $Description ,[int]1033, $siteTypes.Item($Template), $Inherit, $false)	
 	$spsite.Dispose()
 	
 	return $web	
 }
 
-function Set-AccessRequestEmail([String] $url, [string] $email)
+function Set-AccessRequestEmail
 {
+    param ([String] $url, [string] $email)
 	$web = Get-SPWeb -url $url
 	$web.RequestAccessEmail = $email
 	$web.RequestAccessEnabled = $true
@@ -590,24 +619,27 @@ function Set-AccessRequestEmail([String] $url, [string] $email)
 	$web.Dispose()
 }
 
-function Set-Inheritance( [String] $url, [bool] $unique)
+function Set-Inheritance
 {
+    param ( [String] $url, [bool] $unique)
 	$web = Get-SPWeb -url $url
 	$web.HasUniquePerm = $unique
 	$web.Update()
 	$web.Dispose()
 }
 
-function Set-SharedNavigation( [String] $url, [bool] $shared)
+function Set-SharedNavigation
 {
+    param ( [String] $url, [bool] $shared)
 	$web = Get-SPWeb -url $url
 	$web.Navigation.UseShared = $shared
 	$web.Update()
 	$web.Dispose()
 }
 
-function Set-spAssociatedGroups( [String] $url, [string] $owners, [string] $members, [string] $visitors)
+function Set-spAssociatedGroups
 {
+    param ( [String] $url, [string] $owners, [string] $members, [string] $visitors)
 	$web = Get-SPWeb -url $url
 	$web.AssociatedOwnerGroup = Get-spGroup -url $web -GroupName $owners
 	$web.AssociatedMemberGroup = Get-spGroup -url $web -GroupName $members
@@ -618,10 +650,7 @@ function Set-spAssociatedGroups( [String] $url, [string] $owners, [string] $memb
 
 function Get-LookupFieldData
 {
-    param
-    (
-        [String] $field
-    )
+    param ( [string] $field )
 
 	$fieldarray = $field.split(";")
 	[String[]] $out = @()

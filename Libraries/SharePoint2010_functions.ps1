@@ -1,6 +1,5 @@
 Add-PSSnapin Microsoft.SharePoint.PowerShell –erroraction SilentlyContinue
 
-
 function Set-PermissiveMode
 {
     param(
@@ -85,14 +84,6 @@ function Get-SPQuotaTemplate {
     }
 }
 
-function Get-SPStartedServices
-{
-    return ( Get-SPServiceInstance | 
-                Where { $_.Status -eq "Online" } |
-                Select @{Name="Service";Expression={$_.TypeName}}, @{Name="Server";Expression={$_.Server.Address}} | 
-                Sort Service
-            )
-}
 
 function Get-SPDatabaseSize
 {
@@ -211,17 +202,16 @@ function Audit-SharePointWebApplications
 {
 	$webAppSettings = @()
 	
-	get-SPWebApplication | % {
-		$webApp = $_.Name
-		$appPoolName = $_.ApplicationPool.DisplayName
-		$appPoolUser = $_.ApplicationPool.UserName
+	foreach( $webAppp in Get-SPWebApplication ) {
+		$appPoolName = $webApp.ApplicationPool.DisplayName
+		$appPoolUser = $webApp.ApplicationPool.UserName
 		
-		$iisSettings = ($_.IisSettings)
+		$iisSettings = ($webApp.IisSettings)
 		
-		$_.AlternateUrls | % {
+		foreach( $url in $webApp.AlternateUrls ) {
 			$webAppSetting = New-Object System.Object
 
-			$zone = $_.UrlZone
+			$zone = $url.UrlZone
 
 			$zoneSettings = $iisSettings.GetEnumerator() | where { $_.Key -eq $zone }
 			if( $zoneSettings -eq $nul ) {
@@ -229,8 +219,8 @@ function Audit-SharePointWebApplications
 			}
 
 			$webAppSetting | add-member -type NoteProperty -name WebApplication -Value $webApp
-			$webAppSetting | add-member -type NoteProperty -name Uri -Value $_.Uri
-			$webAppSetting | add-member -type NoteProperty -name UrlZone -Value $_.UrlZone
+			$webAppSetting | add-member -type NoteProperty -name Uri -Value $url.Uri
+			$webAppSetting | add-member -type NoteProperty -name UrlZone -Value $url.UrlZone
 			$webAppSetting | add-member -type NoteProperty -name AppPoolName -Value $appPoolName
 			$webAppSetting | add-member -type NoteProperty -name AppPoolUser -Value $AppPoolUser
 			$webAppSetting | add-member -type NoteProperty -name IISName -Value $zoneSettings.Value.ServerComment
@@ -242,11 +232,20 @@ function Audit-SharePointWebApplications
 			$webAppSetting | add-member -type NoteProperty -name AuthenticationMode -value $zoneSettings.Value.AuthenticationMode
 
 			$webAppSettings += $webAppSetting
-
 		}
 	}
 	
 	return $webAppSettings
+}
+
+
+function Get-SPStartedServices
+{
+    return ( Get-SPServiceInstance | 
+                Where { $_.Status -eq "Online" } |
+                Select @{Name="Service";Expression={$_.TypeName}}, @{Name="Server";Expression={$_.Server.Address}} | 
+                Sort Service
+            )
 }
 
 function Get-StartedServices

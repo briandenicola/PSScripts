@@ -39,6 +39,30 @@ function Get-ARRRules
     return $ps_rules_objects
 }
 
+function Set-ARRRuleCondition
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string] $pattern,
+        [Parameter(Mandatory=$true)]
+        [string] $rule_name,
+        [string] $input = '{HTTP_HOST}'
+    )
+
+    Set-Variable -Name filter -Value ("/system.webServer/rewrite/globalRules/rule[@name='{0}']/conditions" -f $rule_name)
+    Set-Variable -Name path -Value "MACHINE/WEBROOT/APPHOST"  -Option constant
+
+    $condition = @{
+	    pspath = $path
+	    filter = $filter
+	    value = @{
+		    input = $input
+		    pattern = $pattern
+	    }
+    }
+
+    Add-WebConfiguration @condition
+}
 
 function Get-CustomHeaders 
 {
