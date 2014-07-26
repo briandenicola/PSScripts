@@ -1,197 +1,174 @@
-﻿[CmdletBinding(SupportsShouldProcess=$true)]
+[CmdletBinding(SupportsShouldProcess=$true)]
 param (
 	[Parameter(Mandatory=$true)]
-	[String[]] $Servers,
-	[switch] $details,
+	[String[]] $computers,
 	[switch] $upload,
 	
 	[ValidateSet("all", "name", "url")]
 	[string] $filter_type = "all",
-	[string] $filter_value
+	[string] $filter_value,
+
+    [ValidateSet("Test", "Uat","Production", "Dev")]
+	[string] $env = "Production"
 )
 
-. ..\..\Libraries\Standard_Functions.ps1
-. ..\..\Libraries\SharePoint_Functions.ps1
+. (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
+. (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 
-$url = "http://collaboration.gt.com/site/SharePointOperationalUpgrade/applicationsupport/"
+$url = ""
 $list_servers = "AppServers"
-$list_websites = "WebSites"
+$list_websites = "Applications - $env"
 
-function Get-SPFormattedServers ( [String[]] $computers )
+function Get-ObjectProperties
 {
-	$sp_formatted_data = [String]::Empty
-	$sp_server_list = get-SPListViaWebService -url $url -list $list_servers
-	
-	$computers | % { 
-		$computer = $_
-		$id = $sp_server_list | where { $_.SystemName -eq $computer } | Select -ExpandProperty ID
-		$sp_formatted_data += "#{0};#{1};" -f $id, $computer
-	}
-	
-	Write-Verbose $sp_formatted_data
-	
-	return $sp_formatted_data.TrimStart("#").TrimEnd(";").ToUpper()
+    param( [object] $psobject )
+    return ( $psobject | Get-Member | Where {$_.MemberType -eq "NoteProperty"} | Select -Expand Name) 
 }
 
-function Check-SiteBindings
+function Get-SPFormattedServers 
 {
-	param( 
-		[string] $url,
-		[object] $site
+    param ( [string[]] $computers )
+
+	$sp_formatted_data = @()
+	$sp_server_list = Get-SPListViaWebService -url $url -list $list_servers
+	
+	foreach( $computer in $computers ) { 
+		$sp_formatted_data += "{0};#{1}" -f ($sp_server_list | Where { $_.SystemName -eq $computer }).ID, $computer.ToUpper()
+	}
+	
+	return ( [string]::join( ";#", $sp_formatted_data ) )
+}
+
+if( $filter_type -imatch "url|name" -and [String]::IsNullOrEmpty($filter_value) ) {
+	Write-Error "The switch filter_value cannot be null if filter_type is name" 
+	exit
+}
+
+$iis_audit_sb = {
+	param (
+        [string] $filter_type,
+		[string] $filter_value
 	)
-	
-	foreach( $binding in $site.ServerBindings )
-	{
-		if( $binding.Hostname -eq $url ) { return $true }
+
+    $ErrorActionPreference = "SilentlyContinue"
+
+	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
+	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
+	. (Join-Path $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1")
+
+    $audit = @()
+    if( $filter_type -eq "name" ) {
+        $webApps = @( Get-WebSite | Where { $_.Name -eq $filter_value } )
 	}
-	return $false
-	
-}
+    elseif( $filter_type -eq "url" ) {
+        $site = Get-WebBinding -HostHeader $filter_value -ErrorAction SilentlyContinue
+        $webApps = @( Get-WebSite | Where { $_.Name -eq $site.ItemXPath.Split("=")[1].Split("'")[1] } )
+    }
+    else {
+        $webApps = @( Get-WebSite )
+    }
 
-if( $filter_type -eq "name" -and [String]::IsNullOrEmpty($filter_value) )
-{
-	Write-Host "The switch filter_value cannot be null if filter_type is name" -ForegroundColor Red 
-	return
-}
 
-if( $details -and $upload )
-{
-	Write-Host  "The detail switch and upload switch can not be used at the same time" -ForegroundColor Red 
-	return
-}
+    if( $webApps.Length -eq 0 ) {
+        throw "Could not find any IIS configuration for $filter_value"
+        return
+    }
 
-if( $details )
-{
-	return  Audit-IISServers ( $Servers )
-}
+	foreach( $webApp in $webApps ){
+        
+        $app_pool = Get-Item ("IIS:\AppPools\" + $webApp.applicationPool)
+        
+        if( $app_pool.ProcessModel.identityType -eq "ApplicationPoolIdentity" ) {
+            $app_pool_user =  "ApplicationPoolIdentity"
+        } 
+        else {
+            $app_pool_user = $app_pool.ProcessModel.userName
+        }
 
-Set-Variable -Name WebServerQuery -Value "Select * from IIsWebServerSetting"
-if( $filter_type -eq "name" )
-{
-	$WebServerQuery += " where ServerComment = '" + $filter_value + "'"
-}
+        $bindings = @(Get-WebBinding -Name $webApp.Name | Where { $_.Protocol -imatch "http|https" } | Select -ExpandProperty BindingInformation)
+        $vdirs = @(Get-WebVirtualDirectory -Site  $webApp.Name | Select -Expand Path)
+        $cert =  @(Get-ChildItem "IIS:\SslBindings" | Where { $_.Sites -eq $webApp.Name } | Select -Expand Thumbprint)
+        $web_applications = @(Get-WebApplication -Site $webApp.Name | Select @{N="App";E={"({0},{1},{2})" -f $_.Path,$_.PhysicalPath,$_.ApplicationPool}} | Select -ExpandProperty App )
 
-$audit_results = @()
-foreach( $server in $Servers )
-{
-	Write-Progress -activity "Querying Server" -status "Currently querying $Server . . . "
-	if( ping( $Server ) ) 
-	{
-		$wmi_webserver = [WmiSearcher] $WebServerQuery
-		$wmi_webServer.Scope.Path = "\\{0}\root\microsoftiisv2" -f $Server
-		$wmi_webServer.Scope.Options.Authentication = 6
-		
-		foreach ( $site in $wmi_webServer.Get() )
-		{			
-			if( $filter_type -ne "url" -or ($filter_type -eq "url" -and (Check-SiteBindings -url $filter_value -site $site) -eq $true ) )
-			{
-				$audit = New-Object System.Object
-			
-				$audit | add-member -type NoteProperty -name RealServers -Value $Server		
-				$audit | add-member -type NoteProperty -name Title -Value $site.ServerComment
-				$audit | add-member -type NoteProperty -name LogFileDirectory -Value $site.LogFileDirectory
-				$audit | add-member -type NoteProperty -name IISId -Value $site.Name.Replace("W3SVC/","")
-			
-				$hostheaders = @{}
-				$internal_ip = @{}
-				
-				foreach( $binding in $site.ServerBindings )
-				{
-					$ip = $nul 
-					
-					if( $binding.Port -eq 443 ) { $hostheader = "https://"	} else { $hostheader = "http://" }
-					$hostheader += $binding.HostName + ":" + $binding.Port
-					
-					if( -not $hostheaders.ContainsKey($hostheader) ) { $hostheaders.Add($hostheader, 1) }
-					
-					if( -not [String]::IsNullOrEmpty($binding.Hostname) )
-					{
-						$ip = nslookup $binding.HostName 
-						if( -not $internal_ip.ContainsKey($ip) -and $ip.ToString() -ne "False" ) { $internal_ip.Add($ip, 1) }
-					}
-				}
-						            
-				$audit | Add-Member -type NoteProperty -Name URLs  -Value ([String]::Join( "`n", $hostheaders.keys ))
-				$audit | add-member -type NoteProperty -name Internal_x0020_IP -Value ([String]::Join( ";", $internal_ip.keys))
-						
-				$VirtualDirectoryQuery = "Select AppPoolId, Name, Path, ScriptMaps from IISWebVirtualDirSetting where Name like '%" + $site.Name + "/%'"
-				$wmi_virtual_directories = [WmiSearcher] $VirtualDirectoryQuery
-				$wmi_virtual_directories.Scope.Path = "\\{0}\root\microsoftiisv2" -f $Server
-				$wmi_virtual_directories.Scope.Options.Authentication = 6
-				
-				$virtual_directories = $wmi_virtual_directories.Get() | Select -Expand Name
-				$audit | add-member -type NoteProperty -Name DotNetVersion -Value ( Get-FrameworkVersion ($wmi_virtual_directories.Get() | Select -First 1) )
-				$audit | add-member -type NoteProperty -name VirtualDirectories -Value ([string]::Join(";", $virtual_directories))
-				
-				$iis_path = $wmi_virtual_directories.Get() | Where { $_.Name -eq ($site.Name + "/ROOT" ) } | Select -Expand Path
-				$app_pool_id = $wmi_virtual_directories.Get() | Where { $_.Name -eq ($site.Name + "/ROOT" ) } | Select -Expand  AppPoolId
-				
-				$audit | add-member -type NoteProperty -name IISPath -Value $iis_path
-				$audit | add-member -type NoteProperty -name AppPoolName -Value $app_pool_id
-				
-				$AppPoolQuery = "Select WAMUserName from IIsApplicationPoolSetting where Name = 'W3SVC/AppPools/" + $app_pool_id + "'"
-						
-				$wmi_app_pool = [WmiSearcher] $AppPoolQuery
-				$wmi_app_pool.Scope.Path = "\\{0}\root\microsoftiisv2" -f $Server
-				$wmi_app_pool.Scope.Options.Authentication = 6
-				
-				$app_pool_user = $wmi_app_pool.Get() | Select -Expand WAMUserName
-				
-				$audit | add-member -type NoteProperty -name AppPoolUser -Value $app_pool_user
+        $ips = @()
+        foreach( $binding in $bindings ) {
+            $hostname = $binding.Split(":")[2]
+            if( [string]::IsNullorEmpty($hostname) ) {
+                $ips += nslookup $env:COMPUTERNAME
+            }
+            else {
+                $ips += nslookup $hostname
+            }
+        }
 
-				$audit_results += $audit
-				
-				if( $filter_type -eq "url" ) { break }
-			}
-		}
-	} else {
-		Write-Host $_ "appears down. Will not continue with audit"
+        $audit += (New-Object PSObject -Property @{
+            RealServers = $env:COMPUTERNAME
+            Title = $webApp.Name
+            IISId = $webApp.Id
+            LogFileDirectory = (Join-Path $webApp.LogFile.Directory ("W3SVC" + $webApp.Id))
+            LogFileFlags =  ($webApp.LogFile.logFormat + ":" + $webApp.LogFile.logExtFileFlags) 
+            URLs = [string]::join(";", $bindings)
+            Internal_x0020_IP = [string]::join(";", $ips)
+            DotNetVersion = $app_pool.ManagedRunTimeVersion
+            VirtualDirectories = [string]::join(";", $vdirs)
+            IISPath = $webApp.PhysicalPath
+            AppPoolName = $webApp.applicationPool
+            AppPoolUser = $app_pool_user
+            CertThumbprint = $cert 
+            WebApplication = [string]::join(";", $web_applications)
+        })
 	}
+
+    return $audit
 }
 
-if( $upload ) 
-{
+$audit_results = Invoke-Command -ComputerName $computers -ScriptBlock $iis_audit_sb  -ArgumentList $filter_type, $filter_value | 
+    Select RealServers, Title, IISId, LogFileDirectory, LogFileFlags, Urls, Internal_x0020_IP, DotNetVersion, VirtualDirectories, CertThumbprint, IISPath, AppPoolName, AppPoolUser, WebApplication
+
+if( $upload ) {
 	$sites = $audit_results | Group-Object Title -asHashTable
 	
-	foreach( $site in $sites.Keys )
-	{	
-		$uploaded_site_info = New-Object System.Object
+	foreach( $site in $sites.Keys ) {	
+		$uploaded_site_info = New-Object PSObject -Property  @{
+            Real_x0020_Servers = [string]::empty
+            Title = [string]::empty
+            IISId = [string]::empty
+            LogFileDirectory = [string]::empty
+            LogFileFlags =  [string]::empty 
+            URLs = [string]::empty
+            Internal_x0020_IP = [string]::empty
+            DotNetVersion = [string]::empty
+            VirtualDirectories = [string]::empty
+            IISPath = [string]::empty
+            AppPoolName = [string]::empty
+            AppPoolUser = [string]::empty
+            CertThumbprint = [string]::empty
+            WebApplication = [string]::Empty
+        }
 	
 		$sites_are_equal = $true		
-		foreach( $prop in ($sites[$site] | Get-Member | Where {$_.MemberType -eq "NoteProperty" -and $_.Name -ne "RealServers" } | Select -Expand Name) )
-		{
-			$v = $sites[$site] | Select $prop -Unique
+		foreach( $property in ( Get-ObjectProperties -psobject $sites[$site] | Where { $_ -notcontains "RealServers" } ) ) {
+			$values = $sites[$site] | Select $property -Unique
 		
-			if( ($v | Measure-Object).Count -ne 1 )
-			{
-				Write-Host $prop " for " $site " differs between the different servers. . . "  -ForegroundColor Yellow
+			if( ($values | Measure-Object).Count -ne 1 ) {
+				Write-Warning ($property + " for " + $site + " differs between the different servers. . . ")
 				$sites_are_equal = $false
 			}
 
-			$uploaded_site_info | Add-Member -type NoteProperty -Name $prop -Value ( $v | Select -First 1 -ExpandProperty $prop)
-
+			$uploaded_site_info.$property = ($values | Select -First 1 -ExpandProperty $property)
 		}
 
-		if( -not $sites_are_equal )
-		{	
-			Write-Host "The sites configuration differs between the servers provided. Here is results of the scan . . ."
-			$sites[$site]
-			
-			do {
-				$ans = Read-Host "Do you wish to still upload (y/n) " 
-			} while ( ($ans -ne "y") -and ($ans -ne "n") )
-			
-			if( $ans = "y" ) { $sites_are_equal = $true }
+		if( -not $sites_are_equal ) {
+			$ans = Read-Host "he sites configuration differs between the servers provided.Do you wish to still upload (y/n) " 
+			if( $ans -imatch "y|Y" ) { $sites_are_equal = $true }
 		}
 			
-		if( $sites_are_equal )
-		{
-			$uploaded_site_info | Add-Member -type NoteProperty -Name Real_x0020_Servers -Value ( Get-SPFormattedServers ( ($sites[$site] | Select -ExpandProperty "RealServers") ) )	
-			WriteTo-SPListViaWebService -url $url -list $list_websites -Item (Convert-ObjectToHash $uploaded_site_info ) -TitleField Title 
+		if( $sites_are_equal ) {
+			$uploaded_site_info.Real_x0020_Servers = ( Get-SPFormattedServers ( ($sites[$site] | Select -ExpandProperty "RealServers") ) )	
+			WriteTo-SPListViaWebService -url $url -list $list_websites -Item (Convert-ObjectToHash $uploaded_site_info) -TitleField Title 
 		}
 	}
 }
-else 
-{
+else {
 	return $audit_results
 }

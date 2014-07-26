@@ -1,6 +1,6 @@
-﻿New-Item -Path D:\Web\Monitoring -ItemType Directory
-Copy .\monitor.aspx D:\Web\Monitoring\.
-Copy .\monitor.html D:\Web\Monitoring\.
+﻿$dst = "D:\Web\Monitoring"
+$src = Join-Path $PWD.Path "Site"
 
-$current = $PWD.Path
-..\..\Install-DotNet-WebFarm\Create-IIS-WebApplication.ps1 -config .\monitor.xml -nofarm 
+New-Item -Path $dst -ItemType Directory
+Copy-Item "$src\*.*" -Destination $dst -Verbose -Recurse
+..\WebFarm\Create-IIS-WebApplication.ps1 -config .\monitor.xml 

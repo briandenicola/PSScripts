@@ -2,7 +2,7 @@
 	<WebFarm name="" environment="DEV" />
 	<Site name="Monitoring" url="" port="80">	
 		<path>D:\Web\monitoring</path>
-		<AppPool name="AppPool - Monitoring" user="" pass="" version="v2.0" />
+		<AppPool name="AppPool - Monitoring" version="v2.0" />
 		<SSL enable="false" />
 		<AdditionalCommands>
 			<command name="Set-WebConfigurationProperty" parameters=" -filter /system.webServer/security/authentication/windowsAuthentication -name enabled -value true -PSPath IIS:\ -location Monitoring" />

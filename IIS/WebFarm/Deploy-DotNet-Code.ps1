@@ -192,7 +192,7 @@ function Backup-Service
     New-Item -ItemType Directory -Path $backup_location  | Out-Null
  
     Log-Entry -txt "Backing Up Service $service_name to - $backup_location"
-    &${Sync-Files} -src $install_location -dst $backup_location -logging
+    &${Sync-Files} -src $install_location -dst $backup_location -logging -log $log
 }
 
 function Deploy-Service 
@@ -202,7 +202,7 @@ function Deploy-Service
     )
 
     Log-Entry -txt "Deploying Service $service_name to - $install_location"
-    &${Sync-Files} -src $src -dst $install_location -logging
+    &${Sync-Files} -src $src -dst $install_location -logging -log $log
 }
 
 function main()
@@ -232,13 +232,13 @@ function main()
         "Service" {
             Log-Entry -txt ("Starting a Deployment for {0}" -f $service_name)
             try {  
-                log -txt ("Stopping {0}" -f $service_name)
+                Log-Entry -txt ("Stopping {0}" -f $service_name)
                 Stop-Service -Name $service_name 
 
 		        Backup-Service 
 		        Deploy-Service -src $src
     
-                log -txt ("Starting {0}" -f $service_name)
+                Log-Entry -txt ("Starting {0}" -f $service_name)
                 Start-Service -Name $service_name
 		        Record-Deployment -Name $service_name
 	        } catch [System.SystemException] {
