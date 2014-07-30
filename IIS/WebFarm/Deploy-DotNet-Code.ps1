@@ -143,13 +143,13 @@ function Set-DeploymentEnvironmentInformation
 {
     param ( [PSObject] $deployment )
 
-	if( $ENV:COMPUTERNMAE -imatch ($farm_name + "\d\dp")  ) { $environment = "PROD" } else { $environment = "UAT" }
+	if( $ENV:COMPUTERNMAE -imatch ($farm_name + "\d\dp")  ) { $environment = "Prod" } else { $environment = "UAT" }
 
-    $environment_proptery = "{0}_x0020_Deployment" -f $environment
-    $deployer_proptery  =  "{0}_x0020_Deployer" -f $environment
+    $environment_property = "{0}_x0020_Deployment" -f $environment
+    $deployer_property  =  "{0}_x0020_Deployer" -f $environment
 
-	$deployment | Add-Member -MemberType NoteProperty -Name $environment_proptery -Value $(Get-Date).ToString("yyyy-MM-ddThh:mm:ssZ")
-	$deployment | Add-Member -MemberType NoteProperty -Name $deployer_proptery -Value (Get-SPUserViaWS -url $list_url -name ($ENV:USERDOMAIN + "\" + $ENV:USERNAME))
+	$deployment | Add-Member -MemberType NoteProperty -Name $environment_property -Value $(Get-Date).ToString("yyyy-MM-ddThh:mm:ssZ")
+	$deployment | Add-Member -MemberType NoteProperty -Name $deployer_property -Value (Get-SPUserViaWS -url $list_url -name ($ENV:USERDOMAIN + "\" + $ENV:USERNAME))
 }
 
 function Record-Deployment 
