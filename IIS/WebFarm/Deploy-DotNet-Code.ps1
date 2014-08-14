@@ -143,7 +143,7 @@ function Set-DeploymentEnvironmentInformation
 {
     param ( [PSObject] $deployment )
 
-	if( $ENV:COMPUTERNMAE -imatch ($farm_name + "\d\dp")  ) { $environment = "Prod" } else { $environment = "UAT" }
+	if( $ENV:COMPUTERNAME -imatch ($farm_name + "\d\dp")  ) { $environment = "Prod" } else { $environment = "UAT" }
 
     $environment_property = "{0}_x0020_Deployment" -f $environment
     $deployer_property  =  "{0}_x0020_Deployer" -f $environment
