@@ -17,6 +17,7 @@ $nr_output = New-Object PSObject -Property @{
 $nr_error_data = New-Object PSObject -Property @{   
     NoAppName="No New Relic Application was found of Name : {0}."
     NoAppId="No New Relic Application was found of ID : {0}."
+    NoServerId="No New Relic Server was found of ID : {0}."
     NoAppSetting="Could not find {0} in {1} web.config's AppSettings."
 }
 
@@ -46,46 +47,57 @@ function Get-NewRelicApplications
     return $nr_apps
 }
 
-function Get-NewRelicApplicationDetails
+function Get-NewRelicApplication
 {
     param(
         [Parameter(ParameterSetName="Name",Mandatory=$true)]
         [string] $name,
 
         [Parameter(ParameterSetName="ID",Mandatory=$true)]
-        [int] $id
+        [int] $id,
+
+        [Parameter(ParameterSetName="Object",Mandatory=$true, ValueFromPipeline=$true)]
+        [System.Management.Automation.PSObject] $app
     )
 
+    begin { 
+        $nr_app_details = @()
+    }
 
-    if($PsCmdlet.ParameterSetName -eq "Name") {
-        $id = Get-NewRelicApplications | Where { $_.Name -eq $Name } | Select -ExpandProperty Id
+    process {
+        if($PsCmdlet.ParameterSetName -eq "Name") {
+            $id = Get-NewRelicApplications | Where { $_.Name -eq $Name } | Select -ExpandProperty Id
 
-        if(!$id) {
-            throw ($nr_error_data.NoAppName -f $name)
+            if(!$id) {
+                throw ($nr_error_data.NoAppName -f $name)
+            }
+        }elseif($PsCmdlet.ParameterSetName -eq "Object" ) {
+            $id = $app.Id
         }
+
+        $wc = Get-NewRelicWebClient
+        $response = [xml] $wc.DownloadString($nr_urls.Application -f $id)
+
+        if(!$response) {
+            throw ($nr_error_data.NoAppId -f $id)
+        }
+
+        $nr_app_details += (New-Object PSObject -Property @{
+                Name = $response.application_response.application.Name
+                ID = $response.application_response.application.id
+                Status = $response.application_response.application.Health_Status
+                Reporting = $response.application_response.application.Reporting
+                LastReported = $response.application_response.application.last_reported_at
+                ResponseTime = $response.application_response.application.application_summary.response_time
+                ApdexScore = $response.application_response.application.application_summary.apdex_score
+                ApdexTarget = $response.application_response.application.application_summary.apdex_target
+                ErrorRate = $response.application_response.application.application_summary.error_rate
+                ServerIds = @($response.application_response.application.links.servers.server)
+        })
     }
-
-    $wc = Get-NewRelicWebClient
-    $response = [xml] $wc.DownloadString($nr_urls.Application -f $id) | Out-Null
-
-    if(!$response) {
-        throw ($nr_error_data.NoAppId -f $id)
+    end {
+        return $nr_app_details
     }
-
-    $nr_app = New-Object PSObject -Property @{
-            Name = $response.application_response.application.Name
-            ID = $response.application_response.application.id
-            Status = $response.application_response.application.Health_Status
-            Reporting = $response.application_response.application.Reporting
-            LastReported = $response.application_response.application.last_reported_at
-            ResponseTime = $response.application_response.application.application_summary.response_time
-            ApdexScore = $response.application_response.application.application_summary.apdex_score
-            ApdexTarget = $response.application_response.application.application_summary.apdex_target
-            ErrorRate = $response.application_response.application.application_summary.error_rate
-            ServerIds = @($response.application_response.application.links.servers.server)
-    }
-
-    return $nr_app
 }
 
 function Get-NewRelicServers 
@@ -100,9 +112,6 @@ function Get-NewRelicServers
             ID = $server.id
             Reporting = $server.Reporting
             LastReported = $server.last_reported_at
-            CPU = $server.summary.CPU
-            IO = $server.summary.disk_io
-            MemoryUsedByPercent = $server.summary.memory
         })
     }
     
@@ -110,7 +119,58 @@ function Get-NewRelicServers
 
 }
 
-function Get-NewRelicServerDetails {}
+function Get-NewRelicServer
+{
+    param(
+        [Parameter(ParameterSetName="Name",Mandatory=$true)]
+        [string] $name,
+
+        [Parameter(ParameterSetName="ID",Mandatory=$true)]
+        [int[]] $ids,
+
+        [Parameter(ParameterSetName="Object",Mandatory=$true, ValueFromPipeline=$true)]
+        [System.Management.Automation.PSObject] $app
+    )
+
+    begin { 
+        $nr_server_details = @()
+    }
+
+    process {
+        if($PsCmdlet.ParameterSetName -eq "Name") {
+            $ids = @(Get-NewRelicServers | Where { $_.Name -eq $Name } | Select -ExpandProperty Id)
+
+            if(!$ids) {
+                throw ($nr_error_data.NoAppName -f $name)
+            }
+        }elseif($PsCmdlet.ParameterSetName -eq "Object" ) {
+            $ids = @(Get-NewRelicApplication -id $app.Id | Select -Expand ServerIds)
+        }
+
+        $wc = Get-NewRelicWebClient
+
+        foreach( $id in $ids) {
+            $response = [xml] $wc.DownloadString($nr_urls.Server -f $id)
+
+            if(!$response) {
+                throw ($nr_error_data.NoServerId -f $id)
+            }
+
+            $nr_server_details += (New-Object PSObject -Property @{
+                    Name = $response.server_response.server.Name
+                    ID = $response.server_response.server.id
+                    Reporting = $response.server_response.server.Reporting
+                    LastReported = $response.server_response.server.last_reported_at
+                    CPU = $response.server_response.server.summary.CPU
+                    IO = $response.server_response.server.summary.disk_io
+                    MemoryUsedByPercent = $response.server_response.server.summary.memory
+            })
+        }
+    }
+    end {
+        return $nr_server_details
+    }
+}
 
 function Get-NewRelicAppName
 {
@@ -162,4 +222,4 @@ function Set-NewRelicDeploymentMarker
 }
 
 
-Export-ModuleMember -Function Set-NewRelicDeploymentMarker, Get-NewRelicApplications, Get-NewRelicApplicationDetails, Get-NewRelicAppName, Get-NewRelicServers, Get-NewRelicServerDetails
+Export-ModuleMember -Function Set-NewRelicDeploymentMarker, Get-NewRelicApplications, Get-NewRelicApplication, Get-NewRelicAppName, Get-NewRelicServers, Get-NewRelicServer
