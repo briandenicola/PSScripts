@@ -184,7 +184,6 @@ function Execute-ManualScriptBlock
     }
 }
 
-#Deploy Functions
 function Validate-Environment
 {
     param( 
@@ -196,4 +195,20 @@ function Validate-Environment
     Set-Location ( Join-Path $ENV:SCRIPTS_HOME "Validate-URLs" )
 	&$validate_environment -cfg $config.Rules -SaveReply
     Set-Location ( Join-Path $ENV:SCRIPTS_HOME "DeploySolutions" )
+}
+
+function Pause-Deploy
+{
+    param( 
+        [Xml.XmlElement] $config
+    )
+
+    Log-Step -step ("Pausing the deploy for {0} seconds" -f $config.Seconds)
+    if( [Convert]::ToInt32($config.Seconds) -eq -1 ) { 
+        Write-Host "Press any key to continue. CTRL-C to exit ..."
+	    $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    }
+    else {
+        Start-Sleep -Seconds $config.Seconds
+    }
 }
