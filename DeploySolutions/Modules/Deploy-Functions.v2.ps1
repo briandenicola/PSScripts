@@ -1,5 +1,6 @@
 ﻿#Variables
 Set-Variable -Name deploy_solutions -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Deploy-Sharepoint-Solutions.ps1") -Option Constant
+Set-Variable -Name validate_environment -Value (Join-Path $ENV:SCRIPTS_HOME "Validate-URLs\Validate-URLs.ps1") -Option Constant
 Set-Variable -Name deploy_configs -Value (Join-Path $ENV:SCRIPTS_HOME "DeployConfig\DeployConfigs.ps1") -Option Constant
 
 Set-Variable -Name sptimer_script_block -Value { Restart-Service -Name sptimerv4 -Verbose }
@@ -51,11 +52,11 @@ function Deploy-Config
     )
 
     Log-Step -step ("$deploy_configs -operation deploy -url {0}"  -f $config.Url)
-    Log-Step -step ("$deploy_configs -operation validate -url {0}"  -f $config.Url)
+    #Log-Step -step ("$deploy_configs -operation validate -url {0}"  -f $config.Url)
     
 	cd (Join-Path $ENV:SCRIPTS_HOME "DeployConfig" )
 	&$deploy_configs -operation deploy -url $config.Url
-	&$deploy_configs -operation validate -url $config.Url 
+	#&$deploy_configs -operation validate -url $config.Url 
     cd ( Join-Path $ENV:SCRIPTS_HOME "DeploySolutions" )
 }
 
@@ -75,7 +76,7 @@ function Enable-Features
 	Log-Step -step ("$enable_features -webApp {0}" -f $config.Url)
 
 	cd (Join-Path $ENV:SCRIPTS_HOME  "DeploySolutions" )
-	&$enable_features -webApp $config.Url			
+	powershell.exe -NoProfile -Command $enable_features -webApp $config.Url	
     cd ( Join-Path $ENV:SCRIPTS_HOME "DeploySolutions" )
 }
 
@@ -181,4 +182,18 @@ function Execute-ManualScriptBlock
         Log-Step -step ("Manual Powershell Scriptblock - {0}" -f $script_block_text) 
         &$script_block
     }
+}
+
+#Deploy Functions
+function Validate-Environment
+{
+    param( 
+        [Xml.XmlElement] $config
+    )
+
+    Log-Step -step ("$validate_environment -cfg {0} -SaveReply" -f $config.Rules)
+    
+    Set-Location ( Join-Path $ENV:SCRIPTS_HOME "Validate-URLs" )
+	&$validate_environment -cfg $config.Rules -SaveReply
+    Set-Location ( Join-Path $ENV:SCRIPTS_HOME "DeploySolutions" )
 }

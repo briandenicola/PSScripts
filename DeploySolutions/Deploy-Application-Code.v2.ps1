@@ -21,12 +21,6 @@ Set-Variable -Name team_site -Value "http://example.com/sites/AppOps/" -Option C
 Set-Variable -Name team_list -Value "Deployment Tracker" -Option Constant
 Set-Variable -Name team_view -Value '{}' -Option Constant
 
-#Remove after more live testing of deployments
-Write-Warning "*********************************************************"
-Write-Warning "THIS IS BETA CODE AT BEST. USE AT YOUR OWN RISK . . . ."
-Write-Warning "*********************************************************"
-#Remove after more live testing of deployments
-
 try
 {
     $cfg = [xml] ( Get-Content $config )
@@ -46,9 +40,10 @@ try
 
     Log-Step -step "</ol><hr/>" -nobullet
     Record-Deployment -code_number $cfg.Deployment.Parameters.Build -code_version $cfg.Deployment.Parameters.Version -environment $cfg.Deployment.Parameters
-    Stop-Transcript
 }
 catch {
     Write-Error ("An exception occurred - {0}" -f $_.Exception.ToString() )
-
+}
+finally {
+    Stop-Transcript
 }
