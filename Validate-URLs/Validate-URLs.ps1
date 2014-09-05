@@ -30,84 +30,90 @@ function PS2-ConvertFrom-Json
     )
 
     begin {
-        $script:startStringState = $false
-        $script:valueState = $false
-        $script:arrayState = $false	
-        $script:saveArrayState = $false
+        $state = New-Object PSObject -Property @{
+            ValueState = $false
+            ArrayState = $false
+            StringStart = $false
+            SaveArray = $false
+        }
 
-        function scan-characters ($c) 
+        $json_state = New-Object PSObject -Property @{
+            Space = " "
+            Comma = ","
+            Quote = '"'
+            NewObject = "(New-Object PSObject "
+            OpenParenthesis = "@("
+            CloseParenthesis = ")"
+            NewProperty = '| Add-Member -Passthru NoteProperty "'
+        }
+
+        function Convert-Character
         {
-            switch -regex ($c)
-            {
-                "{" { 
-                    $script:saveArrayState = $script:arrayState
-                    $script:valueState = $script:startStringState = $script:arrayState=$false				
-                    return "(New-Object PSObject "
+            param( [string] $c )
+
+            switch -regex ($c) {
+                '{' { 
+                    $state.SaveArray = $state.ArrayState
+                    $state.ValueState = $state.StringStart = $state.ArrayState = $false				
+                    return  $json_state.NewObject
                 }
 
-                "}" { 
-                    $script:arrayState=$script:saveArrayState 
-                    return ")" 
+                '}' { 
+                    $state.ArrayState  = $state.SaveArray 
+                    return $json_state.CloseParenthesis
                 }
 
                 '"' {
-                    if( $script:startStringState -eq $false -and $script:valueState -eq $false -and $script:arrayState -eq $false ) {
-                        $str = '| Add-Member -Passthru NoteProperty "'
+                    if( !$state.StringStart -and !$state.ValueState -and !$state.ArrayState ) {
+                        $str = $json_state.NewProperty
                     }
                     else { 
-                        $str = '"' 
+                        $str = $json_state.Quote
                     }
-                    $script:startStringState = $true
+                    $state.StringStart = $true
                     return $str
                     
                 }
 
-                "[a-z0-9A-Z/@.?()%=&\- ]" { return $c }
-
-                ":" { 
-                    if($script:valueState) { return $c } 
-                    else { $script:valueState = $true; return " " }
+                ':' { 
+                    if($state.ValueState) { return $c } 
+                    else { $state.ValueState = $true; return $json_state.Space }
                 }
 
-                "," {
-                    if($script:arrayState) { return "," }
-                    else { $script:valueState = $false; $script:startStringState = $false }
+                ',' {
+                    if($state.ArrayState) { return $json_state.Comma }
+                    else { $state.ValueState = $state.StringStart = $false }
                 }
                 	
-                "\[" { 
-                    $script:arrayState = $true 
-                    return "@("
+                '\[' { 
+                    $state.ArrayState = $true
+                    return $json_state.OpenParenthesis
                 }
                 
-                "\]" { 
-                    $script:arrayState = $false 
-                    return ")"
+                '\]' { 
+                    $state.ArrayState = $false 
+                    return $json_state.CloseParenthesis
                 }
                 
+                "[a-z0-9A-Z/@.?()%=&\- ]" { return $c }
                 "[\t\r\n]" {}
             }
         }
     	
-        function parse($target)
-        {
-            $result = [string]::Empty
-            foreach($c in $target.ToCharArray()) {	
-                $result += scan-characters $c
-            }
-            return $result 	
-        }
     }
 
     process { 
-        $result = parse -target $json
+        $result = New-Object -TypeName "System.Text.StringBuilder"
+        foreach($c in $json.ToCharArray()) { 
+            [void] $result.Append((Convert-Character $c))
+        }
     }
 
     end {
         return (Invoke-Expression $result)
     }
 }
-
-function Get-GTWebserviceRequest 
+function Get-WebserviceRequest 
 {
     param(
         [string] $url,
@@ -162,7 +168,7 @@ else {
 
 foreach( $url in $url_to_validate ) {
     foreach( $server in ($url.servers | Select -Expand server) ) {
-        $results = Get-GTWebserviceRequest -url $url.url -Server $server 
+        $results = Get-WebserviceRequest -url $url.url -Server $server 
 
         if( $saveReply ) {
             $url -imatch "http://([a-zA-Z0-9\-\.]+)" | Out-Null
