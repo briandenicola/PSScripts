@@ -4,6 +4,8 @@ param (
     [switch] $SaveReply
 )
 
+. (Join-path $env:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
+
 function Log-Results
 {
     param(
@@ -60,7 +62,7 @@ function PS2-ConvertFrom-Json
                     
                 }
 
-                "[a-z0-9A-Z/@.?& ]" { return $c }
+                "[a-z0-9A-Z/@.?()%=&\- ]" { return $c }
 
                 ":" { 
                     if($script:valueState) { return $c } 
@@ -138,7 +140,7 @@ function Get-GTWebserviceRequest
 		Write-Verbose ("[{0}][REPLY] Status Code = {1} {2} . . ." -f $(Get-Date), $response.StatusCode, $response.StatusDescription)
 		Write-Verbose ("[{0}][REPLY] Content Type = {1} . . ." -f $(Get-Date), $response.ContentType)
 		Write-Verbose ("[{0}][REPLY] Content Length = {1} . . ." -f $(Get-Date), $response.ContentLength)
-        Write-Verbose ("[{0}][REPLY] Network Connections = {1} . . ." -f $(Get-Date),  ([string]::join( ";", (nslookup $server | Foreach {netstat -an | findstr /i $_}))))
+        Write-Verbose ("[{0}][REPLY] Network Connections = {1} . . ." -f $(Get-Date),  ([string]::join( ";", (nslookup $server | Foreach {netstat -an | select-string $_}))))
 		Write-Verbose ("[{0}][REPLY] Total Time = {1} . . ." -f $(Get-Date), $timing_request.TotalSeconds)
 	}
 	catch [System.Net.WebException] {
@@ -159,7 +161,7 @@ else {
 }
 
 foreach( $url in $url_to_validate ) {
-    foreach( $server in $url.servers.server ) {
+    foreach( $server in ($url.servers | Select -Expand server) ) {
         $results = Get-GTWebserviceRequest -url $url.url -Server $server 
 
         if( $saveReply ) {
@@ -170,7 +172,7 @@ foreach( $url in $url_to_validate ) {
 
         foreach( $rule in $url.rules ) {
             if( $rule.validation -eq "present" -and $results -notmatch  $rule.rule ) { 
-                Log-Results -txt ("Present Rule Validation Failure on server - {0} - rule : {1} " -f $server, $rule.rule ) -error
+                Log-Results -txt ("Present Rule Validation Failure on server - {0} - rule : {1} " -f $server, $rule.rule) -error
 
                 if( $rule.level -eq "error" ) {
                     Log-Results -txt ("Skipping remainding rules for {0}" -f $server) -error
