@@ -18,6 +18,93 @@ function Log-Results
     $log_text | Add-Content -Encoding Ascii $output
 }
 
+#http://powershelljson.codeplex.com/SourceControl/latest?ProjectName=powershelljson
+#Added processing for / and : in the text of the json
+function PS2-ConvertFrom-Json
+{
+    param(
+        [Parameter(ValueFromPipeline=$true,Position=0)]
+        [string] $json
+    )
+
+    begin {
+        $script:startStringState = $false
+        $script:valueState = $false
+        $script:arrayState = $false	
+        $script:saveArrayState = $false
+
+        function scan-characters ($c) 
+        {
+            switch -regex ($c)
+            {
+                "{" { 
+                    $script:saveArrayState = $script:arrayState
+                    $script:valueState = $script:startStringState = $script:arrayState=$false				
+                    return "(New-Object PSObject "
+                }
+
+                "}" { 
+                    $script:arrayState=$script:saveArrayState 
+                    return ")" 
+                }
+
+                '"' {
+                    if( $script:startStringState -eq $false -and $script:valueState -eq $false -and $script:arrayState -eq $false ) {
+                        $str = '| Add-Member -Passthru NoteProperty "'
+                    }
+                    else { 
+                        $str = '"' 
+                    }
+                    $script:startStringState = $true
+                    return $str
+                    
+                }
+
+                "[a-z0-9A-Z/@.?& ]" { return $c }
+
+                ":" { 
+                    if($script:valueState) { return $c } 
+                    else { $script:valueState = $true; return " " }
+                }
+
+                "," {
+                    if($script:arrayState) { return "," }
+                    else { $script:valueState = $false; $script:startStringState = $false }
+                }
+                	
+                "\[" { 
+                    $script:arrayState = $true 
+                    return "@("
+                }
+                
+                "\]" { 
+                    $script:arrayState = $false 
+                    return ")"
+                }
+                
+                "[\t\r\n]" {}
+            }
+        }
+    	
+        function parse($target)
+        {
+            $result = [string]::Empty
+            foreach($c in $target.ToCharArray()) {	
+                $result += scan-characters $c
+            }
+            return $result 	
+        }
+    }
+
+    process { 
+        $result = parse -target $json
+    }
+
+    end {
+        return (Invoke-Expression $result)
+    }
+}
+
 function Get-GTWebserviceRequest 
 {
     param(
@@ -62,8 +149,14 @@ function Get-GTWebserviceRequest
 	
 }
 
-$output = (Join-Path $PWD.Path (Join-Path "results" ("wgc-validation-run-{0}.log" -f $(Get-Date).ToString("yyyMMddhhmmss"))) )
-$url_to_validate = Get-Content -Raw $cfg | ConvertFrom-Json
+$output = (Join-Path $PWD.Path (Join-Path "results" ("validation-run-{0}.log" -f $(Get-Date).ToString("yyyMMddhhmmss"))) )
+
+if( [convert]::toInt32($HOST.Version.Major) -le 2 ) {
+    $url_to_validate = Get-Content $cfg | Out-String | PS2-ConvertFrom-Json
+}
+else {
+    $url_to_validate = Get-Content -Raw $cfg | ConvertFrom-Json
+}
 
 foreach( $url in $url_to_validate ) {
     foreach( $server in $url.servers.server ) {
