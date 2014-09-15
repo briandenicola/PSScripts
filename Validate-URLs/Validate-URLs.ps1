@@ -122,7 +122,10 @@ function Get-WebserviceRequest
 
     Set-Variable -Name AuthType -Value "NTLM"
     Set-Variable -Name timeout -Value 10
+    Set-Variable -Name localhost -Value "localhost"
  
+    if( $url -imatch $localhost ) { $url = $url.Replace($localhost, $Server) }
+
 	$request = [System.Net.HttpWebRequest]::Create($url)
     $request.Headers.Add("X-FORMS_BASED_AUTH_ACCEPTED", "f");
     $request.Method = "GET"
@@ -131,8 +134,11 @@ function Get-WebserviceRequest
     $request.ContentType = "application/x-www-form-urlencoded"
     $request.UserAgent = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0; .NET CLR 1.1.4322)"
 	$request.Credentials =  [System.Net.CredentialCache]::DefaultCredentials
-	$request.Proxy = new-object -typename System.Net.WebProxy -argumentlist $Server
-    
+
+    if( $url -inotmatch $Server ) { 
+	    $request.Proxy = new-object -typename System.Net.WebProxy -argumentlist $Server
+    }
+
     Write-Verbose ("[{0}][REQUEST] Getting $url ..." -f $(Get-Date))
 	try {
 		$timing_request = Measure-Command { $response = $request.GetResponse() }
