@@ -12,6 +12,8 @@ param (
 	[Parameter(ParameterSetName="WebSite")][switch] $include_webconfig,
     [Parameter(ParameterSetName="WebSite")][switch] $full,
     [Parameter(ParameterSetName="WebSite")][string] $virtual_directory, 
+    [Parameter(ParameterSetName="WebSite")][switch] $mark_deployment, 
+    [Parameter(ParameterSetName="WebSite")][switch] $disable_pingdom, 
     
     [Parameter(ParameterSetName="Service",Mandatory=$true)][string] $service_name,
     [Parameter(ParameterSetName="Service",Mandatory=$true)][string] $install_location
@@ -139,6 +141,13 @@ function Validate-Deploy
     &${Compare-Script} -computers $farm_servers -path (Get-IISPath -site $dst_site)
 }
 
+function Disable-PingdomMonitoring
+{
+    Import-Module (Join-Path $ENV:SCRIPTS_HOME "Libraries\Pingdom.psm1")
+    $id = Get-PingdomChecks | Where { $_.Name -eq $dst_site } | Select -ExpandProperty id
+    Disable-PingdomMonitoring -id $id
+}
+
 function Set-DeploymentEnvironmentInformation
 {
     param ( [PSObject] $deployment )
@@ -219,11 +228,13 @@ function main()
         "WebSite" {
             Log-Entry -txt ("Starting a Deployment for {0}" -f $dst_site)
 	        try {   
+                if($disable_pingdom) { Disable-PingdomMonitoring } 
                 $servers = Get-IISWebFarmServers 
 		        Backup-Site
 		        Deploy-Site -src $src
 		        Sync-Farm -farm_servers $servers
                 if($validate) { Validate-Deploy -farm_servers $servers }
+                if($mark_deployment) { Import-Module (Join-Path $ENV:SCRIPTS_HOME "Libraries\Newrelic.psm1"); Set-NewRelicDeploymentMarker -iis_site_name $dst_site }
 		        Record-Deployment -name $dst_site
 	        } catch [System.SystemException] {
 		         Write-Error ("Web Deploy failed with the following exception - {0}" -f $_.Exception.ToString() )
