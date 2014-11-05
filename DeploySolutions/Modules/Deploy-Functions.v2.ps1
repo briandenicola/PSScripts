@@ -162,7 +162,7 @@ function Deploy-SSRSReport
 
     . (Join-Path $ENV:SCRIPTS_HOME "SSRS\Install-SSRS.ps1")
     
-    $SSRS_WebService = Get-SSRSWebServiceUrl
+    $SSRS_WebService = $config.WebService
     foreach( $report in ( Get-ChildItem $config.Source | Where { $_.Extension -eq ".rdl" } ) ) {
         Log-Step -step ("Install-SSRSRDL {0} {1} -reportFolder {2} -force" -f $SSRS_WebService, $report.FullName, $config.ReportFolder )
         Install-SSRSRDL $SSRS_WebService $report.FullName -reportFolder $config.ReportFolder -force
