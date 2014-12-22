@@ -2,6 +2,7 @@
 Set-Variable -Name deploy_solutions -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Deploy-Sharepoint-Solutions.ps1") -Option Constant
 Set-Variable -Name validate_environment -Value (Join-Path $ENV:SCRIPTS_HOME "Validate-URLs\Validate-URLs.ps1") -Option Constant
 Set-Variable -Name deploy_configs -Value (Join-Path $ENV:SCRIPTS_HOME "DeployConfig\DeployConfigs.ps1") -Option Constant
+Set-Variable -Name update_configs -Value (Join-Path $ENV:SCRIPTS_HOME "Update-Configs\Update-WebConfig.ps1") -Option Constant
 
 Set-Variable -Name sptimer_script_block -Value { Restart-Service -Name sptimerv4 -Verbose }
 Set-Variable -Name iisreset_script_block -Value { iisreset }
@@ -52,11 +53,22 @@ function Deploy-Config
     )
 
     Log-Step -step ("$deploy_configs -operation deploy -url {0}"  -f $config.Url)
-    #Log-Step -step ("$deploy_configs -operation validate -url {0}"  -f $config.Url)
     
-	cd (Join-Path $ENV:SCRIPTS_HOME "DeployConfig" )
-	&$deploy_configs -operation deploy -url $config.Url
-	#&$deploy_configs -operation validate -url $config.Url 
+	cd ( Join-Path $ENV:SCRIPTS_HOME "DeployConfig" )
+	&$deploy_configs -operation deploy -url $config.Url 
+    cd ( Join-Path $ENV:SCRIPTS_HOME "DeploySolutions" )
+}
+
+function Update-Configs
+{
+    param( 
+        [Xml.XmlElement] $config
+    )
+
+    Log-Step -step ("$update_configs -config_filepath {0} -config_updates {1}"  -f $config.ConfigPath, $config.ConfigUpdates)
+    
+	cd ( Join-Path $ENV:SCRIPTS_HOME "Update-Configs" )
+	&$update_configs  -config_filepath $config.ConfigPath -config_updates $config.ConfigUpdates
     cd ( Join-Path $ENV:SCRIPTS_HOME "DeploySolutions" )
 }
 

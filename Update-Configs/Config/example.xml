@@ -1,0 +1,18 @@
+﻿<ConfigUpdates>   
+    <Operation ops="Add" xpath_node='/configuration/appSettings/add' xpath_parent='/configuration/appSettings'>
+		<NewText>
+			<![CDATA[<configuration>
+	        <appSettings>
+	            <add key="SearchCenterURL" value="http://search-uat.example.com" />
+	        </appSettings>
+	        </configuration>]]>
+		</NewText>
+    </Operation>
+    <Operation ops="Update">
+        <OldText><![CDATA[<add key="SearchCenterURL" value="http://search.example.com" />]]></OldText>
+        <NewText><![CDATA[<add key="SearchCenterURL" value="http://search-uat.example.com" />]]></NewText>
+    </Operation>
+    <Operation ops="Delete">
+        <Text><![CDATA[    <add key="SearchCenterURL" value="http://search-uat.example.com" />]]></Text>
+    </Operation>
+</ConfigUpdates>
