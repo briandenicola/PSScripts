@@ -16,19 +16,18 @@ param(
     [int] $quota = 1000
 )
 
-Set-Variable -Name team_site -Value "" -Option Constant
-Set-Variable -Name admin_site -Value "" -Option Constant
-Set-Variable -Name office365_list -Value "Office365 Sites" -Option Constant
-Set-Variable -Name office365_url -Value "" -Option Constant
-
 Import-Module (Join-Path $PWD.Path "Office365_Credentials.psm1")
 Import-Module MSOnline -DisableNameChecking
 Import-Module Microsoft.Online.SharePoint.PowerShell -DisableNameChecking
 
+Set-Variable -Name team_site -Value "" -Option Constant
+Set-Variable -Name admin_site -Value "" -Option Constant
+Set-Variable -Name office365_list -Value "Office365 Sites" -Option Constant
+
 Connect-SPOService -url $admin_site -Credential (Get-Office365Creds -account $admin_account)
 
 foreach( $site in $sites ) {
-    $url = $office365_url + $site
+    $url = $o365_office365_url + $site
     New-SPOSite -Url $url -Owner $owner -StorageQuota $quota -Template $template
 
     if( $? -eq $true ) {
