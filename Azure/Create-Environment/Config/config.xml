@@ -1,0 +1,46 @@
+<Azure>
+	<Location />
+	<Subscription />
+	<Service />
+	<BlobStorage />
+	<AffinityGroup />
+	<VNet Name="">
+		<AddressPrefix />
+		<DNSServer />
+		<Subnets>
+			<Subnet Name="" Address="" />
+			<Subnet Name="" Address="" />
+		</Subnets>
+	</VNet>
+	<Domain Name="" TopLevelDomain="" DomainAdminUser="" DomainAdminPassword="" >
+		<VM ComputerName="" Size="" DataDriveSize="" DataDriveLetter="" OS="" />
+	</Domain>
+	<DesireStateConfiguration>
+		<VM ComputerName="" Size="" DataDriveSize="" DataDriveLetter="" OS="" />
+		<DNS />
+		<IISPath />
+	</DesireStateConfiguration>
+	<ScriptExtensions>
+		<Script LocalPath="" RemotePath="" />
+		<Script LocalPath="" RemotePath="" />
+	</ScriptExtensions>
+	<MemberServers>
+		<Server ComputerName="">
+			<OS />
+			<LocalAdminPassword />
+			<Size /> 
+			<SubnetName />
+			<Drives>
+				<Drive Leter="" Size="" Name="" />
+				<Drive Leter="" Size="" Name="" />
+			</Drives>
+			<EndPoints>
+				<EndPoint Name="" Port="" />
+			</EndPoints>
+			<ScriptExtension />
+		</Server>
+	</MemberServers>
+</Azure>
+
+		
+		
