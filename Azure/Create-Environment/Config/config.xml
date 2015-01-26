@@ -1,7 +1,7 @@
 <Azure>
 	<Location />
 	<Subscription />
-	<Service />
+	<CloudService />
 	<BlobStorage />
 	<AffinityGroup />
 	<VNet Name="">
@@ -25,7 +25,8 @@
 		<Script LocalPath="" RemotePath="" />
 	</ScriptExtensions>
 	<MemberServers>
-		<Server ComputerName="">
+		<Server>	
+			<ComputerName />
 			<OS />
 			<LocalAdminPassword />
 			<Size /> 
@@ -35,7 +36,7 @@
 				<Drive Leter="" Size="" Name="" />
 			</Drives>
 			<EndPoints>
-				<EndPoint Name="" Port="" />
+				<EndPoint Name="" LocalPort="" RemotePort="" />
 			</EndPoints>
 			<ScriptExtension />
 		</Server>

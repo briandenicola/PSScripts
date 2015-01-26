@@ -1,0 +1,29 @@
+$vm1 | Add-AzureDataDisk -CreateNew -DiskSizeInGB 100 -DiskLabel "disk 1" -LUN 0 
+$vm1 | Add-AzureDataDisk -CreateNew -DiskSizeInGB 100 -DiskLabel "disk 2" -LUN 1
+
+$vm1 | Add-AzureEndpoint -Name 'web' -LocalPort 80 -PublicPort 80 -Protocol tcp
+$vm1 | Add-AzureEndpoint -Name 'web' -LocalPort 80 -PublicPort 80 -Protocol tcp `
+                         -LBSetName 'lbweb' -DefaultProbe
+
+$svcName = "myvmsvc123a1"
+$vmName = "myvm1"
+$img = "a699494373c04fc0bc8f2bb1389d6106__Windows-Server-2012-Datacenter-201305.01-en.us-127GB.vhd"
+ 
+# Configure VM1
+$vm1 = New-AzureVMConfig -Name $vmName -InstanceSize Small -ImageName $img
+ 
+$vm1 | Add-AzureProvisioningConfig -Windows -AdminUsername 'iisadmin' `
+                         -Password 'some@pass1' 
+ 
+$vm1 | Set-AzureOSDisk -HostCaching ReadOnly
+ 
+$vm1 | Add-AzureDataDisk -CreateNew -DiskSizeInGB 50 -DiskLabel "data1"  -LUN 0 
+$vm1 | Add-AzureEndpoint -Name 'web' -Protocol tcp -LocalPort 80 -PublicPort 80
+ 
+# Create both VMs
+New-AzureVM -ServiceName $svcName -Location 'West US' -VMs $vm1
+
+Add-DnsServerResourceRecord -ZoneName "Contoso.com" -A -Name "Host34" -AllowUpdateAny -IPv4Address "10.17.1.34" -TimeToLive 01:00:00 -AgeRecord
+Add-DnsServerResourceRecord -CName -Name "labhost34" -HostNameAlias "Host34.lab.contoso.com" -ZoneName "Contoso.com" -AllowUpdateAny  -TimeToLive 01:00:00
+
+$xml.xml.ChildNodes | Foreach {$ht[$_.Name] = $_.'#text' }
