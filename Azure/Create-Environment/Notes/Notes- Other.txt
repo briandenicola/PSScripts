@@ -19,7 +19,10 @@ $vm1 | Set-AzureOSDisk -HostCaching ReadOnly
  
 $vm1 | Add-AzureDataDisk -CreateNew -DiskSizeInGB 50 -DiskLabel "data1"  -LUN 0 
 $vm1 | Add-AzureEndpoint -Name 'web' -Protocol tcp -LocalPort 80 -PublicPort 80
- 
+
+C:\PS> New-AzureVMConfig -Name "MyDomainVM" -InstanceSize Small -ImageName $img ` | Add-AzureProvisioningConfig -WindowsDomain –Password $Password -ResetPasswordOnFirstLogon -JoinDomain "contoso.com" -Domain "contoso" -DomainUserName "domainadminuser" -DomainPassword "domainPassword" -MachineObjectOU 'OU=AzureVMs,DC=contoso,DC=com' | New-AzureVM -ServiceName $svcName
+
+
 # Create both VMs
 New-AzureVM -ServiceName $svcName -Location 'West US' -VMs $vm1
 

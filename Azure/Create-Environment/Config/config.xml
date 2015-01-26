@@ -7,23 +7,16 @@
 	<VNet Name="">
 		<AddressPrefix />
 		<DNSServer />
-		<Subnets>
-			<Subnet Name="" Address="" />
-			<Subnet Name="" Address="" />
-		</Subnets>
+		<Subnet Name="" AddressPrefix="" />
 	</VNet>
 	<Domain Name="" TopLevelDomain="" DomainAdminUser="" DomainAdminPassword="" >
-		<VM ComputerName="" Size="" DataDriveSize="" DataDriveLetter="" OS="" />
+		<VM ComputerName="" Size="" DataDriveSize="" DataDriveLetter="" OS="" ScriptExtension="" IpAddress="" />
 	</Domain>
 	<DesireStateConfiguration>
-		<VM ComputerName="" Size="" DataDriveSize="" DataDriveLetter="" OS="" />
+		<VM ComputerName="" Size="" DataDriveSize="" DataDriveLetter="" OS="" ScriptExtension="" />
 		<DNS />
 		<IISPath />
 	</DesireStateConfiguration>
-	<ScriptExtensions>
-		<Script LocalPath="" RemotePath="" />
-		<Script LocalPath="" RemotePath="" />
-	</ScriptExtensions>
 	<MemberServers>
 		<Server>	
 			<ComputerName />

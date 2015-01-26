@@ -1,10 +1,11 @@
 ﻿Push-Location $PWD.Path
+#Get-ChildItem 'C:\Program Files (x86)\Microsoft SDKs\Windows Azure\PowerShell\Azure\*.psd1' | ForEach-Object {Import-Module $_}
 Import-Module Azure
 Import-Module MSOnline -DisableNameChecking
 Import-Module Microsoft.Online.SharePoint.PowerShell -DisableNameChecking
 Pop-Location
 
-Set-Variable -Name global:subscription -Value "" -Option AllScope, Constant #-ErrorAction SilentlyContinue
+Set-Variable -Name global:subscription -Value $ENV:AZURE_SUBSCRIPTION -Option AllScope, Constant #-ErrorAction SilentlyContinue
 Set-Variable -Name global:publishing_file -Value $ENV:AZURE_PUBLISH_FILE -Option AllScope, Constant #-ErrorAction SilentlyContinue
 
 Import-AzurePublishSettingsFile $global:publishing_file
