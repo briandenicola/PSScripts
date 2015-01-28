@@ -13,7 +13,7 @@ $vm1 | Add-AzureEndpoint -Name 'web' -LocalPort 80 -PublicPort 80 -Protocol tcp
 $vm1 | Add-AzureEndpoint -Name 'web' -LocalPort 80 -PublicPort 80 -Protocol tcp `
                          -LBSetName 'lbweb' -DefaultProbe
 
-Set-AzureVMCustomScriptExtension -FileUri http://psmag.blob.core.windows.net/scripts/user.ps1 -VM $vm -Verbose | Update-AzureVM -Verbose
+Set-AzureVMCustomScriptExtension -ContainerName scripts -StorageAccountName psmag -FileName user.ps1 -Run user.ps1 -VM $vm | Update-AzureVM -Verbose
 
 $svcName = "myvmsvc123a1"
 $vmName = "myvm1"

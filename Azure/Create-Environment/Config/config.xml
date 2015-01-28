@@ -14,10 +14,10 @@
         <Script FilePath="" />
     </ScriptExtension>
 	<Domain Name="" TopLevelDomain="" DomainAdminUser="" DomainAdminPassword="" >
-		<VM ComputerName="" Size="" DataDriveSize="" DataDriveLetter="" OS="" ScriptExtension="" IpAddress="" />
+		<VM ComputerName="" VMSize="" DriveSize="" DriveLabel="" OS="" ScriptExtension="" IpAddress="" />
 	</Domain>
 	<DesireStateConfiguration>
-		<VM ComputerName="" Size="" DataDriveSize="" DataDriveLetter="" OS="" ScriptExtension="" />
+		<VM ComputerName="" Size="" DriveSize="" DriveLabel="" OS="" ScriptExtension="" />
 		<DNS />
 		<IISPath />
 	</DesireStateConfiguration>
@@ -26,10 +26,10 @@
 			<ComputerName />
 			<OS />
 			<LocalAdminPassword />
-			<Size /> 
+			<VMSize /> 
 			<Drives>
-				<Drive Leter="" Size="" Name="" />
-				<Drive Leter="" Size="" Name="" />
+				<Drive DriveSize="" DriveLabel="" />
+				<Drive DriveSize="" DriveLabel="" />
 			</Drives>
 			<EndPoints>
 				<EndPoint Name="" LocalPort="" RemotePort="" />
