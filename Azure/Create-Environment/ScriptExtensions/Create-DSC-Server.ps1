@@ -14,6 +14,11 @@ Set-Variable -Name app_pool_path -value 'IIS:\AppPools' -Option Constant
 
 $settings = @(    @{ Key = "dbprovider"; Value = "System.Data.OleDb" },    @{ Key = "dbconnectionstr"; Value = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=C:\Program Files\WindowsPowerShell\DscService\Devices.mdb;" },    @{ Key = "ConfigurationPath"; Value = "C:\Program Files\WindowsPowerShell\DscService\Configuration" },    @{ Key = "ModulePath"; Value = "C:\Program Files\WindowsPowerShell\DscService\Modules" })
 
+Get-Disk | Where { $_.PartitionStyle -eq "RAW" } | Initialize-Disk -PartitionStyle MBR 
+Get-Disk | Where { $_.NumberOfPartitions -eq 0 } |   
+    New-Partition -AssignDriveLetter -UseMaximumSize |
+    Format-Volume -FileSystem NTFS -Force -Confirm:$false
+
 if( !(Test-Path $path) ){ 
     New-Item $path -ItemType Directory
     New-Item (Join-Path $path "bin") -ItemType Directory

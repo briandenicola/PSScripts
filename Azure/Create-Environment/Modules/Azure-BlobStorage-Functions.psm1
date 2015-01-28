@@ -31,6 +31,7 @@ function Publish-AzureExtensionScriptstoStorage
         [Parameter(Mandatory=$true)][string] $StorageName,
         [Parameter(Mandatory=$true)][string] $ContainerName,
         [Parameter(Mandatory=$true)][string[]] $FilePaths,
+        [Parameter(Mandatory=$false)][string] $Permissions = "blob",
         [Parameter(Mandatory=$false)][string] $Subscription = $global:subscription
     )
 
@@ -40,13 +41,13 @@ function Publish-AzureExtensionScriptstoStorage
     $key = Get-AzureStorageKey $StorageName | Select -ExpandProperty Primary 
     $storage_context = New-AzureStorageContext -StorageAccountName $StorageName -StorageAccountKey $key
 
-    Get-AzureStorageContainer -Name $ContainerName -Context $storage_context -ErrorAction SilentlyContinue | Out-Null
+    Get-AzureStorageContainer -Name $ContainerName -Context $storage_context - -ErrorAction SilentlyContinue| Out-Null
     if( $? ) {
         Write-Verbose -Message ("[{0}] - Container - {1} - in the {2} Blob Storage already exists. Skipping Creation." -f $(Get-Date), $ContainerName, $StorageName)
     }
     else {
         Write-Verbose -Message ("[{0}] - Creating Container - {1} - in the {2} Blob Storage" -f $(Get-Date), $ContainerName, $StorageName) 
-        New-AzureStorageContainer -Name $ContainerName -Context $storage_context
+        New-AzureStorageContainer -Name $ContainerName -Context $storage_context -Permission $Permissions
     }
 
     foreach( $file in $FilePaths ) {

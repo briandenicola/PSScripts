@@ -21,11 +21,11 @@ function Convert-XmlToHashTable
             $ht[$node] = $xml.$node
         }
         elseif (  $xml.$node -is [System.Xml.XmlElement] ) {
-            $ht[$node] = ConvertXmlTo-HashTable -xml $xml.$node
+            $ht[$node] =Convert-XmlToHashTable -xml $xml.$node
         }
         elseif (  $xml.$node -is [System.Object[]] ) {
             foreach( $sub_node in $xml.$node ) {
-                $ht[$node] += @(ConvertXmlTo-HashTable -xml $sub_node)
+                $ht[$node] += @(Convert-XmlToHashTable -xml $sub_node)
             }
         }
     }
@@ -258,4 +258,4 @@ function Get-LatestAzureVMImageName
                Select -First 1 -ExpandProperty ImageName )
 }
 
-Export-ModuleMember -Function Set-VNetFileValues, Get-LatestAzureVMImageName, Add-AzureDnsServerConfiguration
+Export-ModuleMember -Function Set-VNetFileValues, Get-LatestAzureVMImageName, Add-AzureDnsServerConfiguration,  Convert-XmlToHashTable
