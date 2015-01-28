@@ -1,7 +1,0 @@
-
-$vm = New-AzureVMConfig -Name $vm_name -InstanceSize $cfg.azure.vm_size -ImageName $cfg.azure.vm_image |
-    Add-AzureProvisioningConfig -Windows -Password $password -AdminUsername $cfg.azure.admin_user |
-    Set-AzureSubnet -SubnetNames $cfg.azure.subnet | 
-    Add-AzureDataDisk -ImportFrom -MediaLocation $storage_url -LUN 1 -DiskLabel "DATA"
-
-New-AzureVM -VMs $vm -ServiceName $cloud_service -AffinityGroup $cfg.azure.vm_affinity  -VNetName $cfg.azure.vm_affinity

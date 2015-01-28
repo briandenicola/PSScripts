@@ -35,3 +35,5 @@ Install-AdcsCertificationAuthority -CAType EnterpriseRootCA `
     -CADistinguishedNameSuffix ('dc={0},dc={1}' -f $domain.Split(".")[0], $domain.Split(".")[1]) `
     -DatabaseDirectory (Join-Path -Path $path -ChildPath "Certs\Database")`
     -LogDirectory (Join-Path -Path $path -ChildPath "Certs\Logs")
+
+Restart-Computer -Force 

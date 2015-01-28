@@ -1,4 +1,9 @@
-function ConvertXmlTo-HashTable
+#require -module Azure
+
+. (Join-Path -Path $env:SCRIPTS_HOME -ChildPath "Libraries\Standard_Functions.ps1")
+Load-AzureModules
+
+function Convert-XmlToHashTable
 {
     param(
         [System.Xml.XmlElement] $xml
@@ -28,7 +33,7 @@ function ConvertXmlTo-HashTable
     return $ht
 }
 
-https://gallery.technet.microsoft.com/Deploy-a-domain-controller-2ab7d658
+#https://gallery.technet.microsoft.com/Deploy-a-domain-controller-2ab7d658
 function Add-AzureVnetConfigurationFile
 {
     param (
@@ -46,7 +51,7 @@ function Add-AzureVnetConfigurationFile
     $configFileContent.Save($Path)
 }
 
-https://gallery.technet.microsoft.com/Deploy-a-domain-controller-2ab7d658
+#https://gallery.technet.microsoft.com/Deploy-a-domain-controller-2ab7d658
 function Set-VNetFileValues
 {
     [CmdletBinding()]
@@ -117,7 +122,7 @@ function Set-VNetFileValues
     $xml.Save($filePath)
 }
 
-https://gallery.technet.microsoft.com/Deploy-a-domain-controller-2ab7d658
+#https://gallery.technet.microsoft.com/Deploy-a-domain-controller-2ab7d658
 function Add-AzureDnsServerConfiguration
 {
    param (
@@ -235,6 +240,7 @@ function Add-AzureDnsServerConfiguration
     $dnsServerRefElement.name = $name
 
     $xml.Save($vnetFilePath)
+
     Set-AzureVNetConfig -ConfigurationPath $vnetFilePath
 }
  
@@ -251,3 +257,5 @@ function Get-LatestAzureVMImageName
                Sort -Descending -Property PublishedDate |
                Select -First 1 -ExpandProperty ImageName )
 }
+
+Export-ModuleMember -Function Set-VNetFileValues, Get-LatestAzureVMImageName, Add-AzureDnsServerConfiguration

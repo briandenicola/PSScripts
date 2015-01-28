@@ -1,13 +1,21 @@
 #require -module Azure
 
-Import-Module (Join-Path -Path $PWD.Path -ChildPath "Azure-Miscellaneous-Functions.psm1")
+Import-Module (Join-Path -Path $PWD.Path -ChildPath "Modules\Azure-Miscellaneous-Functions.psm1")
 
-function New-AzureAffinityGroup
+. (Join-Path -Path $env:SCRIPTS_HOME -ChildPath "Libraries\Standard_Functions.ps1")
+Load-AzureModules
+
+function New-AzureAffinityOrResourceGroup
 {
     param (
         [Parameter(Mandatory=$true)][string] $Name,
-        [Parameter(Mandatory=$false)][string] $Location = "North Central US" 
+        [Parameter(Mandatory=$false)][string] $Location = "North Central US",
+        [Parameter(Mandatory=$false)][switch] $ResourceGroup
     )
+
+    if($ResourceGroup) {
+        throw [System.NotImplementedException]
+    }
 
     Get-AzureAffinityGroup -Name $Name -ErrorAction SilentlyContinue
     if( $? ) {
@@ -40,10 +48,9 @@ function New-AzureVirtualNetwork
     Write-Verbose -Message ("[{0}] - Creating Virtual Network - {1} with IP Range - {2} and Subnet - {3} on {4} Affinity Group " -f $(Get-Date), $Name, $NetworkAddress, $SubnetAddress, $AffinityGroup  )
     Set-VNetFileValues -FilePath $vnet_config -VNet $Name -SubnetName $SubnetName -AffinityGroup $AffinityGroup -VNetAddressPrefix $NetworkAddress -SubnetAddressPrefix $SubnetAddress
     Set-AzureVNetConfig -ConfigurationPath $vnet_config 
-    
     Add-AzureDnsServerConfiguration -Name $DNSName -IpAddress $DNSIp -VNetName $Name
 
     Remove-Item $vnet_config
 }
 
-Export-ModuleMember -Function New-AzureAffinityGroup
+Export-ModuleMember -Function New-AzureAffinityOrResourceGroup, New-AzureVirtualNetwork 

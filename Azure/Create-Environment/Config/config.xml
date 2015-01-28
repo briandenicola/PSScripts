@@ -9,6 +9,10 @@
 		<DNSServer />
 		<Subnet Name="" AddressPrefix="" />
 	</VNet>
+    <ScriptExtension ContainerName="" >
+        <Script FilePath="" />
+        <Script FilePath="" />
+    </ScriptExtension>
 	<Domain Name="" TopLevelDomain="" DomainAdminUser="" DomainAdminPassword="" >
 		<VM ComputerName="" Size="" DataDriveSize="" DataDriveLetter="" OS="" ScriptExtension="" IpAddress="" />
 	</Domain>
@@ -23,7 +27,6 @@
 			<OS />
 			<LocalAdminPassword />
 			<Size /> 
-			<SubnetName />
 			<Drives>
 				<Drive Leter="" Size="" Name="" />
 				<Drive Leter="" Size="" Name="" />
