@@ -14,10 +14,10 @@ Select-AzureSubscription -SubscriptionName $global:subscription
 
 function Install-WinRmCertificate
 {
-    param{
+    param (
         [string] $service, 
         [string] $vm_name
-    }
+    )
     
     Set-Variable -Name cert_store -Value (New-Object System.Security.Cryptography.X509Certificates.X509Store "Root", "LocalMachine")
         

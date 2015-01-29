@@ -1,30 +1,33 @@
 <Azure>
-	<Location />
-	<Subscription />
-	<CloudService />
-	<BlobStorage />
-	<AffinityGroup />
+	<Location></Location>
+	<Subscription></Subscription>
+	<CloudService></CloudService>
+	<BlobStorage></BlobStorage>
+	<AffinityGroup></AffinityGroup>
 	<VNet Name="">
-		<AddressPrefix />
-		<DNSServer />
+		<AddressPrefix></AddressPrefix>
+		<DNSServer Name="" IpAddress="" />
 		<Subnet Name="" AddressPrefix="" />
 	</VNet>
-    <ScriptExtension ContainerName="" >
+    <ScriptExtension ContainerName="scripts" >
         <Script FilePath="" />
     </ScriptExtension>
-	<ActiveDirectory>
-        <Domain Name="" TopLevelDomain="" DomainAdminUser="" DomainAdminPassword="" />
-		<VM ComputerName="" VMSize="" DriveSize="" DriveLabel="" OS="" RemotingScriptBlock="" IpAddress="" />
+	<ActiveDirectory enabled="True">
+        <Domain Name="" TopLevelDomain="" DomainAdminUser="manager" DomainAdminPassword="" />
+		<VM ComputerName="" VMSize="Small" DriveSize="60" DriveLabel="DATA-01" OS="Windows Server 2012 R2 Datacenter" IpAddress="" />
+		<ADCreateScript>.\ScriptBlocks\Create-ADForest.ps1</ADCreateScript>
+		<CertificateAuthorityScript enabled="True">.\ScriptBlocks\Create-CertificateAuthority.ps1</CertificateAuthorityScript>
 	</ActiveDirectory>
-	<DesireStateConfiguration>
-        <DSC DNS="" ConfigurationScript="" ConfigurationName="" />
+	<DesireStateConfiguration enabled="True">
+        <DSC DNS="dsc.sharepoint.test" ConfigurationScript=".\DSC\Resources\Config_xDscWebService.ps1" ConfigurationName="Config_xDscWebService" />
         <PullServiceModule Path="DSC\Modules\xPSDesiredStateConfiguration" />
-		<VM ComputerName="" Size="" DriveSize="" DriveLabel="" OS="" LocalAdminPassword="" />
+		<VM ComputerName="" VMSize="Small" DriveSize="60" DriveLabel="DATA-01" OS="Windows Server 2012 R2 Datacenter" LocalAdminUser="manager" LocalAdminPassword="" />
 	</DesireStateConfiguration>
 	<MemberServers>
-		<Server>	
+		<Server JoinDomain="True">	
 			<ComputerName />
 			<OS />
+			<LocalAdminUser />
 			<LocalAdminPassword />
 			<VMSize /> 
 			<Drives>

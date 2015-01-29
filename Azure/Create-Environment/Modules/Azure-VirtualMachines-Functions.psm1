@@ -38,7 +38,7 @@ function New-AzureVirtualMachine
     switch ($PsCmdlet.ParameterSetName)
     { 
         "JoinDomain" {
-            $vm | Add-AzureProvisioningConfig -Windows -Password $AdminPassword -AdminUsername $AdminUser -DomainPassword $DomainPassword -DomainUserName $DomainUser -JoinDomain $Domain
+            $vm | Add-AzureProvisioningConfig -WindowsDomain -Password $AdminPassword -AdminUsername $AdminUser -DomainPassword $DomainPassword -DomainUserName $DomainUser -JoinDomain $Domain -Domain $Domain
         }
         default {
             $vm | Add-AzureProvisioningConfig -Windows -Password $AdminPassword -AdminUsername $AdminUser 
