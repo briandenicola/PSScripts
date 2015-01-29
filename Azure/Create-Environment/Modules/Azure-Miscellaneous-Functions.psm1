@@ -33,6 +33,42 @@ function Convert-XmlToHashTable
     return $ht
 }
 
+function Wait-ForVMReadyState 
+{
+    param(
+        [string] $CloudService,
+        [string] $VMName
+    )
+
+    $ready_state = "ReadyRole"
+    $sleep_time = 30
+
+    do {
+        Start-Sleep -Seconds $sleep_time
+        $vm = Get-AzureVM -ServiceName $CloudService -Name $VMName    
+    } until ($vm.InstanceStatus -eq $ready_state)
+}
+
+function Get-LatestAzureVMImageName
+{
+    param (
+        [Parameter(Mandatory = $true)][string] $image_family_name
+    )
+
+    $images = Get-AzureVMImage | Where { $_.ImageFamily -imatch $image_family_name }
+
+    return ( $images | 
+               Sort -Unique -Descending -Property ImageFamily |
+               Sort -Descending -Property PublishedDate |
+               Select -First 1 -ExpandProperty ImageName )
+}
+
+function Get-ScriptBlock( [string] $file )
+{
+	[ScriptBlock]::Create( (Get-Content $file -Raw))
+}
+
+
 #https://gallery.technet.microsoft.com/Deploy-a-domain-controller-2ab7d658
 function Add-AzureVnetConfigurationFile
 {
@@ -242,20 +278,6 @@ function Add-AzureDnsServerConfiguration
     $xml.Save($vnetFilePath)
 
     Set-AzureVNetConfig -ConfigurationPath $vnetFilePath
-}
- 
-function Get-LatestAzureVMImageName
-{
-    param (
-        [Parameter(Mandatory = $true)][string] $image_family_name
-    )
-
-    $images = Get-AzureVMImage | Where { $_.ImageFamily -imatch $image_family_name }
-
-    return ( $images | 
-               Sort -Unique -Descending -Property ImageFamily |
-               Sort -Descending -Property PublishedDate |
-               Select -First 1 -ExpandProperty ImageName )
 }
 
 Export-ModuleMember -Function Set-VNetFileValues, Get-LatestAzureVMImageName, Add-AzureDnsServerConfiguration,  Convert-XmlToHashTable
