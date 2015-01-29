@@ -18,10 +18,15 @@
 
 #Create Azure VM for DSC
 #Create DNS Record for DSC Example - Add-DnsServerResourceRecord -ZoneName "Contoso.com" -A -Name "Host34" -AllowUpdateAny -IPv4Address "10.17.1.34" -TimeToLive 01:00:00 -AgeRecord
-#Install and Configure DSC Via Remoting Script 
+#Install and Configure DSC via Extensions
+    #Copy DSC\Modules\xPSDesiredStateConfiguration to $env:ProgramFiles\WindowsPowerShell\Modules
+    #Publish-AzureVMDscConfiguration -ConfigurationPath .\Config_xDscWebService.ps1
+    #$vm | Set-AzureVMDSCExtension -ConfigurationArchive "IISInstall.ps1.zip" -ConfigurationName "IISInstall"  | Update-AzureVM
 
-#Upload and Compile DSC Resources via Remoting (?)
 #Loop and Create Azure VMs
+    #Save Guid in Map file for storage
+    #DSC Extension 
+
 #Stop Transcript...
 
 #$uri = "{0}/{1}/{2}" -f "https://bjdtest003.blob.core.windows.net", $xml.Azure.ScriptExtension.ContainerName, $xml.Azure.Domain.VM.ScriptExtension

@@ -11,15 +11,15 @@
 	</VNet>
     <ScriptExtension ContainerName="" >
         <Script FilePath="" />
-        <Script FilePath="" />
     </ScriptExtension>
-	<Domain Name="" TopLevelDomain="" DomainAdminUser="" DomainAdminPassword="" >
-		<VM ComputerName="" VMSize="" DriveSize="" DriveLabel="" OS="" ScriptExtension="" IpAddress="" />
-	</Domain>
+	<ActiveDirectory>
+        <Domain Name="" TopLevelDomain="" DomainAdminUser="" DomainAdminPassword="" />
+		<VM ComputerName="" VMSize="" DriveSize="" DriveLabel="" OS="" RemotingScriptBlock="" IpAddress="" />
+	</ActiveDirectory>
 	<DesireStateConfiguration>
-		<VM ComputerName="" Size="" DriveSize="" DriveLabel="" OS="" ScriptExtension="" />
-		<DNS />
-		<IISPath />
+        <DSC DNS="" ConfigurationScript="" ConfigurationName="" />
+        <PullServiceModule Path="DSC\Modules\xPSDesiredStateConfiguration" />
+		<VM ComputerName="" Size="" DriveSize="" DriveLabel="" OS="" LocalAdminPassword="" />
 	</DesireStateConfiguration>
 	<MemberServers>
 		<Server>	
