@@ -25,7 +25,7 @@
     #    AffinityGroup = $xml.Azure.AffinityGroup 
     #    IpAddress = $xml.Azure.Domain.VM.IpAddress 
     #    DataDrives = $drives
-     #    VNetName = $xml.Azure.VNet.Name
+    #    VNetName = $xml.Azure.VNet.Name
     #}
 
 #Get WinRM Cert and Establish Connection 
@@ -35,9 +35,9 @@
     #$mycreds = New-Object System.Management.Automation.PSCredential ( $xml.Azure.Domain.DomainAdminUser, $secpasswd )
 
 #Create AD via Remoting Script 
-    #Invoke-Command -ConfigurationName $uri -Credential $mycreds -ScriptBlock {
+    #Invoke-Command -ConfigurationName $uri -Credential $mycreds -ScriptBlock { }
 #Create Cert Authority via Remoting Script    
-    #Invoke-Command -ConfigurationName $uri -Credential $mycreds -ScriptBlock {
+    #Invoke-Command -ConfigurationName $uri -Credential $mycreds -ScriptBlock { }
 
 #Create Azure VM for DSC
     #$drives = @(@{DriveSize=$xml.Azure.DesireStateConfiguration.VM.DriveSize;DriveLabel=$xml.Azure.DesireStateConfiguration.VM.DriveLabel})
