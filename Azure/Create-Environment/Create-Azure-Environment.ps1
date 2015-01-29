@@ -11,6 +11,7 @@
 #Create Azure VM for AD
 #Get WinRM Scripts
 #Update AD via Remoting Script
+#Update Cert Authority via Remoting Script
 #Create Azure VM for DSC with Script Extension
 #Add-DnsServerResourceRecord -ZoneName "Contoso.com" -A -Name "Host34" -AllowUpdateAny -IPv4Address "10.17.1.34" -TimeToLive 01:00:00 -AgeRecord
 #Upload and Compile DSC Resources via Remoting (?)
