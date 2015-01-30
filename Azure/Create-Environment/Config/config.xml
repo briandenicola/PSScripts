@@ -13,7 +13,7 @@
         <Script FilePath="" />
     </ScriptExtension>
 	<ActiveDirectory enabled="True">
-        <Domain Name="" TopLevelDomain="" DomainAdminUser="manager" DomainAdminPassword="" />
+        <Domain Name="" NetBIOS="" DomainAdminUser="manager" DomainAdminPassword="" />
 		<VM ComputerName="" VMSize="Small" DriveSize="60" DriveLabel="DATA-01" OS="Windows Server 2012 R2 Datacenter" IpAddress="" />
 		<ADCreateScript>.\ScriptBlocks\Create-ADForest.ps1</ADCreateScript>
 		<CertificateAuthority enabled="True">

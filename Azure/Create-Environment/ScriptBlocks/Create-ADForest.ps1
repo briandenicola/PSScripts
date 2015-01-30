@@ -27,9 +27,7 @@ Install-ADDSForest `
 	-ForestMode "Win2012" `
 	-InstallDns:$true `
 	-LogPath (Join-Path -Path $path -ChildPath "NTDS") `
-	-NoRebootOnCompletion:$true `
+	-NoRebootOnCompletion:$false `
     -SafeModeAdministratorPassword $secure_password `
 	-SysvolPath (Join-Path -Path $path -ChildPath "SYSVOL") `
 	-Force:$true
-
-Restart-Computer -Force 

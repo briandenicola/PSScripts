@@ -41,7 +41,7 @@ function Publish-AzureExtensionScriptstoStorage
     $key = Get-AzureStorageKey $StorageName | Select -ExpandProperty Primary 
     $storage_context = New-AzureStorageContext -StorageAccountName $StorageName -StorageAccountKey $key
 
-    Get-AzureStorageContainer -Name $ContainerName -Context $storage_context - -ErrorAction SilentlyContinue| Out-Null
+    Get-AzureStorageContainer -Name $ContainerName -Context $storage_context -ErrorAction SilentlyContinue| Out-Null
     if( $? ) {
         Write-Verbose -Message ("[{0}] - Container - {1} - in the {2} Blob Storage already exists. Skipping Creation." -f $(Get-Date), $ContainerName, $StorageName)
     }

@@ -54,7 +54,7 @@ function New-AzureVirtualMachine
         $lun++
     }
 
-    foreach( $endpoint in $EntPoints ) {
+    foreach( $endpoint in $EndPoints ) {
         Write-Verbose -Message ("[{0}] - Updating configuration for end point - {1} ({2}:{3}." -f $(Get-Date), $endpoint.Name, $endpoint.LocalPort, $endpoint.RemotePort )
         $vm | Add-AzureEndpoint -Name $endpoint.Name -LocalPort $endpoint.LocalPort -PublicPort $endpoint.RemotePort -Protocol TCP
     }
