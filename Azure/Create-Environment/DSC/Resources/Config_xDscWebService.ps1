@@ -13,6 +13,24 @@
             Name   = "DSC-Service"            
         }
 
+        WindowsFeature WebMgmtConsole
+        {
+            Ensure = "Present"
+            Name   = "Web-Mgmt-Console"            
+        }
+
+        WindowsFeature WebMgmtTools
+        {
+            Ensure = "Present"
+            Name   = "Web-Mgmt-Tools"            
+        }
+
+        WindowsFeature WebScriptingTools
+        {
+            Ensure = "Present"
+            Name   = "Web-Scripting-Tools"            
+        }      
+
         xDscWebService PSDSCPullServer
         {
             Ensure                  = "Present"
