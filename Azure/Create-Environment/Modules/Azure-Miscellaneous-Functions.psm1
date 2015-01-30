@@ -3,6 +3,12 @@
 . (Join-Path -Path $env:SCRIPTS_HOME -ChildPath "Libraries\Standard_Functions.ps1")
 Load-AzureModules
 
+function Write-HashTableOutput( [HashTable] $ht )
+{
+	$ht.Keys | % { $output += $_ + ":" + $ht[$_] + "," }
+	return $output.TrimEnd(",")
+}
+
 function Convert-XmlToHashTable
 {
     param(
@@ -67,7 +73,6 @@ function Get-ScriptBlock( [string] $file )
 {
 	[ScriptBlock]::Create( (Get-Content $file -Raw))
 }
-
 
 #https://gallery.technet.microsoft.com/Deploy-a-domain-controller-2ab7d658
 function Add-AzureVnetConfigurationFile
@@ -280,4 +285,4 @@ function Add-AzureDnsServerConfiguration
     Set-AzureVNetConfig -ConfigurationPath $vnetFilePath
 }
 
-Export-ModuleMember -Function Set-VNetFileValues, Get-LatestAzureVMImageName, Add-AzureDnsServerConfiguration,  Convert-XmlToHashTable
+Export-ModuleMember -Function  Write-HashTableOutput, Set-VNetFileValues, Get-LatestAzureVMImageName, Add-AzureDnsServerConfiguration,  Convert-XmlToHashTable, Get-ScriptBlock, Wait-ForVMReadyState 

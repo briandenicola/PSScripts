@@ -1,77 +1,187 @@
-#Requirements
-#Params
+#requires -version 3.0
+#requires -RunAsAdministrator
+
+[CmdletBinding()]
+param(
+    [ValidateScript({Test-Path $_})]
+    [Parameter(Mandatory=$true)][string] $config
+)
+
+Set-StrictMode -Version Latest 
 
 #Import Modules
+. (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
+Load-AzureModules
+
+Import-Module -Path (Join-Path -Path $PWD.Path -ChildPath "Modules\Azure-BlobStorage-Functions.psm1")
+Import-Module -Path (Join-Path -Path $PWD.Path -ChildPath "Modules\Azure-Miscellaneous-Functions.psm1")
+Import-Module -Path (Join-Path -Path $PWD.Path -ChildPath "Modules\Azure-VirtualMachines-Functions.psm1")
+Import-Module -Path (Join-Path -Path $PWD.Path -ChildPath "Modules\Azure-VNetwork-Functions.psm1")
+
+#Varibles
+Set-Variable -Name Modules -Value "$ENV:ProgramFiles\WindowsPowerShell\Modules" -Option Constant
+Set-Variable -Name DSCMap  -Value (Join-Path -Path $PWD.Path -ChildPath ("DSC\Computer-To-Guid-Map.csv"))
+Set-Variable -Name log     -Value (Join-Path -Path $PWD.Path -ChildPath ("Azure-IaaS-Setup-for-{0}.{1}.log" -f $cfg.Azure.SubScription, $(Get-Date).ToString("yyyyMMddhhmmss")))
+
+$cfg = [xml]( Get-Content -Path $config ) 
 
 #Start Transcript...
+try{Stop-Transcript|Out-Null} catch {}
+Start-Transcript -Append -Path $log
+
+#Set Error Action Perference to Stop
+$ErrorActionPreference = "Stop"
 
 #Setup Affinity Group
+ Write-Verbose -Message ("[{0}] - Calling New-AzureAffinityOrResourceGroup" -f $(Get-Date))
+New-AzureAffinityOrResourceGroup -Name $cfg.Azure.AffinityGroup -Location $cfg.Azure.Location 
+
 #Setup Storage
+Write-Verbose -Message ("[{0}] - Calling New-AzureStorage" -f $(Get-Date))
+New-AzureStorage -Name -AffinityGroup $cfg.Azure.BlobStorage $cfg.Azure.AffinityGroup
+
 #Setup Virtual Network
+$opts_network = @{
+    Name = $cfg.Azure.VNet.Name
+    SubnetName = $cfg.Azure.VNet.Subnet.Name
+    AffinityGroup = $cfg.Azure.AffinityGroup
+    NetworkAddress = $cfg.Azure.VNet.AddressPrefix
+    SubnetAddress = $cfg.Azure.VNet.Subnet.AddressPrefix
+    DNSName  = $cfg.Azure.VNet.DNSServer.Name
+    DNSIP = $cfg.Azure.VNet.DNSServer.IpAddress
+}
+Write-Verbose -Message ("[{0}] - Calling New-AzureVirtualNetwork - {1}" -f $(Get-Date), (Write-HashTableOutput -ht $opts_network))
+New-AzureVirtualNetwork @opts_network
+
 #Upload Script Extensions
+$opts_uploads = @{
+    StorageName = $cfg.Azure.BlobStorage 
+    ContainerName = $cfg.Azure.ScriptExtension.ContainerName
+    Subscription = $cfg.Azure.Subscription
+    FilePaths = @($cfg.Azure.ScriptExtension.Script | Select FilePaths)
+}
+Write-Verbose -Message ("[{0}] - Calling Publish-AzureExtensionScriptstoStorage - {1}" -f $(Get-Date), (Write-HashTableOutput -ht $opts_uploads))
+Publish-AzureExtensionScriptstoStorage @opts_uploads
 
 #Create Azure VM for AD
+if( $cfg.Azure.ActiveDirectory.Enabled -eq $true ) {
+    $dc_data_drives = @(@{DriveSize=$cfg.Azure.ActiveDirectory.VM.DriveSize;DriveLabel=$cfg.Azure.ActiveDirectory.VM.DriveLabel})
+    $dc_opts = @{
+        Name = $cfg.Azure.ActiveDirectory.VM.ComputerName
+        Subscription = $cfg.Azure.SubScription
+        StorageAccount = $cfg.Azure.BlobStorage
+        CloudService = $cfg.Azure.CloudService
+        Size = $cfg.Azure.ActiveDirectory.VM.VMSize
+        OperatingSystem = $cfg.Azure.ActiveDirectory.VM.OS 
+        AdminPassword = $cfg.Azure.ActiveDirectory.Domain.DomainAdminPassword 
+        AffinityGroup = $cfg.Azure.AffinityGroup 
+        IpAddress = $cfg.Azure.ActiveDirectory.VM.IpAddress 
+        DataDrives = $dc_data_drives
+        VNetName = $cfg.Azure.VNet.Name
+    }
+    Write-Verbose -Message ("[{0}] - Calling New-AzureVirtualMachine - {1}" -f $(Get-Date), (Write-HashTableOutput -ht $dc_opts))
+    New-AzureVirtualMachine @dc_opts
 
-    #$drives = @(@{DriveSize=$xml.Azure.Domain.VM.DriveSize;DriveLabel=$xml.Azure.Domain.VM.DriveLabel})
+    #Upgrade to Domain Controller
+    Write-Verbose -Message ("[{0}] - Upgrading {1} to a domain controller" -f $(Get-Date), $cfg.Azure.ActiveDirectory.VM.ComputerName)
+    Install-WinRmCertificate -service $cfg.Azure.CloudService -vm_name $cfg.Azure.ActiveDirectory.VM.ComputerName
+    $dc_uri = Get-AzureWinRMUri  -ServiceName $cfg.Azure.CloudService -Name $cfg.Azure.ActiveDirectory.VM.ComputerName
+    $dc_secpasswd = ConvertTo-SecureString -String $cfg.Azure.ActiveDirectory.Domain.DomainAdminPassword -AsPlainText -Force
+    $dc_creds = New-Object System.Management.Automation.PSCredential ( $cfg.Azure.ActiveDirectory.Domain.DomainAdminUser, $dc_secpasswd )
 
-    #$opts = @{
-    #    Name = $xml.Azure.Domain.VM.ComputerName
-    #    Subscription = $xml.Azure.SubScription
-    #    StorageAccount = $xml.Azure.BlobStorage
-    #    CloudService = $xml.Azure.CloudService
-    #    Size = $xml.Azure.Domain.VM.VMSize
-    #    OperatingSystem = $xml.Azure.Domain.VM.OS 
-    #    AdminPassword = $xml.Azure.Domain.DomainAdminPassword 
-    #    AffinityGroup = $xml.Azure.AffinityGroup 
-    #    IpAddress = $xml.Azure.Domain.VM.IpAddress 
-    #    DataDrives = $drives
-    #    VNetName = $xml.Azure.VNet.Name
-    #}
+    Invoke-Command -ConfigurationName $dc_uri -Credential $dc_creds -ScriptBlock (Get-ScriptBlock -file $cfg.Azure.ActiveDirectory.ADCreateScript)
+    Wait-ForVMReadyState -CloudService $cfg.Azure.CloudService -VMName $cfg.Azure.ActiveDirectory.VM.ComputerName
 
-#Get WinRM Cert and Establish Connection 
-    #Install-WinRmCertificate -service $xml.Azure.CloudService -vm_name $xml.Azure.Domain.VM.ComputerName
-    #$uri = Get-AzureWinRMUri  -ServiceName $xml.Azure.CloudService -Name $xml.Azure.Domain.VM.ComputerName
-    #$secpasswd = ConvertTo-SecureString -String $xml.Azure.Domain.DomainAdminPassword -AsPlainText -Force
-    #$mycreds = New-Object System.Management.Automation.PSCredential ( $xml.Azure.Domain.DomainAdminUser, $secpasswd )
-
-#Create AD via Remoting Script 
-    #Invoke-Command -ConfigurationName $uri -Credential $mycreds -ScriptBlock { }
-#Create Cert Authority via Remoting Script    
-    #Invoke-Command -ConfigurationName $uri -Credential $mycreds -ScriptBlock { }
+    if( $cfg.Azure.ActiveDirectory.CertificateAuthorityScript.Enabled -eq $true ) {
+        Write-Verbose -Message ("[{0}] - Installing Certificate Authority on {1}" -f $(Get-Date), $cfg.Azure.ActiveDirectory.VM.ComputerName)
+        Invoke-Command -ConfigurationName $dc_uri -Credential $dc_creds -ScriptBlock (Get-ScriptBlock -file $cfg.Azure.ActiveDirectory.CertificateAuthority.Script)
+    }
+}
 
 #Create Azure VM for DSC
-    #$drives = @(@{DriveSize=$xml.Azure.DesireStateConfiguration.VM.DriveSize;DriveLabel=$xml.Azure.DesireStateConfiguration.VM.DriveLabel})
+if( $cfg.Azure.DesireStateConfiguration.Enabled -eq $true ) {
+    $dsc_drives = @(@{DriveSize=$cfg.Azure.DesireStateConfiguration.VM.DriveSize;DriveLabel=$cfg.Azure.DesireStateConfiguration.VM.DriveLabel})
 
-    #$opts = @{
-    #    Name = $xml.Azure.DesireStateConfiguration.VM.ComputerName
-    #    Subscription = $xml.Azure.SubScription
-    #    StorageAccount = $xml.Azure.BlobStorage
-    #    CloudService = $xml.Azure.CloudService
-    #    Size = $xml.Azure.DesireStateConfiguration.VM.VMSize
-    #    OperatingSystem = $xml.Azure.DesireStateConfiguration.VM.OS 
-    #    AdminUser = $xml.Azure.DesireStateConfiguration.LocalAdminUser 
-	#	 AdminPassword = $xml.Azure.DesireStateConfiguration.LocalAdminPassword
-    #    AffinityGroup = $xml.Azure.AffinityGroup 
-    #    DataDrives = $drives
-	#	 DomainUser = $xml.Azure.Domain.DomainAdminUser
-	#	 DomainPassword = $xml.Azure.Domain.DomainAdminPassword
-	#	 Domain = $xml.Azure.Domain.DomainName
-    #    VNetName = $xml.Azure.VNet.Name
-    #}
-    #New-AzureVirtualMachine @opts
-#Create DNS Record for DSC Example - 
-    #Invoke-Command -ConfigurationName $uri -Credential $mycreds -Authentication Credssp -ScriptBlock {
-    #    Add-DnsServerResourceRecordCName -Name "dsc" -HostNameAlias "bjd-ad.sharepoint.test" -ZoneName "sharepoint.test"
-    #}
+    $dsc_opts = @{
+        Name = $cfg.Azure.DesireStateConfiguration.VM.ComputerName
+        Subscription = $cfg.Azure.SubScription
+        StorageAccount = $cfg.Azure.BlobStorage
+        CloudService = $cfg.Azure.CloudService
+        Size = $cfg.Azure.DesireStateConfiguration.VM.VMSize
+        OperatingSystem = $cfg.Azure.DesireStateConfiguration.VM.OS 
+        AdminUser = $cfg.Azure.DesireStateConfiguration.VM.LocalAdminUser 
+		AdminPassword = $cfg.Azure.DesireStateConfiguration.VM.LocalAdminPassword
+        AffinityGroup = $cfg.Azure.AffinityGroup 
+        DataDrives = $dsc_drives
+		DomainUser = $cfg.Azure.ActiveDirectory.Domain.DomainAdminUser
+		DomainPassword = $cfg.Azure.ActiveDirectory.Domain.DomainAdminPassword
+		Domain = $cfg.Azure.ActiveDirectory.Domain.Name
+        VNetName = $cfg.Azure.VNet.Name
+    }
+    Write-Verbose -Message ("[{0}] - Calling New-AzureVirtualMachine - {1}" -f $(Get-Date), (Write-HashTableOutput -ht $dsc_opts))
+    New-AzureVirtualMachine @dsc_opts
 
-#Install and Configure DSC via Extensions
-    #Copy DSC\Modules\xPSDesiredStateConfiguration to $env:ProgramFiles\WindowsPowerShell\Modules
-    #Publish-AzureVMDscConfiguration -ConfigurationPath .\Config_xDscWebService.ps1
-    #$vm | Set-AzureVMDscExtension -ConfigurationArchive ("{0}.ps1.zip" -f $xml.Azure.DesireStateConfiguration.DSC.ConfigurationName ) -ConfigurationName $xml.Azure.DesireStateConfiguration.DSC.ConfigurationName | Update-AzureVM
+    Write-Verbose -Message ("[{0}] - Creating DNS Record for DSC Resource}" -f $(Get-Date))
+    Invoke-Command -ConfigurationName $dc_uri -Credential $dc_creds -ScriptBlock {
+        param( [string] $name, [string] $alias, [string] $zone) 
+        Add-DnsServerResourceRecordCName -Name $name -HostNameAlias $alias -ZoneName $zone
+    } -ArgumentList $cfg.Azure.DesireStateConfiguration.DSC.DNS, $cfg.Azure.DesireStateConfiguration.VM.ComputerName, $cfg.Azure.ActiveDirectory.Domain.Name
+    
+    Write-Verbose -Message ("[{0}] - Publishing DSC Configuration {1} for {2}" -f $(Get-Date), $cfg.Azure.DesireStateConfiguration.DSC.ConfigurationScript, $cfg.Azure.DesireStateConfiguration.VM.ComputerName)
+    Copy-Item -Path $cfg.Azure.DesireStateConfiguration.PullServiceModule.Path -Destination $Modules -Recurse
+    Publish-AzureVMDscConfiguration -ConfigurationPath $cfg.Azure.DesireStateConfiguration.DSC.ConfigurationScript
 
-#Loop and Create Azure VMs
-    #Save Guid in Map file for storage
-    #DSC Extension 
+    $vm = Get-AzureVM -ServiceName $cfg.Azure.CloudService -Name $cfg.Azure.DesireStateConfiguration.VM.ComputerName
+    $vm | Set-AzureVMDscExtension -ConfigurationArchive ("{0}.ps1.zip" -f $cfg.Azure.DesireStateConfiguration.DSC.ConfigurationName ) -ConfigurationName $cfg.Azure.DesireStateConfiguration.DSC.ConfigurationName | 
+        Update-AzureVM
 
-#Stop Transcript...
+    Wait-ForVMReadyState -CloudService $cfg.Azure.CloudService -VMName $cfg.Azure.DesireStateConfiguration.VM.ComputerName
+}
 
+foreach( $machine in $cfg.Azure.MemberServers.Server ) {
+
+    $opts = @{
+        Name = $machine.ComputerName
+        Subscription = $cfg.Azure.SubScription
+        StorageAccount = $cfg.Azure.BlobStorage
+        CloudService = $cfg.Azure.CloudService
+        Size = $machine.VMSize
+        OperatingSystem = $machine.OS 
+        AdminUser = $machine.LocalAdminUser 
+		AdminPassword = $machine.LocalAdminPassword
+        AffinityGroup = $cfg.Azure.AffinityGroup 
+        DataDrives = Convert-XMLToHashTable -xml $machine.Drives 
+        EndPoints = Convert-XMLToHashTable -xml $machine.Endpoints
+        VNetName = $cfg.Azure.VNet.Name
+    }
+
+    if( $machine.JoinDomain -eq $true ) {
+        $opts.Add("DomainUser", $cfg.Azure.ActiveDirectory.Domain.DomainAdminUser)
+    	$opts.Add("DomainPassword", $cfg.Azure.ActiveDirectory.Domain.DomainAdminPassword)
+		$opts.Add("Domain", $cfg.Azure.ActiveDirectory.Domain.Name)
+    }
+    Write-Verbose -Message ("[{0}] - Calling New-AzureVirtualMachine - {1}" -f $(Get-Date), (Write-HashTableOutput -ht $opts))
+    New-AzureVirtualMachine @opts
+
+    if( $machine.DSCEnabled -eq $true ) {
+        Install-WinRmCertificate -service $cfg.Azure.CloudService -vm_name $machine.ComputerName
+        $uri = Get-AzureWinRMUri  -ServiceName $cfg.Azure.CloudService -Name $machine.ComputerName
+        $secpasswd = ConvertTo-SecureString -String $cfg.Azure.ActiveDirectory.Domain.DomainAdminPassword -AsPlainText -Force
+        $creds = New-Object System.Management.Automation.PSCredential ( $cfg.Azure.ActiveDirectory.Domain.DomainAdminUser, $secpasswd )
+
+        if( [string]::IsNullOrEmpty($machine.Guid) ) {
+            $guid = [GUID]::NewGuid() | Select -Expand Guid
+        }
+        else {
+            $guid = $machine.Guid
+        }
+    
+        Write-Verbose -Message ("[{0}] - Configuring DSC for {1} using GUID - {2}" -f $(Get-Date), $machine.ComputerName, $guid)
+        
+        Add-Content -Encoding Ascii -Path $DSCMap -Value ( "{0},{1}" -f $machine.ComputerName, $guid )
+        Invoke-Command -ConfigurationName $uri -Credential $creds -ScriptBlock (Get-ScriptBlock -file $machine.ScriptExtension) -ArgumentList $cfg.Azure.DesireStateConfiguration.DSC.DNS, $guid
+        Wait-ForVMReadyState -CloudService $cfg.Azure.CloudService -VMName $machine.ComputerName
+    }
+}
+
+Stop-Transcript

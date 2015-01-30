@@ -8,7 +8,7 @@ configuration ConfigureDSCPullServer {    param (
         [string] $PullServer
     )  
       
-    LocalConfigurationManager    {        AllowModuleOverwrite = 'True'        ConfigurationID = $NodeId        ConfigurationModeFrequencyMins = 30         ConfigurationMode = 'ApplyAndAutoCorrect'        RebootNodeIfNeeded = 'True'        RefreshMode = 'PULL'         DownloadManagerName = 'WebDownloadManager'        DownloadManagerCustomData = (@{ServerUrl = "http://$PullServer/psdscpullserver.svc"})    }}
+    LocalConfigurationManager    {        AllowModuleOverwrite = 'True'        ConfigurationID = $NodeId        ConfigurationModeFrequencyMins = 30         ConfigurationMode = 'ApplyAndAutoCorrect'        RebootNodeIfNeeded = 'True'        RefreshMode = 'PULL'         DownloadManagerName = 'WebDownloadManager'        DownloadManagerCustomData = @{            ServerUrl = "http://$PullServer/psdscpullserver.svc"            AllowUnsecureConnection = ‘true’        }               }}
 
 Get-Disk | Where { $_.PartitionStyle -eq "RAW" } | Initialize-Disk -PartitionStyle MBR 
 Get-Disk | Where { $_.NumberOfPartitions -eq 0 } |   

@@ -16,7 +16,9 @@
         <Domain Name="" TopLevelDomain="" DomainAdminUser="manager" DomainAdminPassword="" />
 		<VM ComputerName="" VMSize="Small" DriveSize="60" DriveLabel="DATA-01" OS="Windows Server 2012 R2 Datacenter" IpAddress="" />
 		<ADCreateScript>.\ScriptBlocks\Create-ADForest.ps1</ADCreateScript>
-		<CertificateAuthorityScript enabled="True">.\ScriptBlocks\Create-CertificateAuthority.ps1</CertificateAuthorityScript>
+		<CertificateAuthority enabled="True">
+			<Script>.\ScriptBlocks\Create-CertificateAuthority.ps1</Script>
+		</CertificateAuthority>
 	</ActiveDirectory>
 	<DesireStateConfiguration enabled="True">
         <DSC DNS="dsc.sharepoint.test" ConfigurationScript=".\DSC\Resources\Config_xDscWebService.ps1" ConfigurationName="Config_xDscWebService" />
@@ -24,9 +26,10 @@
 		<VM ComputerName="" VMSize="Small" DriveSize="60" DriveLabel="DATA-01" OS="Windows Server 2012 R2 Datacenter" LocalAdminUser="manager" LocalAdminPassword="" />
 	</DesireStateConfiguration>
 	<MemberServers>
-		<Server JoinDomain="True">	
+		<Server JoinDomain="True" DSCEnabled="True">	
 			<ComputerName />
 			<OS />
+			<Guid="" />
 			<LocalAdminUser />
 			<LocalAdminPassword />
 			<VMSize /> 
