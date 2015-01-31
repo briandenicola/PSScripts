@@ -22,14 +22,14 @@
 	</ActiveDirectory>
 	<DesireStateConfiguration enabled="True">
         <DSC DNS="dsc.sharepoint.test" ConfigurationScript=".\DSC\Resources\Config_xDscWebService.ps1" ConfigurationName="Config_xDscWebService" />
-        <PullServiceModule Path="DSC\Modules\xPSDesiredStateConfiguration" />
+        <PullServiceModule Path="DSC\Modules" />
 		<VM ComputerName="" VMSize="Small" DriveSize="60" DriveLabel="DATA-01" OS="Windows Server 2012 R2 Datacenter" LocalAdminUser="manager" LocalAdminPassword="" />
 	</DesireStateConfiguration>
 	<MemberServers>
 		<Server JoinDomain="True" DSCEnabled="True">	
 			<ComputerName />
 			<OS />
-			<Guid="" />
+			<Guid/>
 			<LocalAdminUser />
 			<LocalAdminPassword />
 			<VMSize /> 
@@ -44,6 +44,3 @@
 		</Server>
 	</MemberServers>
 </Azure>
-
-		
-		

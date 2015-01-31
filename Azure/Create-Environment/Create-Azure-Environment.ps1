@@ -25,6 +25,8 @@ $cfg = [xml]( Get-Content -Path $config )
 Set-Variable -Name Modules -Value "$ENV:ProgramFiles\WindowsPowerShell\Modules" -Option Constant
 Set-Variable -Name DSCMap  -Value (Join-Path -Path $PWD.Path -ChildPath ("DSC\Computer-To-Guid-Map.csv"))
 Set-Variable -Name log     -Value (Join-Path -Path $PWD.Path -ChildPath ("Logs\Azure-IaaS-Setup-for-{0}.{1}.log" -f $cfg.Azure.SubScription, $(Get-Date).ToString("yyyyMMddhhmmss")))
+Set-Variable -Name domain_script_block   -Value (Get-ScriptBlock -file $cfg.Azure.ActiveDirectory.ADCreateScript)
+Set-Variable -Name certauth_script_block -Value (Get-ScriptBlock -file $cfg.Azure.ActiveDirectory.CertificateAuthority.Script)
 
 #Start Transcript...
 try{Stop-Transcript|Out-Null} catch {}
@@ -88,19 +90,19 @@ if( $cfg.Azure.ActiveDirectory.Enabled -eq $true ) {
     #Upgrade to Domain Controller
     Write-Verbose -Message ("[{0}] - Upgrading {1} to a domain controller" -f $(Get-Date), $cfg.Azure.ActiveDirectory.VM.ComputerName)
     Install-WinRmCertificate -service $cfg.Azure.CloudService -vm_name $cfg.Azure.ActiveDirectory.VM.ComputerName
-    $dc_uri = Get-AzureWinRMUri  -ServiceName $cfg.Azure.CloudService -Name $cfg.Azure.ActiveDirectory.VM.ComputerName
+    $dc_uri = Get-AzureWinRMUri -ServiceName $cfg.Azure.CloudService -Name $cfg.Azure.ActiveDirectory.VM.ComputerName
     $dc_secpasswd = ConvertTo-SecureString -String $cfg.Azure.ActiveDirectory.Domain.DomainAdminPassword -AsPlainText -Force
     $dc_creds = New-Object System.Management.Automation.PSCredential ( $cfg.Azure.ActiveDirectory.Domain.DomainAdminUser, $dc_secpasswd )
         
-    Invoke-Command -ConnectionUri $dc_uri -Credential $dc_creds -ScriptBlock (Get-ScriptBlock -file $cfg.Azure.ActiveDirectory.ADCreateScript) `
+    Invoke-Command -ConnectionUri $dc_uri -Credential $dc_creds -ScriptBlock $domain_script_block `
         -ArgumentList "E:", $cfg.Azure.ActiveDirectory.Domain.Name, $cfg.Azure.ActiveDirectory.Domain.NetBIOS, $cfg.Azure.ActiveDirectory.Domain.DomainAdminPassword
+    
     Restart-AzureVM -ServiceName $cfg.Azure.CloudService -Name $cfg.Azure.ActiveDirectory.VM.ComputerName
     Wait-ForVMReadyState -CloudService $cfg.Azure.CloudService -VMName $cfg.Azure.ActiveDirectory.VM.ComputerName
 
     if( $cfg.Azure.ActiveDirectory.CertificateAuthorityScript.Enabled -eq $true ) {
         Write-Verbose -Message ("[{0}] - Installing Certificate Authority on {1}" -f $(Get-Date), $cfg.Azure.ActiveDirectory.VM.ComputerName)
-        Invoke-Command -ConnectionUri $dc_uri -Credential $dc_creds -ScriptBlock (Get-ScriptBlock -file $cfg.Azure.ActiveDirectory.CertificateAuthority.Script) `
-            -ArgumentList "E:", $cfg.Azure.ActiveDirectory.Domain.Name
+        Invoke-Command -ConnectionUri $dc_uri -Credential $dc_creds -ScriptBlock $certauth_script_block -ArgumentList "E:", $cfg.Azure.ActiveDirectory.Domain.Name
     }
 }
 
@@ -134,7 +136,9 @@ if( $cfg.Azure.DesireStateConfiguration.Enabled -eq $true ) {
     } -ArgumentList $cfg.Azure.DesireStateConfiguration.DSC.DNS, $cfg.Azure.DesireStateConfiguration.VM.ComputerName, $cfg.Azure.ActiveDirectory.Domain.Name
     
     Write-Verbose -Message ("[{0}] - Publishing DSC Configuration {1} for {2}" -f $(Get-Date), $cfg.Azure.DesireStateConfiguration.DSC.ConfigurationScript, $cfg.Azure.DesireStateConfiguration.VM.ComputerName)
-    Copy-Item -Path $cfg.Azure.DesireStateConfiguration.PullServiceModule.Path -Destination $Modules -Recurse
+    Get-ChildItem -Path $cfg.Azure.DesireStateConfiguration.PullServiceModule.Path | 
+        Foreach { Copy-Item $_.FullName -Destination $Modules -Recurse -ErrorAction SilentlyContinue }
+    
     Publish-AzureVMDscConfiguration -ConfigurationPath $cfg.Azure.DesireStateConfiguration.DSC.ConfigurationScript
 
     $vm = Get-AzureVM -ServiceName $cfg.Azure.CloudService -Name $cfg.Azure.DesireStateConfiguration.VM.ComputerName
@@ -145,7 +149,7 @@ if( $cfg.Azure.DesireStateConfiguration.Enabled -eq $true ) {
 }
 
 foreach( $machine in $cfg.Azure.MemberServers.Server ) {
-
+    
     $opts = @{
         Name = $machine.ComputerName
         Subscription = $cfg.Azure.SubScription
@@ -170,6 +174,8 @@ foreach( $machine in $cfg.Azure.MemberServers.Server ) {
     New-AzureVirtualMachine @opts
 
     if( $machine.DSCEnabled -eq $true ) {
+        $dsc =  $cfg.Azure.DesireStateConfiguration.DSC.DNS
+
         Install-WinRmCertificate -service $cfg.Azure.CloudService -vm_name $machine.ComputerName
         $uri = Get-AzureWinRMUri  -ServiceName $cfg.Azure.CloudService -Name $machine.ComputerName
         $secpasswd = ConvertTo-SecureString -String $cfg.Azure.ActiveDirectory.Domain.DomainAdminPassword -AsPlainText -Force
@@ -177,15 +183,16 @@ foreach( $machine in $cfg.Azure.MemberServers.Server ) {
 
         if( [string]::IsNullOrEmpty($machine.Guid) ) {
             $guid = [GUID]::NewGuid() | Select -Expand Guid
-        } else {
+        } 
+        else {
             $guid = $machine.Guid
         }
     
-        Write-Verbose -Message ("[{0}] - Configuring DSC for {1} using GUID - {2}" -f $(Get-Date), $machine.ComputerName, $guid)
-        
-        Add-Content -Encoding Ascii -Path $DSCMap -Value ( "{0},{1}" -f $machine.ComputerName, $guid )
-        Invoke-Command -ConnectionUri $uri -Credential $creds -ScriptBlock (Get-ScriptBlock -file $machine.ScriptExtension) -ArgumentList $cfg.Azure.DesireStateConfiguration.DSC.DNS, $guid
+        Write-Verbose -Message ("[{0}] - Configuring DSC for {1} using GUID - {2}" -f $(Get-Date), $machine.ComputerName, $guid)       
+        Invoke-Command -ConnectionUri $uri -Credential $creds -ScriptBlock (Get-ScriptBlock -file $machine.ScriptExtension) -ArgumentList $dsc, $guid
         Wait-ForVMReadyState -CloudService $cfg.Azure.CloudService -VMName $machine.ComputerName
+
+        Add-Content -Encoding Ascii -Path $DSCMap -Value ( "{0},{1}" -f $machine.ComputerName, $guid )
     }
 }
 

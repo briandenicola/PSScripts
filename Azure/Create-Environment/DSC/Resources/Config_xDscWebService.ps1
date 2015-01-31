@@ -1,9 +1,12 @@
 ﻿configuration Config_xDscWebService {
     param (
-        [string]$NodeName = 'localhost'
+        [string] $NodeName = 'localhost',
+        [string] $SystemTimeZone = "Central Standard Time"
     )
 
     Import-DSCResource -ModuleName xPSDesiredStateConfiguration
+    Import-DSCResource -ModuleName xTimeZone
+    Import-DSCResource -ModuleName xCredSSP
 
     Node $NodeName
     {
@@ -30,6 +33,24 @@
             Ensure = "Present"
             Name   = "Web-Scripting-Tools"            
         }      
+
+        xTimeZone SetTimeZone 
+        {
+            TimeZone = $SystemTimeZone
+        }
+
+        xCredSSP Server 
+        { 
+            Ensure = "Present" 
+            Role = "Server" 
+        } 
+
+        xCredSSP Client 
+        { 
+            Ensure = "Present" 
+            Role = "Client" 
+            DelegateComputers = "*" 
+        } 
 
         xDscWebService PSDSCPullServer
         {
