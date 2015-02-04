@@ -3,6 +3,7 @@ Set-Variable -Name deploy_solutions -Value (Join-Path $ENV:SCRIPTS_HOME "DeployS
 Set-Variable -Name validate_environment -Value (Join-Path $ENV:SCRIPTS_HOME "Validate-URLs\Validate-URLs.ps1") -Option Constant
 Set-Variable -Name deploy_configs -Value (Join-Path $ENV:SCRIPTS_HOME "DeployConfig\DeployConfigs.ps1") -Option Constant
 Set-Variable -Name update_configs -Value (Join-Path $ENV:SCRIPTS_HOME "Update-Configs\Update-WebConfig.ps1") -Option Constant
+Set-Variable -Name backup_wsp -Value (Join-Path $ENV:SCRIPTS_HOME "MISC-SPScripts\Backup-Solutions.ps1") -Option Constant
 
 Set-Variable -Name sptimer_script_block -Value { Restart-Service -Name sptimerv4 -Verbose }
 Set-Variable -Name iisreset_script_block -Value { iisreset }
@@ -20,6 +21,18 @@ Set-Variable -Name gac_script_block -Value {
 	Write-Host "[ $(Get-Date) ] - Deploying to the GAC on $ENV:COMPUTER from $src . . ."
 	$gac_script = (Join-Path $ENV:SCRIPTS_HOME "Misc-SPScripts\Install-Assemblies-To-GAC.ps1")
 	&$gac_script -dir $src -verbose
+}
+
+function Backup-Solutions
+{
+   param( 
+        [Xml.XmlElement] $config
+    )
+
+    Log-Step -step ("$backup_wsp -path {0}" -f $config.BackupPath)
+    
+    cd ( Join-Path $ENV:SCRIPTS_HOME "MISC-SPScripts" )
+	&$backup_wsp -backup $config.BackupPath
 }
 
 
@@ -78,7 +91,7 @@ function Enable-Features
         [Xml.XmlElement] $config
     )
 
-    Set-Variable -Name enable_features -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Enable-$app-Features.ps1") -Option Constant
+    Set-Variable -Name enable_features -Value (Join-Path $ENV:SCRIPTS_HOME "DeploySolutions\Enable-Features.ps1") -Option Constant
 
     if( !( Test-Path $enable_features ) ) { 
         Write-Error "Could not find $enable_features script"

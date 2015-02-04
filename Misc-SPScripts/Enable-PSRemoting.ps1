@@ -2,7 +2,7 @@ param (
 	[string[]] $computers
 )
 
-$cmd="Enable-PSRemoting -force;Enable-WSmanCredSSP -role server -force"
+$cmd="Set-ExecutionPolicy -ExecutionPolicy Unrestricted;Enable-PSRemoting -force;Enable-WSmanCredSSP -role server -force"
 $cmdBytes = [System.Text.Encoding]::Unicode.GetBytes($cmd)
 $cmdEncoded = [Convert]::ToBase64String($cmdBytes)
 

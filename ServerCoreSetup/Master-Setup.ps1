@@ -46,7 +46,7 @@ cscript c:\windows\system32\scregedit.wsf /AU 4
 Start-Service wuauserv -Verbose
 
 Write-Host "[ $(Get-Date) ] - Setting CD-Rom Drive to Z: . . ."
-.\reassign_cd-rom_drive_letter.bat
+.\Reassign-CDRom-Drives.ps1 
 
 Write-Host "[ $(Get-Date) ] - Creating Additional Partitions . . ."
 Get-Disk | Where{ $_.PartitionStyle -eq "RAW" } | Initialize-Disk -PartitionStyle MBR 
