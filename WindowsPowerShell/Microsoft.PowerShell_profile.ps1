@@ -1,41 +1,154 @@
-﻿dir (Join-PATH $ENV:SCRIPTS_HOME "Libraries") -filter *.ps1 | % { Write-Host $(Get-Date) " - Sourcing " $_.FullName -foreground green ; . $_.FullName }
-dir (Join-PATH $ENV:SCRIPTS_HOME "Libraries") -filter *.psm1 | % { Write-Host $(Get-Date) " - Import Module " $_.FullName -foreground green ; Import-Module $_.FullName }
+﻿Import-Module PsReadLine
+Import-Module PsGet
+Import-Module PsUrl
 
-Write-Host $(Get-Date) " - Getting SharePoint servers stored in `$sp variable" -foreground green
-$sp = New-Object PSObject -Property @{
-	Servers = (Get-SharePointServersWS -version 2007) + (Get-SharePointServersWS -version 2010) 
-}
-$sp | Add-Member -MemberType ScriptMethod -Name Filter -Value { 
-	param( 
-		[string] $farm = ".*",
-		[string] $env = ".*",
-		[string] $name = ".*"
-	)
-	
-	$this.Servers | ? { $_.Farm -imatch $farm -and $_.Environment -imatch $env -and $_.SystemName -imatch $name } | Select -Expand SystemName
-}
+Set-Variable -Name sp -Option AllScope
+Set-Variable -Name apps -Option AllScope
+Set-Variable -Name xenapp -Option AllScope
+Set-Variable -name GithubRepo -Value "D:\Code\PSScripts"
 
-$MaximumHistoryCount=1024 
-$SCRIPTS = "$HOME\scripts"
-$CODE = "$HOME\code"
-$env:EDITOR = (Join-PATH $ENV:SCRIPTS_HOME "NotePad++\notepad++.exe")
-
-New-Alias -name gh -value Get-History 
-New-Alias -name i -value Invoke-History
-New-Alias -name ed -value $env:EDITOR
-
-function Resize-Screen
+function Resize-Screen 
 {
 	param (
-		[int] $width
+		[int] $width,
+        [int] $height
 	)
+
 	$h = get-host
 	$win = $h.ui.rawui.windowsize
 	$buf = $h.ui.rawui.buffersize
-	$win.width = $width # change to preferred width
+
+	$win.width = $width 
+    $win.height = $height
+
 	$buf.width = $width
+    $buf.Height = $height * 3
+
 	$h.ui.rawui.set_buffersize($buf)
 	$h.ui.rawui.set_windowsize($win)
+}
+
+function Set-SharePointServers
+{
+	Write-Output ("{0} - Getting SharePoint servers stored in `$sp variable" -f $(Get-Date))
+
+	$sp = New-Object PSObject -Property @{
+		Servers = (Get-SharePointServersWS -version 2007) + (Get-SharePointServersWS -version 2010) 
+	}
+	$sp | Add-Member -MemberType ScriptMethod -Name Filter -Value { 
+		param( 
+			[string] $farm = ".*",
+			[string] $env = ".*",
+			[string] $name = ".*"
+		)
+		
+		$this.Servers | ? { $_.Farm -imatch $farm -and $_.Environment -imatch $env -and $_.SystemName -imatch $name } | Select -Expand SystemName
+	}
+	$sp | Add-Member -MemberType ScriptMethod -Name CycleIIS -Value { 
+		param( 
+			[string] $farm = ".*",
+			[string] $env = ".*",
+			[string] $name = ".*"
+		)
+		
+		$computers = $this.Servers | ? { $_.Farm -imatch $farm -and $_.Environment -imatch $env -and $_.SystemName -imatch $name } | Select -Expand SystemName 
+		foreach( $computer in $computers ) {
+			Write-Host "[ $(Get-Date) ] - Cycling IIS on $computer ..."
+			iisreset $computer
+		}
+	}
+
+	$sp | Add-Member -MemberType ScriptMethod -Name CycleService -Value { 
+		param( 
+			[string] $farm = ".*",
+			[string] $env = ".*",
+			[string] $name = ".*",
+			[string] $service = "sptimerv4"
+		)
+		
+		$computers = $this.Servers | ? { $_.Farm -imatch $farm -and $_.Environment -imatch $env -and $_.SystemName -imatch $name } | Select -Expand SystemName 
+		foreach( $computer in $computers ) {
+			Write-Host "[ $(Get-Date) ] - Cycling $service on $computer ..."
+			sc.exe \\$computer stop $service
+			Sleep 1
+			sc.exe \\$computer start $service
+			sc.exe \\$computer query $service
+		}
+	}
+}
+
+function Set-AppOpsServers 
+{
+
+    $url = ""
+	Write-Output ("{0} - Getting AppOps servers stored in `$apps variable" -f $(Get-Date))
+	
+	$apps = New-Object PSObject -Property @{
+		Servers = Get-SPListViaWebService -url $url -List AppServers
+	}
+	
+	$apps | Add-Member -MemberType ScriptMethod -Name Filter -Value { 
+		param( 
+			[string] $name = ".*",
+			[string] $env = ".*"
+		)
+
+		$this.Servers | ? { $_.Environment -imatch $env -and $_.SystemName -imatch $name } | Select -Expand SystemName
+	}
+}
+
+function Set-CitrixServers 
+{
+
+    $url = ""
+	Write-Output ("{0} - Getting Citrix servers stored in `$citrix variable" -f $(Get-Date))
+	
+	$xenapp = New-Object PSObject -Property @{
+		Servers = Get-SPListViaWebService -url $url -List "Citrix Servers"
+	}
+	
+	$xenapp | Add-Member -MemberType ScriptMethod -Name Filter -Value { 
+		param( 
+			[string] $name = ".*",
+			[string] $version = ".*"
+		)
+
+		$this.Servers | ? { $_.Environment -imatch $env -and $_.SystemName -imatch $name } | Select -Expand SystemName
+	}
+}
+
+function Set-PSDrives 
+{
+	$computer = ""
+	$repos = @(
+		@{Name = "Repo"; Location="\SharePoint2010-Utils-Scripts"},
+		@{Name = "SharePoint"; Location="\Installs\SharePoint" },
+		@{Name = "NAS"; Location="\\"},
+		@{Name = "Git"; Location=$GithubRepo}
+	)
+	
+	if( !(Test-Connection $computer) ) {
+		Write-Error ("Could reach out to {0}. Returning." -f $computer)
+		return 
+	}
+
+	foreach( $repo in $repos ) {
+	    if( Test-Path $repo.Location ) {
+		    Write-Output ("{0} - Setting up {1} to {2}" -f $(Get-Date),$repo.Name, $repo.Location) 
+		    New-PSdrive -name $repo.Name -psprovider FileSystem -root $repo.Location -Scope Global | Out-Null
+	    }
+    }
+}
+
+function Remove-OfficeLogs
+{
+	Remove-Item D:\*.log -ErrorAction SilentlyContinue
+	Remove-Item C:\*.log -ErrorAction SilentlyContinue
+}
+
+function Remove-TempFolder
+{
+	Remove-Item -Recurse -Force $ENV:TEMP -ErrorAction SilentlyContinue
 }
 
 function Get-Profile
@@ -43,55 +156,28 @@ function Get-Profile
 	ed $profile
 }
 
-function Add-IISFunctions
-{
-	$lib = (Join-PATH $ENV:SCRIPTS_HOME "Libraries\IIS_Functions.ps1")
-	Write-Host $(Get-Date) " - Sourcing $lib"
-	. $lib
-}
-New-Alias -Name iis -Value Add-IISFunctions
-
-function Remove-TempFolder
-{
-	rm.exe -rf $ENV:TEMP
-}
-
-function Add-Azure
-{
-	Write-Host $(Get-Date) " - Importing Azure Module"
-	Push-Location $PWD.Path
-	cd  "C:\Program Files (x86)\Microsoft SDKs\Windows Azure\PowerShell\"
-	Import-Module "C:\Program Files (x86)\Microsoft SDKs\Windows Azure\PowerShell\Microsoft.WindowsAzure.Management.psd1"
-	Pop-Location 
-}
-New-Alias -Name Azure-Tools -Value Add-Azure
-
 function Add-QuestTools
 {
-	Write-Host $(Get-Date) " - Adding Quest Snappin" -foreground green
+	Write-Output ("{0} - Sourcing {1}" -f $(Get-Date),"Quest Tools")
 	Add-PSSnapin Quest.*
 }
-New-Alias -Name Quest -Value Add-QuestTools
 
 function Add-PowerShellCommunityExtensions
 {
-	Write-Host $(Get-Date) " - Adding PowerShell Community Extensions Module" -foreground green
+	Write-Output ("{0} - Sourcing {1}" -f $(Get-Date),"PowerShell Extensions" )
 	Import-Module pscx
 }
-New-Alias -Name pscx -Value Add-PowerShellCommunityExtensions
 
 function Add-SQLProviders
 {
 	Add-PSSnapin SqlServerCmdletSnapin100
 	Add-PSSnapin SqlServerProviderSnapin100
 }
-New-Alias -Name sql -Value Add-SQLProviders
 
 function Edit-HostFile
 {
 	&$env:editor c:\Windows\System32\drivers\etc\hosts
 }
-Set-Alias -Name hf -Value Edit-HostFile
 
 function rsh 
 {
@@ -101,30 +187,41 @@ function rsh
 
 function rexec
 {
-	param ( [string[]] $computers = "localhost", [Object] $sb )
-	Invoke-Command -ComputerName $computers -Credential (Get-Creds) -Authentication Credssp -ScriptBlock $sb
+	param (
+		[Parameter(Mandatory=$true)]
+		[string[]] $computers = $ENV:ComputerName,
+		
+		[Parameter(ParameterSetName="ScriptBlock")]
+		[ScriptBlock] $sb = {}, 
+		
+		[Parameter(ParameterSetName="FilePath")]
+		[string] $file = [string]::empty,
+		[Parameter(ParameterSetName="FilePath")]
+		[Object[]] $args = @()
+	)
+	
+	switch ($PsCmdlet.ParameterSetName)
+    { 
+		"FilePath" 		{ Invoke-Command -ComputerName $computers -Credential (Get-Creds) -Authentication Credssp -FilePath $file -ArgumentList $args }
+		"ScriptBlock" 	{ Invoke-Command -ComputerName $computers -Credential (Get-Creds) -Authentication Credssp -ScriptBlock $sb }
+	}
 }
 
-function Remove-OfficeLogs
+function Goto-Home
 {
-	Remove-Item D:\*.log -ErrorAction SilentlyContinue
-	Remove-Item C:\*.log -ErrorAction SilentlyContinue
+	Set-Location $home
 }
-Remove-OfficeLogs
 
-function Go-Home
+function Goto-Code
 {
-	cd $home
+	Set-Location $Code
 }
-Set-Alias -Name home -Value Go-Home
 
-function Go-Code
+function Goto-GitHub
 {
-	cd $Code\Scripts-Production
+	Set-Location $GithubRepo
 }
-Set-Alias -Name code -Value Go-Code
 
-remove-item alias:cd
 function cd 
 {
 	param ( $location ) 
@@ -140,12 +237,10 @@ function cd
 	}
 }
 
-function shorten-path([string] $path) { 
+function shorten-path([string] $path)
+{ 
    $loc = $path.Replace($HOME, '~') 
-   # remove prefix for UNC paths 
    $loc = $loc -replace '^[^:]+::', '' 
-   # make path shorter like tabs in Vim, 
-   # handle paths starting with \\ and . correctly 
    return ($loc -replace '\\(\.?)([^\\])[^\\]*(?=\\)','\$1$2') 
 }
 
@@ -170,10 +265,8 @@ function prompt
     }
 }
 
-remove-item alias:ls
-set-alias ls Get-ChildItemColor
- 
-function Get-ChildItemColor {
+function Get-ChildItemColor 
+{
     $fore = $Host.UI.RawUI.ForegroundColor
  
     Invoke-Expression ("Get-ChildItem $args") |
@@ -217,3 +310,67 @@ function Get-ChildItemColor {
       }
     }
 }
+
+function Start-MyApplications 
+{
+	Start-Process outlook.exe
+	Start-Process lync.exe
+	& 'C:\Program Files (x86)\Mozilla Firefox\firefox.exe' -new-window http://usgt.kanbanize.com
+	Start-Sleep -Seconds 4
+	& 'C:\Program Files (x86)\Mozilla Firefox\firefox.exe' http://pingdom.com
+	& 'C:\Program Files (x86)\Mozilla Firefox\firefox.exe' http://newrelic.com
+	& 'C:\Program Files (x86)\Mozilla Firefox\firefox.exe' http://appops.gt.com
+	& 'C:\Program Files (x86)\Mozilla Firefox\firefox.exe' http://appops.gt.com/sites
+	& 'C:\Program Files (x86)\Internet Explorer\iexplore.exe' http://team.gt.com/sites/ApplicationOperations/
+	& 'C:\Program Files\Microsoft System Center 2012 R2\Operations Manager\Console\Microsoft.EnterpriseManagement.Monitoring.Console.exe'
+	Set-location $code
+	tf.exe get
+}
+
+$MaximumHistoryCount=1024 
+$CODE = "D:\Code\GT\Operations"
+$env:EDITOR = "C:\Program Files (x86)\Notepad++\notepad++.exe"
+
+Get-ChildItem (Join-PATH $ENV:SCRIPTS_HOME "Libraries") -filter *.ps1 | 
+	Foreach { 
+		Write-Output ("{0} - Sourcing {1}" -f $(Get-Date), $_.FullName)
+		. $_.FullName 
+	}
+	
+Get-ChildItem (Join-PATH $ENV:SCRIPTS_HOME "Libraries") | 
+	Where { $_.Name -imatch "\.psm1|\.dll" } | 
+	Foreach {
+		Write-Output ("{0} - Import Module {1}" -f $(Get-Date), $_.FullName)
+		Import-Module $_.FullName 
+	}
+
+Remove-Item alias:ls
+Remove-Item alias:cd
+
+Set-Alias -Name hf -Value Edit-HostFile
+Set-Alias -Name ls -Value Get-ChildItemColor
+Set-Alias -Name code -Value Goto-Code
+Set-Alias -Name github -Value Goto-GitHub
+Set-Alias -Name home -Value Goto-Home
+Set-Alias -Name tp -value Test-Path
+
+New-Alias -Name pscx -Value Add-PowerShellCommunityExtensions
+New-Alias -Name sql -Value Add-SQLProviders
+New-Alias -name gh -value Get-History 
+New-Alias -name i -value Invoke-History
+New-Alias -name ed -value $env:EDITOR
+New-Alias -Name Quest -Value Add-QuestTools
+New-Alias -Name go -Value Start-MyApplications 
+
+Set-SharePointServers
+Set-AppOpsServers
+Set-CitrixServers
+Set-PSDrives
+Set-Creds -creds $cred
+Resize-Screen -width 210 -height 65
+Remove-OfficeLogs
+Remove-TempFolder
+
+Set-location $code
+
+

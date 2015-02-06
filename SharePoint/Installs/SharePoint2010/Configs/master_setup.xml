@@ -1,0 +1,137 @@
+<SharePoint>
+	<Farms>
+		<farm name="internal">
+			<server name="" role="central-admin"/>
+			<server name="" role="application"/>
+			<server name="" role="wfe"/>
+		</farm>
+		<farm name="external">
+			<server name="" role="central-admin"/>
+			<server name="" role="wfe"/>
+			<server name="" role="wfe"/>
+		 </farm>
+		<farm name="services">
+			<server name="" role="central-admin"/>
+			<server name="" role="application" />
+			<server name="" role="indexer"/>
+			<server name="" role="wfe"/>
+		</farm>
+	</Farms>
+	<Databases>
+		<Database name="" port="" instance="" />
+	</Databases>
+	<BaseConfig>
+		<ScriptsHome>D:\Scripts</ScriptsHome>
+		<UtilsHome>D:\Utils\</UtilsHome>
+		<DeployHome>D:\Deploy\</DeployHome>
+		<SPVersion>SharePoint_Server_2010-SP1-14.0.6029.1000</SPVersion>
+		<AuditUrl>http://www.example.com/site/SharePointOpsSite/</AuditUrl>
+	</BaseConfig>
+	<setup>
+		<master_file_location>\\nas\installs\</master_file_location>
+		<setup_path>D:\Deploy\SharePoint_Server_2010-SP1-14.0.6029.1000\InstallFiles\setup.exe</setup_path>
+		<setup_configs>
+			<external>D:\Scripts\InstallSharePoint2010\Configs\SP-Install-Configs\config-internet.xml</external>
+			<services>D:\Scripts\InstallSharePoint2010\Configs\SP-Install-Configs\config-internet.xml</services>
+			<internal>D:\Scripts\InstallSharePoint2010\Configs\SP-Install-Configs\config-enterprise.xml</internal>
+		</setup_configs>
+		<databases>
+			<external></external>
+			<services></services>
+			<internal></internal>
+		</databases>
+		<security>
+			<external passphrase="" farm_account="EXAMPLE\" />
+			<internal passphrase="" farm_account="EXAMPLE\" />
+			<services passphrase="" farm_account="EXAMPLE\" />
+		</security>
+	</setup>
+	<FarmAdministrators>
+		<add group="EXAMPLE\SharePoint-SysAdmins" />
+		<remove group="builtin\administrators" />
+	</FarmAdministrators>
+	<Services>
+		<Name>AppPool - SharePoint Web Service Application</Name>
+		<AppPoolAccount></AppPoolAccount>
+    </Services>
+	<Secure>
+		<Passphrase></Passphrase>
+	</Secure>
+	<Email>
+		<Outgoing>
+			<address>sharepoint.admins@example.com</address>
+			<server>mail.example.com</server>
+		</Outgoing>
+	</Email>
+	<ManagedAccounts>
+		<account username="EXAMPLE\" />
+	</ManagedAccounts>
+	<Logging>
+		<DaysToKeep>28</DaysToKeep>
+		<CutInterval>1440</CutInterval>
+		<Path>d:\Logs\Trace</Path>
+		<MaxDiskSpace>10</MaxDiskSpace>
+	</Logging>
+	<Usage>	
+		<Path>d:\Logs\Usage</Path>
+		<MaxDiskSpace>5</MaxDiskSpace>
+		<Database>WSS_Logging</Database>
+	</Usage>
+	<SharedServices>
+		<Service App="UserProfile">
+			<name>User Profile Service Application</name>
+			<Server name="" />
+			<Databases>
+				<database instance="" name="SocialDB_001" Type="Social" />
+				<database instance="" name="ProfileDB_001" Type="Profile" />
+				<database instance="" name="SyncDB_001" Type="Sync" />
+			</Databases>
+			<AppPool name="AppPool - SharePoint User Profile Service Application" account="EXAMPLE\"/>
+			<MySite>
+				<name>SharePoint - MySites</name>
+				<databaseName>WSS_Content_MySite</databaseName>
+				<databaseServer></databaseServer>
+				<hostheader></hostheader>
+				<path>personal</path>
+				<apppool account="" />
+			</MySite>
+		</Service>
+		<Service App="EnterpriseSearch">
+			<name>Search Service Application</name>
+			<Server name="" />
+			<CrawlDatabase instance="" name="Search_Crawl_DB" />
+			<AdminDatabase instance="" name="Search_Admin_DB" />
+			<SearchAppPool name="AppPool - SharePoint Search Service Application" account="EXAMPLE\"/>
+			<AdminAppPool name="AppPool - SharePoint Search Service Application" account="EXAMPLE\"/>
+			<PerformanceLevel>PartlyReduced</PerformanceLevel>
+			<Email>(IT) SharePoint Operations@example.com</Email>
+			<DefaultContentAccessAccount name="EXAMPLE\" password="" />
+			<SearchAccessAccount name="EXAMPLE\" password="" />
+			<IndexLocation>D:\SharePoint\Index</IndexLocation>
+		</Service>
+		<Service App="Metadata">
+			<name>Managed Metadata Service Application</name>
+			<Servers>
+				<server name="" />
+			</Servers>
+			<Databases>
+				<database instance="" name="" />
+			</Databases>
+			<AppPool name="AppPool - SharePoint Shared Service Application" account="EXAMPLE\"/>
+			<Administrators>SHAREPOINT\svc_services</Administrators>
+		</Service>
+		<Service App="WebAnalytics">
+			<name>Web Analytics Service Application</name>
+			<Servers>
+				<server name="" />
+			</Servers>
+			<Databases>
+				<database instance="" name="WebAnalytis_Reporting" Role="Reporting" />
+				<database instance="" name="WebAnalytis_Staging" Role="Staging" />
+			</Databases>
+			<AppPool name="AppPool - SharePoint Shared Service Application" account="EXAMPLE\"/>
+		</Service>
+	</SharedServices>
+</SharePoint>
+
+

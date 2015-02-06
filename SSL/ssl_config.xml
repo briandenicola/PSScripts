@@ -1,8 +1,0 @@
-<ssl>
-	<operators>
-		<operator name="Brian Denicola" pager="brian.denicola@us.gt.com" />
-	</operators>
-	<expiration>14</expiration>
-	<url>http://collaboration.gt.com/site/SharePointOperationalUpgrade/applicationsupport/</url>
-	<list>SSLCerts</list>
-</ssl>

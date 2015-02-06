@@ -1,0 +1,27 @@
+﻿<WebApplications>
+	<WebApp>
+		<name>Test Site</name>
+		<port>80</port>
+		<ManagedAccount>XYZ35423</ManagedAccount>			
+		<HostHeader>www.example.com</HostHeader>
+		<DatabaseName>RemoveIV</DatabaseName>
+		<auth>
+			<type role="SQLRole" provider="SQLProvider" name="FBA"/>
+		</auth>
+		<extendname>InternalTest</extendname>
+		<extendhostheader>Internal-Ivey.example.com</extendhostheader>
+		<extendport>80</extendport>
+		<extendzone>Intranet</extendzone>
+	</WebApp>
+	<WebApp>
+		<name>Test Site2</name>
+		<port>80</port>
+		<ManagedAccount>XYZ35423</ManagedAccount>
+		<HostHeader>www2.example.com</HostHeader>
+		<DatabaseName>RemoveIV_Test</DatabaseName>
+		<auth>
+			<type name="NTLM"/>
+		</auth>
+	</WebApp>
+</WebApplications>
+		
