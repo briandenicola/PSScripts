@@ -81,8 +81,10 @@
             configuration Configure_DSCPullServer {                param ($NodeId, $PullServer, $ThumbPrint)    
                 LocalConfigurationManager                {                    AllowModuleOverwrite = 'True'                    ConfigurationID = $NodeId                    ConfigurationModeFrequencyMins = 30                     ConfigurationMode = 'ApplyAndAutoCorrect'                    RebootNodeIfNeeded = 'True'                    RefreshMode = 'PULL'                     CertificateId = $ThumbPrint                    DownloadManagerName = 'WebDownloadManager'                    DownloadManagerCustomData = (@{ServerUrl = "https://$PullServer/psdscpullserver.svc"})                }            }
 
-            Configure_DSCPullServer -NodeId $using:guid -PullServer $using:pull_server -ThumbPrint $using:dsc_thumprint            Set-DscLocalConfigurationManager -path Configure_DSCPullServer
-            $using:guid | Add-Content -Encoding Ascii ( Join-Path "C:" $using:guid )
+            if( $using:guid -ne $null ) {
+                Configure_DSCPullServer -NodeId $using:guid -PullServer $using:pull_server -ThumbPrint $using:dsc_thumprint                Set-DscLocalConfigurationManager -path Configure_DSCPullServer
+                $using:guid | Add-Content -Encoding Ascii ( Join-Path "C:" $using:guid )
+            }
         }
 
         Restart-Computer -Wait -For PowerShell -Timeout 90 -Force

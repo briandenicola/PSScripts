@@ -42,41 +42,39 @@ Specifies an account that can join the computer to the domain. Must be in the fo
 .PARAMETER domain_password
 Specifies the domain user's password
 
-.PARAMETER node
-Specifies a node's GUID for DSC.  If empty, the script will generate a new GUID
-
-.PARAMETER pull_server
-Specifies the DSC Pull server. Default Value = 'dsc.sharepoint.test'
-
-.PARAMETER dsc_thumbprint
-Specifies the thumbprint of the certificate for DSC Pull server. Mandatory parameter
-
 .PARAMETER windows_key
 Specifies the Windows Key.  Mandatory parameter
 
+.PARAMETER node
+Specifies a node's GUID for DSC.  If empty, the script will generate a new GUID. DSC Parameter Set
+
+.PARAMETER pull_server
+Specifies the DSC Pull server. Default Value = 'dsc.sharepoint.test'. DSC Parameter Set
+
+.PARAMETER dsc_thumbprint
+Specifies the thumbprint of the certificate for DSC Pull server. DSC Parameter Set
+
 .NOTES
-This script assumes a working DSC Pull Server setup utilizing SSL
+
 
 #>
 
 [CmdletBinding()]
 param (
- [Parameter(Mandatory=$true)][string] $computer_ip,
- [Parameter(Mandatory=$true)][string] $new_name,
- [Parameter(Mandatory=$true)][string] $domain = "sharepoint.test",
- [Parameter(Mandatory=$true)][string] $pull_server = "dsc.sharepoint.test",
- [Parameter(Mandatory=$true)][string] $local_password,
- 
- [ValidatePattern("(\w+)\\(\w+)")]
- [Parameter(Mandatory=$true)][string] $domain_user,
- [Parameter(Mandatory=$true)][string] $domain_password,
+    [Parameter(Mandatory=$true)][string] $computer_ip,
+    [Parameter(Mandatory=$true)][string] $new_name,
+    [Parameter(Mandatory=$true)][string] $domain = "sharepoint.test",
+    [Parameter(Mandatory=$false)][string] $local_user = "administrator",
+    [Parameter(Mandatory=$true)][string] $local_password,
+    [Parameter(Mandatory=$true)][string] $windows_key,
 
-  [Parameter(Mandatory=$true)][string] $dsc_thumbprint,
-  [Parameter(Mandatory=$true)][string] $windows_key,
+    [ValidatePattern("(\w+)\\(\w+)")]
+    [Parameter(Mandatory=$true)][string] $domain_user,
+    [Parameter(Mandatory=$true)][string] $domain_password, 
 
- [ValidateNotNullOrEmpty()] 
- [string] $local_user = "administrator",
- [string] $node
+    [Parameter(ParameterSetName="DSC",Mandatory=$true)] [string] $pull_server = "dsc.sharepoint.test",
+    [Parameter(ParameterSetName="DSC",Mandatory=$true)] [string] $dsc_thumbprint = [string]::empty,
+    [Parameter(ParameterSetName="DSC",Mandatory=$false)][string] $node = [string]::empty
 )
 
 . (Join-Path $PWD.Path "Modules\Setup-Workflow.ps1")
@@ -106,10 +104,6 @@ function Set-MOFHash {
 Set-Variable -Name domain_creds -value (New-Object System.Management.Automation.PSCredential ($domain_user, (ConvertTo-SecureString $domain_password -AsPlainText -Force)))
 Set-Variable -Name local_creds  -value (New-Object System.Management.Automation.PSCredential ($local_user, (ConvertTo-SecureString $local_password -AsPlainText -Force)))
 
-if( [string]::IsNullOrEmpty($node) ) { 
-    Set-Variable -Name node -Value ([guid]::NewGuid() | Select -Expand Guid)
-}
-
 Write-Output ("Using Guid - {0} for {1}. Please save. Value will also be saved on the root of the C: parition on {1}." -f $node, $computer_ip)
 winrm s winrm/config/client ('@{TrustedHosts="' + $computer_ip + '"}')
 
@@ -126,5 +120,14 @@ $options = @{
 Setup-NewComputer @options -PSPersist $true -PSComputerName $computer_ip -PSCredential $local_creds -Verbose
 
 #DSC To Configure
-ServerSetup
-Set-MOFHash -guid $node -Module "ServerSetup"
+switch ($PsCmdlet.ParameterSetName)
+{ 
+    "DSC" {
+        if( [string]::IsNullOrEmpty($node) ) { 
+            Set-Variable -Name node -Value ([guid]::NewGuid() | Select -Expand Guid)
+        }
+
+        ServerSetup
+        Set-MOFHash -guid $node -Module "ServerSetup"
+    }
+}
