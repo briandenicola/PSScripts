@@ -9,39 +9,14 @@ Configuration ServerSetup {
         {
             Ensure = "Present"  
             Name = "SCRIPTS_HOME"
-            Value = "D:\Scripts"
+            Value =  Join-Path -Path $env:SystemDrive -ChildPath "Scripts"
         }
 
-        File LogDirectory
+        File TempDirectory
         {
             Ensure = "Present" 
             Type = "Directory"
-            DestinationPath = "D:\Logs"    
+            DestinationPath = Join-Path -Path $env:SystemDrive -ChildPath "Temp"  
         } 
-
-        File DeployDirectory
-        {
-            Ensure = "Present" 
-            Type = "Directory"
-            DestinationPath = "D:\Deploy"    
-        }
-
-        File ScriptsDirectoryCopy
-        {
-            Ensure = "Present" 
-            Type = "Directory" 
-            Recurse = $true 
-            SourcePath = "\\nas\app-ops\SharePoint-Scripts\"
-            DestinationPath = "D:\Scripts"    
-        }
-
-        File UtilsDirectoryCopy
-        {
-            Ensure = "Present" 
-            Type = "Directory" 
-            Recurse = $true 
-            SourcePath = "\\nas\app-ops\SharePoint-Utils\"
-            DestinationPath = "D:\Utils"    
-        }
     }
 }

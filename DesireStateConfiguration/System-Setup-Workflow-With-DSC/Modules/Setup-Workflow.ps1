@@ -3,7 +3,10 @@
         [string] $new_name,
         [string] $domain,
         [string] $pull_server,
-        [string] $guid, 
+        [string] $guid,
+        [string] $dns = "10.2.1.5",
+        [string] $dsc_thumprint,
+        [string] $windows_key,
         [System.Management.Automation.PSCredential] $cred
     )
 
@@ -16,7 +19,7 @@
         
         inlinescript {
             Set-Variable -Name interface -Value "Ethernet0" -Option Constant
-            Set-Variable -Name dns -Value "10.2.1.5" -Option Constant
+            Set-Variable -Name dns -Value $using:dns -Option Constant
             Set-DnsClientServerAddress -InterfaceAlias $using:interface -ServerAddresses $using:dns
             Add-Computer -DomainName $using:domain -Credential $using:cred -Force 
         }
@@ -34,6 +37,21 @@
  
             inlinescript {
                 Set-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 00000000
+            }
+
+            inlinescript {
+                slmgr -ipk $using:windows_key
+            }
+
+            inlinescript {
+                Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update"  -Name "AUOptions" -Value 4
+                Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update"  -Name "CachedAUOptions" -Value 4
+            }
+
+            inlinescript {
+                Enable-PSRemoting -Force -Confirm:$false
+                Enable-WSManCredSSP -DelegateComputer * -Force -Role Client
+                Enable-WSManCredSSP -Force -Role Server
             }
         }
 
@@ -60,10 +78,10 @@
         }
 
         inlinescript {
-            configuration Configure_DSCPullServer {                param ($NodeId, $PullServer)    
-                LocalConfigurationManager                {                    AllowModuleOverwrite = 'True'                    ConfigurationID = $NodeId                    ConfigurationModeFrequencyMins = 30                     ConfigurationMode = 'ApplyAndAutoCorrect'                    RebootNodeIfNeeded = 'True'                    RefreshMode = 'PULL'                     DownloadManagerName = 'WebDownloadManager'                    DownloadManagerCustomData = (@{ServerUrl = "https://$PullServer/psdscpullserver.svc"})                }            }
+            configuration Configure_DSCPullServer {                param ($NodeId, $PullServer, $ThumbPrint)    
+                LocalConfigurationManager                {                    AllowModuleOverwrite = 'True'                    ConfigurationID = $NodeId                    ConfigurationModeFrequencyMins = 30                     ConfigurationMode = 'ApplyAndAutoCorrect'                    RebootNodeIfNeeded = 'True'                    RefreshMode = 'PULL'                     CertificateId = $ThumbPrint                    DownloadManagerName = 'WebDownloadManager'                    DownloadManagerCustomData = (@{ServerUrl = "https://$PullServer/psdscpullserver.svc"})                }            }
 
-            Configure_DSCPullServer -NodeId $using:guid -PullServer $using:pull_server            Set-DscLocalConfigurationManager -path Configure_DSCPullServer
+            Configure_DSCPullServer -NodeId $using:guid -PullServer $using:pull_server -ThumbPrint $using:dsc_thumprint            Set-DscLocalConfigurationManager -path Configure_DSCPullServer
             $using:guid | Add-Content -Encoding Ascii ( Join-Path "C:" $using:guid )
         }
 

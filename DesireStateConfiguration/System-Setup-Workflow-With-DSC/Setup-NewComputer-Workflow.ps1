@@ -48,6 +48,12 @@ Specifies a node's GUID for DSC.  If empty, the script will generate a new GUID
 .PARAMETER pull_server
 Specifies the DSC Pull server. Default Value = 'dsc.sharepoint.test'
 
+.PARAMETER dsc_thumbprint
+Specifies the thumbprint of the certificate for DSC Pull server. Mandatory parameter
+
+.PARAMETER windows_key
+Specifies the Windows Key.  Mandatory parameter
+
 .NOTES
 This script assumes a working DSC Pull Server setup utilizing SSL
 
@@ -64,6 +70,9 @@ param (
  [ValidatePattern("(\w+)\\(\w+)")]
  [Parameter(Mandatory=$true)][string] $domain_user,
  [Parameter(Mandatory=$true)][string] $domain_password,
+
+  [Parameter(Mandatory=$true)][string] $dsc_thumbprint,
+  [Parameter(Mandatory=$true)][string] $windows_key,
 
  [ValidateNotNullOrEmpty()] 
  [string] $local_user = "administrator",
@@ -111,6 +120,8 @@ $options = @{
     pull_server = $pull_server
     guid = $node
     cred = $domain_creds
+    windows_key = $windows_key
+    dsc_thumbprint = $dsc_thumbprint
 }
 Setup-NewComputer @options -PSPersist $true -PSComputerName $computer_ip -PSCredential $local_creds -Verbose
 
