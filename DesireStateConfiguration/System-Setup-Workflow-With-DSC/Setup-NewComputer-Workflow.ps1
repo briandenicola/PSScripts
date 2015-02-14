@@ -61,20 +61,20 @@ Specifies the thumbprint of the certificate for DSC Pull server. DSC Parameter S
 
 [CmdletBinding()]
 param (
-    [Parameter(Mandatory=$true)][string] $computer_ip,
-    [Parameter(Mandatory=$true)][string] $new_name,
-    [Parameter(Mandatory=$true)][string] $domain = "sharepoint.test",
-    [Parameter(Mandatory=$false)][string] $local_user = "administrator",
-    [Parameter(Mandatory=$true)][string] $local_password,
-    [Parameter(Mandatory=$true)][string] $windows_key,
+    [Parameter(Mandatory=$true)] [string] $computer_ip,
+    [Parameter(Mandatory=$true)] [string] $new_name,
+    [Parameter(Mandatory=$true)] [string] $domain                                = "sharepoint.test",
+    [Parameter(Mandatory=$false)][string] $local_user                            = "administrator",
+    [Parameter(Mandatory=$true)] [string] $local_password,
+    [Parameter(Mandatory=$true)] [string] $windows_key,
 
     [ValidatePattern("(\w+)\\(\w+)")]
     [Parameter(Mandatory=$true)][string] $domain_user,
     [Parameter(Mandatory=$true)][string] $domain_password, 
 
-    [Parameter(ParameterSetName="DSC",Mandatory=$true)] [string] $pull_server = "dsc.sharepoint.test",
-    [Parameter(ParameterSetName="DSC",Mandatory=$true)] [string] $dsc_thumbprint = [string]::empty,
-    [Parameter(ParameterSetName="DSC",Mandatory=$false)][string] $node = [string]::empty
+    [Parameter(ParameterSetName="DSC",Mandatory=$false)][string] $pull_server    = "dsc.sharepoint.test",
+    [Parameter(ParameterSetName="DSC",Mandatory=$false)][string] $dsc_thumbprint = [string]::empty,
+    [Parameter(ParameterSetName="DSC",Mandatory=$false)][string] $node           = [string]::empty
 )
 
 . (Join-Path $PWD.Path "Modules\Setup-Workflow.ps1")
@@ -102,20 +102,19 @@ function Set-MOFHash {
 }
 
 Set-Variable -Name domain_creds -value (New-Object System.Management.Automation.PSCredential ($domain_user, (ConvertTo-SecureString $domain_password -AsPlainText -Force)))
-Set-Variable -Name local_creds  -value (New-Object System.Management.Automation.PSCredential ($local_user, (ConvertTo-SecureString $local_password -AsPlainText -Force)))
+Set-Variable -Name local_creds  -value (New-Object System.Management.Automation.PSCredential ($local_user,  (ConvertTo-SecureString $local_password  -AsPlainText -Force)))
 
-Write-Output ("Using Guid - {0} for {1}. Please save. Value will also be saved on the root of the C: parition on {1}." -f $node, $computer_ip)
 winrm s winrm/config/client ('@{TrustedHosts="' + $computer_ip + '"}')
 
 #Workflow to Setup Machine
 $options = @{ 
-    new_name = $new_name
-    domain = $domain
-    pull_server = $pull_server
-    guid = $node
-    cred = $domain_creds
-    windows_key = $windows_key
-    dsc_thumbprint = $dsc_thumbprint
+    new_name             = $new_name
+    domain               = $domain
+    pull_server          = $pull_server
+    guid                 = $node
+    cred                 = $domain_creds
+    windows_key          = $windows_key
+    dsc_thumbprint       = $dsc_thumbprint
 }
 Setup-NewComputer @options -PSPersist $true -PSComputerName $computer_ip -PSCredential $local_creds -Verbose
 
@@ -127,6 +126,7 @@ switch ($PsCmdlet.ParameterSetName)
             Set-Variable -Name node -Value ([guid]::NewGuid() | Select -Expand Guid)
         }
 
+        Write-Output ("Using Guid - {0} for {1}. Please save. Value will also be saved on the root of the C: parition on {1}." -f $node, $computer_ip)
         ServerSetup
         Set-MOFHash -guid $node -Module "ServerSetup"
     }
