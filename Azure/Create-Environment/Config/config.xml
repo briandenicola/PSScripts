@@ -21,12 +21,12 @@
 		</CertificateAuthority>
 	</ActiveDirectory>
 	<DesireStateConfiguration enabled="True">
-        <DSC DNS="dsc.sharepoint.test" ConfigurationScript=".\DSC\Resources\Config_xDscWebService.ps1" ConfigurationName="Config_xDscWebService" />
+        <DSC DNS="dsc.sharepoint.test" ConfigurationScript=".\DSC\Resources\Config_xDscWebService.ps1" />
         <PullServiceModule Path="DSC\Modules" />
 		<VM ComputerName="" VMSize="Small" DriveSize="60" DriveLabel="DATA-01" OS="Windows Server 2012 R2 Datacenter" LocalAdminUser="manager" LocalAdminPassword="" />
 	</DesireStateConfiguration>
 	<MemberServers>
-		<Server JoinDomain="True" DSCEnabled="True">	
+		<Server JoinDomain="True">	
 			<ComputerName />
 			<OS />
 			<Guid/>
@@ -40,7 +40,7 @@
 			<EndPoints>
 				<EndPoint Name="" LocalPort="" RemotePort="" />
 			</EndPoints>
-			<ScriptExtension />
+			<ScriptExtension Required="True" Type="AzureDSC|DomainDSC|Remoting" Path="" />
 		</Server>
 	</MemberServers>
 </Azure>
