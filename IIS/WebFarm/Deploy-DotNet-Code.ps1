@@ -54,7 +54,7 @@ function Get-IISWebFarmServers
     $server_number = 1
 
     $server = $env:COMPUTERNAME
-    while( nslookup $server ) {
+    while( Get-IPAddress $server ) {
         $servers += $server
         $server = $root_server + ("{0}" -f ($server_number++).ToString().PadLeft(2,'0'))
     } 

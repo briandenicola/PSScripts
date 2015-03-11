@@ -67,7 +67,7 @@ if( $filter_type -eq "name" ) {
 $audit_results = @()
 foreach( $server in $Servers ) {
 	Write-Progress -activity "Querying Server" -status "Currently querying $Server . . . "
-	if( ping( $Server ) ) {
+	if( Test-Connection -Count 1 -ComputerName $Server ) {
 		$wmi_webserver = [WmiSearcher] $WebServerQuery
 		$wmi_webServer.Scope.Path = "\\{0}\root\microsoftiisv2" -f $Server
 		$wmi_webServer.Scope.Options.Authentication = 6
@@ -93,7 +93,7 @@ foreach( $server in $Servers ) {
 					if( -not $hostheaders.ContainsKey($hostheader) ) { $hostheaders.Add($hostheader, 1) }
 					
 					if( -not [String]::IsNullOrEmpty($binding.Hostname) ) {
-						$ip = nslookup $binding.HostName 
+						$ip = Get-IPAddress $binding.HostName 
 						if( -not $internal_ip.ContainsKey($ip) -and $ip.ToString() -ne "False" ) { $internal_ip.Add($ip, 1) }
 					}
 				}

@@ -33,7 +33,7 @@ foreach( $zone in $sp_web_application.IISSettings.Keys ) {
 
     $zone_settings = $sp_web_application.IISSettings[$zone]
     $public_url = $sp_web_application.AlternateUrls | Where { $_.Zone -eq $zone } | Select -ExpandProperty PublicUrl
-    $ip_address = nslookup ( $public_url -replace "https?://", [String]::Empty )
+    $ip_address = Get-IPAddress ( $public_url -replace "https?://", [String]::Empty )
     $iis_settings = Get-WebSite | Where { $_.Name -eq $zone_settings.ServerComment }
 
     $audit += (New-Object PSObject -Property @{

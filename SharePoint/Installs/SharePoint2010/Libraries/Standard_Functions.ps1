@@ -653,7 +653,7 @@ function Audit-IISServers([String[]] $Servers )
 	$Servers | % { 
 		$Server = $_
 		Write-Progress -activity "Querying Server" -status "Currently querying $Server . . . "
-		if( ping( $Server ) ) 
+		if( Test-Connection -Count 1 -ComputerName $Server ) 
 		{
 
 			$wmiWebServerSearcher = [WmiSearcher] $WebServerQuery
@@ -1098,22 +1098,7 @@ function ping-multiple
 	}
 }
 
-function ping ( [string] $computer ) 
-{
-	$timeout=120
-	$ping = new-object System.Net.NetworkInformation.Ping 
-
-	trap { continue }
-
-	$reply = $ping.Send($computer, $timeout)
-   	if( $reply.Status -eq "Success"  ) {
-	    return $true
-	} else {
-		return $false
-	}  
-}
-
-Function read-RegistryHive 
+function read-RegistryHive 
 {
 	param(
 		[string[]] $servers,
@@ -1122,9 +1107,8 @@ Function read-RegistryHive
 	)
 	
 	$regPairs = @()
-	$servers | % {
-		$server = $_
-		if( Ping $server )
+	foreach( $server in $servers ) {
+		if( Test-Connection -Count 1 -ComputerName $server )
 		{
 			$hive = [Microsoft.Win32.RegistryHive]::$rootHive
 			$reg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($hive, $server )
@@ -1140,9 +1124,9 @@ Function read-RegistryHive
 			$regKey.GetSubKeyNames() | % {
 				$regPairs += read-RegistryHive -servers $server -key "$key\$_"
 			}
-		} else 
-		{
-			Write-Host "Could not ping $_ . . ." -foregroundcolor DarkRed
+		} 
+        else {
+			Write-Error "Could not ping $server . . ."
 		}
 	
 	}

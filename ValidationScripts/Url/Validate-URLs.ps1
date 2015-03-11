@@ -152,7 +152,7 @@ function Get-WebserviceRequest
 		Write-Verbose ("[{0}][REPLY] Status Code = {1} {2} . . ." -f $(Get-Date), $response.StatusCode, $response.StatusDescription)
 		Write-Verbose ("[{0}][REPLY] Content Type = {1} . . ." -f $(Get-Date), $response.ContentType)
 		Write-Verbose ("[{0}][REPLY] Content Length = {1} . . ." -f $(Get-Date), $response.ContentLength)
-        Write-Verbose ("[{0}][REPLY] Network Connections = {1} . . ." -f $(Get-Date),  ([string]::join( ";", (nslookup $server | Foreach {netstat -an | select-string $_}))))
+        Write-Verbose ("[{0}][REPLY] Network Connections = {1} . . ." -f $(Get-Date),  ([string]::join( ";", (Get-IPAddress $server | Foreach {netstat -an | select-string $_}))))
 		Write-Verbose ("[{0}][REPLY] Total Time = {1} . . ." -f $(Get-Date), $timing_request.TotalSeconds)
 	}
 	catch [System.Net.WebException] {

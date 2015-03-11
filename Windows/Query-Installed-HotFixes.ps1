@@ -1,12 +1,11 @@
+[CmdletBinding(SupportsShouldProcess=$true)]
 param(
-	[string] $computer = $(throw "Must supply computer name")
+	[Parameter(Mandatory=$true)][string] $ComputerName
 )
 
-. ..\libraries\Standard_functions.ps1
+. (Join-Path $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 
-if( Ping $computer )
-{
-	"Working on " + $computer + " . . ."
-	Get-WmiObject -computerName $computer -Class win32_quickfixengineering | where-Object {$_.description -like "*Update*"} | Sort-Object hotfixID | Format-Table hotfixId, description 
-
+if( Test-Connection -Count 1 -ComputerName $ComputerName ) {
+	Write-Verbose -Message ("Working on {0} ..." -f $ComputerName)
+	Get-WmiObject -computerName $ComputerName -Class win32_quickfixengineering | where-Object {$_.description -like "*Update*"} | Sort-Object hotfixID | Format-Table hotfixId, description 
 }

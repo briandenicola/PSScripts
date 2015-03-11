@@ -94,10 +94,10 @@ $iis_audit_sb = {
         foreach( $binding in $bindings ) {
             $hostname = $binding.Split(":")[2]
             if( [string]::IsNullorEmpty($hostname) ) {
-                $ips += nslookup $env:COMPUTERNAME
+                $ips += Get-IPAddress $env:COMPUTERNAME
             }
             else {
-                $ips += nslookup $hostname
+                $ips += Get-IPAddress $hostname
             }
         }
 

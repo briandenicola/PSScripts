@@ -908,7 +908,7 @@ function Get-LoadedModules()
 	}
 }
 
-function nslookup ( [string] $name )
+function Get-IPAddress ( [string] $name )
 {
  	return ( [System.Net.Dns]::GetHostAddresses($name) | Select -Expand IPAddressToString )
 }
@@ -1014,21 +1014,6 @@ function Ping-Multiple
 	end {
 		return ( $replies  )
 	}
-}
-
-function ping ( [string] $computer ) 
-{
-	$timeout=120
-	$ping = new-object System.Net.NetworkInformation.Ping 
-
-	trap { continue }
-
-	$reply = $ping.Send($computer, $timeout)
-   	if( $reply.Status -eq "Success"  ) {
-	    return $true
-	} else {
-		return $false
-	}  
 }
 
 function Read-RegistryHive 
