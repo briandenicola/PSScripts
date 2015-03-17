@@ -910,7 +910,7 @@ function Get-LoadedModules()
 
 function Get-IPAddress ( [string] $name )
 {
- 	return ( [System.Net.Dns]::GetHostAddresses($name) | Select -Expand IPAddressToString )
+ 	return ( try { [System.Net.Dns]::GetHostAddresses($name) | Select -Expand IPAddressToString } catch {} )
 }
 
 ## http://poshcode.org/116
