@@ -219,7 +219,7 @@ function Disable-InternetExplorerESC
     Set-ItemProperty -Path $AdminKey -Name "IsInstalled" -Value 0
     Set-ItemProperty -Path $UserKey -Name "IsInstalled" -Value 0
     Stop-Process -Name Explorer
-    Write-Host "IE Enhanced Security Configuration (ESC) has been disabled." -ForegroundColor Green
+    Write-Verbose -Message ("IE Enhanced Security Configuration (ESC) has been disabled.")
 }
 
 function Enable-InternetExplorerESC 
@@ -229,13 +229,13 @@ function Enable-InternetExplorerESC
     Set-ItemProperty -Path $AdminKey -Name "IsInstalled" -Value 1
     Set-ItemProperty -Path $UserKey -Name "IsInstalled" -Value 1
     Stop-Process -Name Explorer
-    Write-Host "IE Enhanced Security Configuration (ESC) has been enabled." -ForegroundColor Green
+    Write-Verbose -Message ("IE Enhanced Security Configuration (ESC) has been enabled.")
 }
 
 function Disable-UserAccessControl
 {
     Set-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "ConsentPromptBehaviorAdmin" -Value 00000000
-    Write-Host "User Access Control (UAC) has been disabled." -ForegroundColor Green    
+    Write-Verbose -Message ("User Access Control (UAC) has been disabled.")
 }
  
 function Install-MSMQ
@@ -396,7 +396,7 @@ function Get-Uptime
 	$lastboottime = (Get-WmiObject -Class Win32_OperatingSystem -computername $computer).LastBootUpTime
 	$sysuptime = (Get-Date) - [System.Management.ManagementDateTimeconverter]::ToDateTime($lastboottime)
 	
-	Write-Host "System ($computer) has been online since : " $sysuptime.days "days" $sysuptime.hours "hours" $sysuptime.minutes "minutes" $sysuptime.seconds "seconds"
+	return ("System ({0}) has been online since : {1} days {2} hours {3} minutes {4} seconds" -f $computer, $sysuptime.days, $sysuptime.hours, $sysuptime.minutes, $sysuptime.seconds)
 }
 
 function Get-TopProcesses
@@ -463,10 +463,9 @@ function Import-PfxCertificate
 		[object] $pfxPass = $null
     )
     
-	$pfx = new-object System.Security.Cryptography.X509Certificates.X509Certificate2    
+	$pfx = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2    
    
-    if ($pfxPass -eq $null) 
-	{
+    if ($pfxPass -eq $null) {
 		$pfxPass = read-host "Enter the pfx password" -assecurestring
 	}
    
@@ -487,7 +486,6 @@ function Remove-Certificate
     )
 
 	$cert = Get-ChildItem -path cert:\$certRootStore\$certStore | where { $_.Subject.ToLower().Contains($subject) }
-
 	$store = new-object System.Security.Cryptography.X509Certificates.X509Store($certStore,$certRootStore)
 	
 	$store.Open("ReadWrite")
@@ -509,9 +507,8 @@ function Export-Certificate
 	$cert = Get-ChildItem -path cert:\$certRootStore\$certStore | where { $_.Subject.ToLower().Contains($subject) }
 	$type = [System.Security.Cryptography.X509Certificates.X509ContentType]::pfx
  
-     if ($pfxPass -eq $null) 
-	{
-		$pfxPass = read-host "Enter the pfx password" -assecurestring
+    if ($pfxPass -eq $null) {
+		$pfxPass = Read-Host "Enter the pfx password" -assecurestring
 	}
 	
 	$bytes = $cert.export($type, $pfxPass)
@@ -521,7 +518,7 @@ function Export-Certificate
 function pause
 {
 	#From http://www.microsoft.com/technet/scriptcenter/resources/pstips/jan08/pstip0118.mspx
-	Write-Host "Press any key to exit..."
+	Write-Output "Press any key to exit..."
 	$null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
 
@@ -545,7 +542,6 @@ function Get-PerformanceCounters
 	)
 	
 	Get-Counter $counters -ComputerName $computers -MaxSamples $samples -SampleInterval $interval | % { $t=$_.TimeStamp; $_.CounterSamples } | Select @{Name="Time";Expression={$t}},Path,CookedValue 
-
 }
 
 function Get-PSSecurePassword
@@ -553,7 +549,6 @@ function Get-PSSecurePassword
 	param (
 		[String] $password
 	)
-	
 	return ConvertFrom-SecureString ( ConvertTo-SecureString $password -AsPlainText -Force)
 }
 
@@ -564,12 +559,10 @@ function Get-PlainTextPassword
 		[byte[]] $key
 	)
 
-	if($key)
-	{
+	if($key) {
 		$secure_string = ConvertTo-SecureString $password -Key $key
 	}
-	else 
-	{
+	else {
 		$secure_string = ConvertTo-SecureString $password
 	}
 	
@@ -686,8 +679,8 @@ function Get-GoogleGraph([HashTable] $ht, [String] $title, [String] $size="750x3
 	$url += "chbh=a&"
 	$url += "chs=$size" 
 	
-    $DownLoadFile = $ENV:TEMP + "\"+ $file 
-    $webClient = new-object System.Net.WebClient 
+    $DownLoadFile = Join-Path -Path $ENV:TEMP -ChildPath $file 
+    $webClient = New-Object System.Net.WebClient 
     $Webclient.DownloadFile($url, $DownLoadFile) 
 	
     if( $invoke ) { Invoke-Item $DownLoadFile } else { return $DownLoadFile	 }
@@ -782,25 +775,32 @@ function Check-MSMQInstall ( [String] $Server )
 	return (Get-WmiObject Win32_Service -ComputerName $Server | where {$_.Name -eq "MSMQ" -and $_.State -eq "Running" }) -ne $nul 
 }
 
-function Get-MSMQQueues([String] $Server)
+function Get-MSMQQueues ( [String] $Server )
 {
-	if( check-MSMQInstall -server $Server )
-	{
+	$queues = @()
+	if( Check-MSMQInstall -server $Server )	{
 		[void][Reflection.Assembly]::LoadWithPartialName("System.Messaging")
 		$msmq = [System.Messaging.MessageQueue]
 		
-		$msmq::GetPrivateQueuesByMachine($Server) | % {
-			Write-Host ($_.QueueName)
-		}
-		$msmq::GetPublicQueuesByMachine($Server) | % {
-			Write-Host ($_.QueueName)
+		foreach( $private in $msmq::GetPrivateQueuesByMachine($Server) ) {
+			$queues += (New-Object PSObject -Property @{
+				Name = $private.QueueName
+				Type = "Private"
+			})
 		}
 		
-	} else 
-	{
-		Write-Host "MSMQ is either not installed or not running on $Server"
+		foreach( $public in $msmq::GetPublicQueuesByMachine($Server) ) {
+			$queues += (New-Object PSObject -Property @{
+				Name = $public.QueueName
+				Type = "Public"
+			})
+		}
+	} 
+	else {
+		Write-Error -Message ("MSMQ is either not installed or not running on $Server")
 	}
 		
+	return $queues
 }
 
 function Audit-Server( [String] $server )
@@ -853,19 +853,18 @@ function Create-WindowsService([string[]] $Servers, [string] $Path, [string] $Se
 		$inparams.ServiceType = 16
 		$inparams.StartMode = "Automatic"
 		
-		if( [string]::IsNullOrEmpty( $User ) )
-		{
+		if( [string]::IsNullOrEmpty( $User ) ) {
 			$inparams.StartName = $null # will start as localsystem builtin if null
 			$inparams.StartPassword = $null
-		} else 
-		{
+		} 
+		else {
 			$inparams.StartName = $User
 			$inparams.StartPassword = $Pass
 		}
 
 		$result += $mc.PSBase.InvokeMethod($method,$inparams,$null)
 	}
-	return( $result | Format-List )
+	return $result 
 }
 	
 function sed () 
@@ -1043,7 +1042,7 @@ function Read-RegistryHive
 			}
 		} 
         else  {
-			Write-Host "Could not ping $_ . . ." -foregroundcolor DarkRed
+			Write-Error -Message ("Could not ping " + $server + " . . .")
 		}
 	
 	}

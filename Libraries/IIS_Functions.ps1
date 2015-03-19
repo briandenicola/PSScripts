@@ -75,7 +75,7 @@ function Set-CustomHeader
         [string] $name,
         [string] $value
     )
-     Add-WebConfiguration //httpProtocol/customHeaders -Value @{Name=$name;Value=$value}
+    Add-WebConfiguration //httpProtocol/customHeaders -Value @{Name=$name;Value=$value}
 }
 
 function Set-AlwaysRunning
@@ -83,17 +83,15 @@ function Set-AlwaysRunning
     param(
         [string] $app_pool
     )
-
-    Set-ItemProperty -Path (Join-Path $app_pool_path $app_pool) -Name startMode -Value "AlwaysRunning"
-
+    Set-ItemProperty -Path (Join-Path -Path $app_pool_path -ChildPath $app_pool) -Name startMode -Value "AlwaysRunning"
 }
+
 function Set-PreLoad 
 {
     param(
         [string] $site
     )
-
-    Set-ItemProperty -Path (Join-Path $iis_path  $site) -name applicationDefaults.preloadEnabled -value True
+    Set-ItemProperty -Path (Join-Path -Path $iis_path -ChildPath $site) -name applicationDefaults.preloadEnabled -value True
 }
 
 function Get-IISAppPoolDetails
@@ -102,7 +100,7 @@ function Get-IISAppPoolDetails
         [string] $app_pool
     )
 
-    if( !(Test-Path (Join-Path $app_pool_path $app_pool) ) ) {
+    if( !(Test-Path (Join-Path -Path $app_pool_path -ChildPath $app_pool) ) ) {
         throw "Could not find " + $app_pool
         return -1
     }
@@ -149,10 +147,8 @@ function Create-WebFarm
 		[string[]] $members
 	)
 		
-	if( $creds -eq $null ) 
-	{ 
-		Write-Host "Please enter an administrator account on all servers in the farm"
-		$creds = Get-Credential 
+	if( $creds -eq $null ) { 
+		$creds = Get-Credential -Message "Please enter an administrator account on all servers in the farm"
 	}
 	
 	$servers = @()
@@ -162,7 +158,7 @@ function Create-WebFarm
 	foreach( $server in $servers ) {
 		$user = $creds.UserName.Split("\")[1] 
 		if( -not ( Get-LocalAdmins -Computer $server | Where { $_ -imatch $user } ) ) {
-			Write-Host "Adding $user to " $server
+			Write-Verbose -Message ("Adding " + $user + " to " + $server)
 			Add-LocalAdmin -Computer $server -Group $user
 		}
 	}
@@ -235,7 +231,6 @@ function Get-WebFarmServers
 	)
 	
 	$servers = Get-WebFarm -WebFarm $name | Select -Expand Servers | Select @{Name="Server";Expression={$_.Address}}
-	
 	return ($servers | Select -Expand Server)
 }
 
@@ -247,7 +242,6 @@ function Get-WebFarmController
 	)
 	
 	$server = Get-WebFarm -WebFarm $name | Select -Expand PrimaryServer | Select @{Name="Server";Expression={$_.Address}}
-	
 	return ($server | Select -Expand Server)
 }
 
@@ -263,18 +257,17 @@ function Get-WebFarmState
 	}
 	if( -not [string]::IsNullOrEmpty($server) ) { $options.Add("Address", $server) }
 	
-	Write-Host $(Get-Date) "- Get Web Farm Information"
+	Write-Verbose -Message ("[{0}] - Get Web Farm Information" -f $(Get-Date))
 	Get-WebFarm -WebFarm $name
 	
-	Write-Host $(Get-Date) "- Get Web Farm Trace Messages"	
+	Write-Verbose -Message ("[{0}] - Get Web Farm Trace Messages" -f $(Get-Date))	
 	Get-TraceMessage @options
 	
-	Write-Host $(Get-Date) "- Get Web Farm Active Operation"
+	Write-Verbose -Message ("[{0}] - Get Web Farm Active Operation" -f $(Get-Date))
 	Get-ActiveOperation @options
 	
-	Write-Host $(Get-Date) "- Get Web Farm Server Requests"
+	Write-Verbose -Message ("[{0}] - Get Web Farm Server Requests" -f $(Get-Date))
 	Get-ServerRequest @options
-	
 }
 
 function Get-IISWebState
@@ -297,7 +290,7 @@ function Start-IISSite
 	)
 	
 	Get-IISWebState $computers
-	Write-Host "`nStarting $site . . . `n" -ForegroundColor blue
+	Write-Verbose -Message "Starting $site . . ."
 	
 	Invoke-Command -ComputerName $computers -ScriptBlock { 
 		param ( [string] $site )
@@ -320,7 +313,7 @@ function Stop-IISSite
 		[String] $site = "Default Web Site"
 	)
 	Get-IISWebState $computers
-	Write-Host "`nStoping $site . . . `n" -ForegroundColor blue
+	Write-Verbose -Message "Stopping $site . . ."
 
 	Invoke-Command -ComputerName $computers -ScriptBlock { 
 		param ( [string] $site )
@@ -369,8 +362,7 @@ function Create-IISWebSite
 		[Object] $options = @{}
 	)
 	
-	if( -not ( Test-Path $path) )
-	{
+	if( -not ( Test-Path $path) ) {
 		throw ( $path + " does not exist " )
 	}
 
@@ -396,8 +388,7 @@ function Create-IISVirtualDirectory
 		[string] $vdir = $(throw 'An vdir (virtual directory name) is required'),
 		[string] $path = $(throw 'A physical path is required'),
 		[Object] $options = @{}
-	)
-	
+	)	
 	New-WebVirtualDirectory -Site $site -Name $vdir -physicalPath $path @options
 }
 
@@ -557,7 +548,6 @@ function Get-WebDataConnectionString {
 	}
 	
 	return ( Invoke-Command -Computer $computer -Scriptblock $connect_string -ArgumentList $site )
-	
 }
 
 function Get-MachineKey 
@@ -566,33 +556,24 @@ function Get-MachineKey
 		[string] $version = "2.0x64"
 	)
 	
-    Write-Host "Getting machineKey for $version"
+    Write-Verbose -Message "Getting machineKey for $version"
     $machineConfig = $netfx[$version]
     
-    if( Test-Path $machineConfig )
-	{ 
+    if( Test-Path $machineConfig ){ 
         $machineConfig = $netfx.Get_Item( $version )
         $xml = [xml]( Get-Content $machineConfig )
         $root = $xml.get_DocumentElement()
         $system_web = $root.system.web
 
-        if ($system_web.machineKey -eq $nul)
-		{ 
-        	Write-Host "machineKey is null for $version" -fore red
+        if (!$system_web.machineKey -eq $nul) { 
+			return (New-Object PSObject -Property @{
+				ValidationKey = $($system_web.SelectSingleNode("machineKey").GetAttribute("validationKey"))
+				DecryptionKey = $($system_web.SelectSingleNode("machineKey").GetAttribute("decryptionKey"))
+				Validation    = $($system_web.SelectSingleNode("machineKey").GetAttribute("validation"))"
+			})
         }
-        else 
-		{
-            Write-Host "Validation Key: $($system_web.SelectSingleNode("machineKey").GetAttribute("validationKey"))" -Fore green
-    	    Write-Host "Decryption Key: $($system_web.SelectSingleNode("machineKey").GetAttribute("decryptionKey"))" -Fore green
-            Write-Host "Validation: $($system_web.SelectSingleNode("machineKey").GetAttribute("validation"))" -Fore green
-        }
-    }
-    else 
-	{ 
-		Write-Host "$version is not installed on this machine" -Fore yellow 
 	}
 }
-
 
 function Set-MachineKey 
 {
@@ -603,19 +584,17 @@ function Set-MachineKey
 		[string] $validation
 	) 
 	
-    Write-Host "Setting machineKey for $version"
+    Write-Verbose -Message "Setting machineKey for $version"
     $currentDate = (Get-Date).tostring("mmddyyyyhhmms") 
     $machineConfig = $netfx[$version]
         
-    if( Test-Path $machineConfig )
-	{
+    if( Test-Path $machineConfig )	{
         $xml = [xml] ( Get-Content $machineConfig )
         $xml.Save( $machineConfig + "." + $currentDate )
         $root = $xml.get_DocumentElement()
         $system_web = $root.system.web
 
-        if ( $system_web.machineKey -eq $nul )
-		{ 
+        if ( $system_web.machineKey -eq $nul )	{ 
         	$machineKey = $xml.CreateElement("machineKey") 
         	$a = $system_web.AppendChild($machineKey)
         }
@@ -626,8 +605,7 @@ function Set-MachineKey
        
 		$xml.Save( $machineConfig )
     }
-    else
-	{
-		Write-Host "$version is not installed on this machine" -Fore yellow 
+    else {
+		Write-Error "$version is not installed on this machine" -Fore yellow 
 	}
 }
