@@ -453,45 +453,33 @@ function Set-SSLforWebApplication
         [string] $ip = "0.0.0.0",
 		[Object] $options = @{}
 	)
-	Set-Variable -Name pwd -value ($PWD.Path)
 
-	Get-WebBinding $name
-	
 	$cert_thumbprint = Get-ChildItem -path $cert_path | Where { $_.Subject.Contains($common_name) } | Select -Expand Thumbprint
 
-    if( $ip -eq "0.0.0.0") { 
-	    New-WebBinding -Name $name -IP "*" -Port 443 -Protocol https @options
+    if( $ip -eq "0.0.0.0" ) {
+        New-WebBinding -Name $name -IP "*" -Port 443 -Protocol https @options
     }
     else {
         New-WebBinding -Name $name -IP $ip -Port 443 -Protocol https @options
     }
 
-	Set-Location $cert_path
-	Get-item (Join-Path $cert_path $cert_thumbprint) | New-Item -path ('{0}\{1}!443' -f $cert_path, $ip)
-	Get-WebBinding $name
-    Set-Location $pwd
+    $binding = Get-WebBinding -Name $name -Protocol https
+    $binding.AddSslCertificate( [string]$cert_thumbprint, "My" )
 }
 
 function Update-SSLforWebApplication
 {
 	param (
 		[string] $name,
-		[string] $common_name,
-        [string] $ip = "0.0.0.0"
+		[string] $common_name
 	)
 	
-    Set-Variable -Name pwd -value ($PWD.Path)
+    $cert_thumbprint = Get-ChildItem -path $cert_path | Where { $_.Subject.Contains($common_name) } | Select -Expand Thumbprint
+    $binding = Get-WebBinding -Name $name -Protocol https
+    $binding.RemoveSslCertificate()
+    $binding.AddSslCertificate( [string]$cert_thumbprint, "My" )
 
-	Get-WebBinding $name
-	
-	$cert_thumprint = Get-ChildItem -path $cert_path | Where { $_.Subject.Contains($common_name) } | Select -Expand Thumbprint
-
-	cd $cert_path
-	Get-item (Join-Path $cert_path $cert_thumprint) | Set-Item -path ('{0}\{1}!443' -f $cert_path, $ip)
-	Get-WebBinding $name
-    Set-Location $pwd
 }
-
 
 function Set-IISLogging
 {
