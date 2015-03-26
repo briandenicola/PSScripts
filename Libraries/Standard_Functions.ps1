@@ -1011,23 +1011,24 @@ function Compare-HashTable ( [HashTable] $src, [HashTable] $dst,[Object] $head  
 
 function Ping-Multiple 
 {
+	param(
+		[Parameter(Mandatory=$true,ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)][string] $ComputerName
+	)
 	begin {
-		$replies = @()
-		$timeout=1000
-		$ping = new-object System.Net.NetworkInformation.Ping 
+		$replies  = @()
+		$timeout  = 1000
+		$ping     = New-Object System.Net.NetworkInformation.Ping 
 	}
 	process {
 		trap { continue }
 			
-		$reply = $ping.Send($_ , $timeout)
-		$status = New-Object PSObject -Property @{
-			Time 		= $reply.RoundtripTime
-			Status 		= $reply.Status
-			Address 	= $reply.Address
-			Server	 	= $_	
-		}
-		
-		$replies += $status
+		$reply = $ping.Send($ComputerName , $timeout)
+		$replies += (New-Object PSObject -Property @{
+			ComputerName	 	= $ComputerName	
+			Address 			= $reply.Address
+			Time 				= $reply.RoundtripTime
+			Status 				= $reply.Status
+		})
 	}
 	end {
 		return ( $replies  )

@@ -429,10 +429,10 @@ function Set-IISAppPoolforWebSite
 	)
 
 	if( [String]::IsNullOrEmpty($vdir) ) {
-		Set-ItemProperty (Join-path $iis_path $site) -name applicationPool -value $apppool
+		Set-ItemProperty -Path (Join-path $iis_path $site) -name applicationPool -value $apppool
 	}
 	else  {
-		Set-ItemProperty(Join-path $iis_path "$site\$vdir") -name applicationPool -value $apppool
+		Set-ItemProperty -Path (Join-path $iis_path "$site\$vdir") -name applicationPool -value $apppool
 	}
 }
 
@@ -569,7 +569,7 @@ function Get-MachineKey
 			return (New-Object PSObject -Property @{
 				ValidationKey = $($system_web.SelectSingleNode("machineKey").GetAttribute("validationKey"))
 				DecryptionKey = $($system_web.SelectSingleNode("machineKey").GetAttribute("decryptionKey"))
-				Validation    = $($system_web.SelectSingleNode("machineKey").GetAttribute("validation"))"
+				Validation    = $($system_web.SelectSingleNode("machineKey").GetAttribute("validation"))
 			})
         }
 	}
