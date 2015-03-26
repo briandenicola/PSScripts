@@ -163,13 +163,14 @@ function Get-Installed-DotNet-Versions
 function Get-DetailedServices 
 {
     param(
+        [string] $ComputerName = $ENV:COMPUTERNAME,
         [string] $state = "running"
     )
     
     $services = @()
 
-    $processes = Get-WmiObject Win32_process
-    foreach( $service in (Get-WmiObject -Class Win32_Service -Filter ("State='{0}'" -f $state ) ) ) {
+    $processes = Get-WmiObject Win32_process -ComputerName $ComputerName
+    foreach( $service in (Get-WmiObject -ComputerName $ComputerName -Class Win32_Service -Filter ("State='{0}'" -f $state ) )  ) {
         
         $process = $processes | Where { $_.ProcessId -eq $service.ProcessId }
     
@@ -186,7 +187,6 @@ function Get-DetailedServices
 
     return $Services
 }
-
 
 #http://poshcode.org/2059
 function Get-FileEncoding
