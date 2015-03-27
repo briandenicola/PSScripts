@@ -17,14 +17,14 @@ $ErrorActionPreference = 'silentlycontinue'
 . (Join-Path $ENV:SCRIPTS_HOME "Libraries\SharePoint_Functions.ps1")
 
 if( $sharepoint ) {
-	$team_url = "http://teamadmin.gt.com/sites/ApplicationOperations/"
+	$team_url = ""
 	$app_list = "WebApplications"
     $server_list = "Servers"
 	$ssl_list = "SSL Certificates"
-    $view = "{3221E5C1-5B42-4F58-934B-A5C5BDED3415}"
+    $view = ""
 }
 else {
-	$team_url = "http://teamadmin.gt.com/sites/ApplicationOperations/applicationsupport/"
+	$team_url = ""
 	$app_list = "Applications - Production"
 	$ssl_list = "SSL Certs"
     $server_list = "AppServers"

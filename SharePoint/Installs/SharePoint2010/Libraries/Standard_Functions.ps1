@@ -1135,8 +1135,8 @@ function read-RegistryHive
 
 function send-email($s,$b,$to) 
 {
-	$from = "SharePoint.Admins@gt.com";
-	$domain  = "mail.gt.com";
+	$from = "";
+	$domain  = "";
 
 	$mail = new-object System.Net.Mail.MailMessage;
 	
@@ -1155,8 +1155,8 @@ function send-email($s,$b,$to)
 
 function send-emailwithattachment( [string] $subject, [string] $body, [object] $to, [Object] $attachment  )
 {
-	$from = "spadmin@gt.com";
-	$domain  = "mail.gt.com";
+	$from = "";
+	$domain  = "";
 	
 	$mail = new-object System.Net.Mail.MailMessage
 	

@@ -3,7 +3,7 @@
     <wff>\\ad\app-ops\Installs\Install-WebFarm-Framework</wff>
     <source>\\dc01\app-ops\Tool</source>
     <gac>\\dc01\app-ops\Code</gac>
-    <url>http://teamadmin.gt.com/sites/ApplicationOperations/applicationsupport/</url>
+    <url></url>
     <scripts>C:\Scripts</scripts>
     <utils>C:\utils</utils>
     <logs>D:\Logs</logs>

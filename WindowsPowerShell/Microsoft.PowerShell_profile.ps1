@@ -311,22 +311,6 @@ function Get-ChildItemColor
     }
 }
 
-function Start-MyApplications 
-{
-	Start-Process outlook.exe
-	Start-Process lync.exe
-	& 'C:\Program Files (x86)\Mozilla Firefox\firefox.exe' -new-window http://usgt.kanbanize.com
-	Start-Sleep -Seconds 4
-	& 'C:\Program Files (x86)\Mozilla Firefox\firefox.exe' http://pingdom.com
-	& 'C:\Program Files (x86)\Mozilla Firefox\firefox.exe' http://newrelic.com
-	& 'C:\Program Files (x86)\Mozilla Firefox\firefox.exe' http://appops.gt.com
-	& 'C:\Program Files (x86)\Mozilla Firefox\firefox.exe' http://appops.gt.com/sites
-	& 'C:\Program Files (x86)\Internet Explorer\iexplore.exe' http://team.gt.com/sites/ApplicationOperations/
-	& 'C:\Program Files\Microsoft System Center 2012 R2\Operations Manager\Console\Microsoft.EnterpriseManagement.Monitoring.Console.exe'
-	Set-location $code
-	tf.exe get
-}
-
 $MaximumHistoryCount=1024 
 $CODE = "D:\Code\GT\Operations"
 $env:EDITOR = "C:\Program Files (x86)\Notepad++\notepad++.exe"
@@ -360,7 +344,6 @@ New-Alias -name gh -value Get-History
 New-Alias -name i -value Invoke-History
 New-Alias -name ed -value $env:EDITOR
 New-Alias -Name Quest -Value Add-QuestTools
-New-Alias -Name go -Value Start-MyApplications 
 
 Set-SharePointServers
 Set-AppOpsServers
@@ -372,5 +355,3 @@ Remove-OfficeLogs
 Remove-TempFolder
 
 Set-location $code
-
-

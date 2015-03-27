@@ -13,7 +13,7 @@ $counter = "\Web Service(_Total)\Current Connections"
 $default_site = "Default Web Site"
 $impact_limit = 2
 
-$url = "http://teamadmin.gt.com/sites/ApplicationOperations/"
+$url = ""
 $list = "Issues Tracker"
 
 function Stop-Site-Gracefully 
