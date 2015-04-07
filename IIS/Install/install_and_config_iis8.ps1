@@ -13,7 +13,7 @@ function Detect-RunningOnAzure
     return $false
 }
 
-if( (Get-DriveInfo | Select -Expand Name) -contains "D:" -and (!Detect-RunningOnAzure) ) {
+if( ( [system.IO.DriveInfo]::GetDrives()  | Select -Expand Name) -contains "D:" -and !(Detect-RunningOnAzure) ) {
     $drive = "D:"
 }
 
