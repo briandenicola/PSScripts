@@ -40,8 +40,8 @@ Write-Verbose -Message "`t1.3 Write Installed Modules to $logFile"
 Get-WindowsFeature | where { $_.Installed -eq $true } | Out-File -Encoding ascii $logFile
 
 Write-Verbose -Message "2.0 Create new IIS Folders"
-if( -not (Test-Path $log_dir) ) { New-Item -Name $log_dir -ItemType Directory }
-if( -not (Test-Path $web_dir) ) { New-Item -Name $web_dir -ItemType Directory }
+if( -not (Test-Path $log_dir) ) { New-Item -Path $log_dir -ItemType Directory }
+if( -not (Test-Path $web_dir) ) { New-Item -Path $web_dir -ItemType Directory }
 
 Write-Verbose -Message "3.0 Backup IIS config before we start changing config to point to the new path"
 Backup-WebConfiguration $backup_configuration_name
@@ -55,11 +55,11 @@ Remove-Website -Name "Default Web Site"
 Write-Verbose -Message "`t5.1 Move Files"
 Copy-Item -Recurse (Join-Path $ENV:systemdrive "inetpub") $iis_dir
 Remove-Item -Recurse (Join-Path $iis_dir "wwwroot")
-Move-Item (Join-Path $ENV:SystemDrive "inetpub") (Join-Path $ENV:SystemDrive "inetpub.org.{0}" -f $now)
+Move-Item (Join-Path $ENV:SystemDrive "inetpub") (Join-Path $ENV:SystemDrive ("inetpub.org.{0}" -f $now))
 
 Write-Verbose -Message "`t5.2 Setup Home Directory Root"
-New-Item -Path "HKLM\Software\Microsoft\" -Name "inetstp" 
-New-ItemProperty -Path "HKLM\Software\Microsoft\inetstp" -Name "PathWWWRoot" -Value $web_dir -PropertyType REG_SZ
+New-Item -Path "HKLM:\Software\Microsoft\" -Name "inetstp" 
+New-ItemProperty -Path "HKLM:\Software\Microsoft\inetstp" -Name "PathWWWRoot" -Value $web_dir -PropertyType String 
 
 Write-Verbose -Message "6.0 Setup Logging"
 Write-Verbose -Message "`t6.1 Setup Directories"
@@ -76,7 +76,7 @@ Write-Verbose -Message "7.0 Move config history location, temporary files, and t
 &$appcmd set config "-section:system.applicationhost/configHistory" "-path:$iis_dir\history"
 &$appcmd set config "-section:system.webServer/asp" "-cache.disktemplateCacheDirectory:$iis_dir\temp\ASP Compiled Templates"
 &$appcmd set config "-section:system.webServer/httpCompression" "-directory:$iis_dir\temp\IIS Temporary Compressed Files"
-New-ItemProperty -Path "HKLM\System\CurrentControlSet\Services\WAS\Parameters" -Name "ConfigIsolationPath" -Value (Join-Path $iis_dir "temp\appPools") -PropertyType REG_SZ
+New-ItemProperty -Path "HKLM:\System\CurrentControlSet\Services\WAS\Parameters" -Name "ConfigIsolationPath" -Value (Join-Path $iis_dir "temp\appPools") -PropertyType String
 
 &$appcmd set config "-section:httpErrors" "/[statusCode='401'].prefixLanguageFilePath:$iis_dir\custerr"
 &$appcmd set config "-section:httpErrors" "/[statusCode='403'].prefixLanguageFilePath:$iis_dir\custerr"
