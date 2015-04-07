@@ -44,7 +44,7 @@ function Get-Office365UserLicense {
 }
 
 function Get-GTSPOnlineSites {
-    Connect-SPOService -Credential (Get-Office365Creds -account $admin_account)
+    Connect-SPOService -url $admin_site -Credential (Get-Office365Creds -account $admin_account)
     Get-SPOSite
 }
  
