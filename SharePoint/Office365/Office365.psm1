@@ -6,18 +6,21 @@ Set-Variable -Name o365_office365_url -Value ("https://{0}.sharepoint.com/sites/
 Import-Module MSOnline -DisableNameChecking -ErrorAction Stop
 Import-Module Microsoft.Online.SharePoint.PowerShell -DisableNameChecking -ErrorAction Stop
 
-function Set-Office365Creds {
+function Set-Office365Creds 
+{
     param ([string] $account )
 	$SCRIPT:offic365_creds = Get-Credential $account
 }
 
-function Get-Office365Creds {
+function Get-Office365Creds 
+{
     param ( [string] $account )
 	if( $SCRIPT:offic365_creds -eq $nul ) { Set-Office365Creds -account $account }
 	return $SCRIPT:offic365_creds
 }
 
-function Get-Office365UserLicense {
+function Get-Office365UserLicense 
+{
     param(
         [Parameter(Mandatory=$true)]
         [string] $admin_account,
@@ -43,7 +46,8 @@ function Get-Office365UserLicense {
 
 }
 
-function Get-GTSPOnlineSites {
+function Get-GTSPOnlineSites 
+{
     Connect-SPOService -url $admin_site -Credential (Get-Office365Creds -account $admin_account)
     Get-SPOSite
 }

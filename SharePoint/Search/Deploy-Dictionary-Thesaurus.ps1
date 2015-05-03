@@ -41,7 +41,7 @@ function DeployTo-SharePointALL
 			if( Test-Path $org_file ) {
 				Copy -Path $org_file -Destination $backup_file -verbose
 			}
-			Copy Path $new_file -Destination $org_file -Force -verbose
+			Copy -Path $new_file -Destination $org_file -Force -verbose
 		}
 	}
 }
