@@ -1,13 +1,13 @@
 #ScriptBlocks
-Set-Variable -Name sptimer_script_block  -Value { Restart-Service -Name sptimerv4 -Verbose }
-Set-Variable -Name iisreset_script_block -Value { iisreset }
+Set-Variable -Name sptimer_script_block  -Value { Restart-Service -Name sptimerv4 -Verbose } -WhatIf:$false
+Set-Variable -Name iisreset_script_block -Value { iisreset } -WhatIf:$false
 
 Set-Variable -Name sync_file_script_block -Value {
     param ( [string] $src, [string] $dst, [string] $log_file  )
     Write-Host "[ $(Get-Date) ] - Copying files on $ENV:COMPUTER from $src to $dst . . ."
 	$sync_script = (Join-Path $ENV:SCRIPTS_HOME "Sync\Sync-Files.ps1")
 	&$sync_script -src $src -dst $dst -verbose -logging -log $log_file
-}
+} -WhatIf:$false
 
 Set-Variable -Name gac_script_block -Value {
 	param( [string] $src ) 
@@ -34,7 +34,7 @@ Set-Variable -Name gac_script_block -Value {
     }
 
     return $published_files
-}
+} -WhatIf:$false
 
 #Functions
 function Get-SPServers 

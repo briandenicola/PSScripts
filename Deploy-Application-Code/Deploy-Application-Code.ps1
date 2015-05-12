@@ -2,7 +2,9 @@
 [CmdletBinding(SupportsShouldProcess=$true)]
 param ( 
     [ValidateScript({Test-Path $_})]
-	[Parameter(Mandatory=$true)][string] $config
+	[Parameter(Mandatory=$true)] [string] $Config,
+    [ValidateRange(0,100)]
+    [Parameter(Mandatory=$false)][int]    $StartStep = 0
 )
 
 #Load Libraries
@@ -20,15 +22,25 @@ Import-Module (Join-Path $ENV:SCRIPTS_HOME "Libraries\Credentials.psm1")
 try
 {
     $cfg = [xml] ( Get-Content $config )
+
     Set-Variable -Name app -Value $cfg.Deployment.Parameters.App -Option AllScope
     Set-Variable -Name environment -Value $cfg.Deployment.Parameters.Environment -Option AllScope   
     
-    Start-Transcript -Append -Path $global:log_file
+    if(![bool]$WhatIfPreference.IsPresent) {
+        try{Stop-Transcript|Out-Null} catch {}
+        Start-Transcript -Append -Path $global:log_file
+    }
 
-    Log-Step -step "Automated with $($MyInvocation.InvocationName) from $ENV:COMPUTERNAME . . ." -nobullet
-    Log-Step -step ("<strong>{0} {1} Steps Taken include - <ol>" -f $app, $environment) -nobullet
+    if($StartStep -eq 0 ) { 
+        Log-Step -step "Automated with $($MyInvocation.InvocationName) from $ENV:COMPUTERNAME . . ." -nobullet
+        Log-Step -step ("<strong>{0} {1} Steps Taken include - <ol>" -f $app, $environment) -nobullet
+    }
+    else {
+        Get-LoggedSteps
+    }
 
-    foreach( $step in $cfg.Deployment.steps.step ) {
+    $steps = $cfg.Deployment.steps.step
+    foreach( $step in $steps[($StartStep-1) .. $steps.Length]) {
         if( $step.Source ) { $step.Source = (Join-Path $cfg.Deployment.Parameters.MasterDeployLocation $step.Source).ToString() }
         &$step.ScriptBlock -config $step
     } 
@@ -37,9 +49,11 @@ try
     Record-Deployment -code_number $cfg.Deployment.Parameters.Build -code_version $cfg.Deployment.Parameters.Version -environment $cfg.Deployment.Parameters
 }
 catch {
-    Write-Error ("An exception occurred - {0}" -f $_.Exception.ToString() )
+    Flush-LogSteps
+    Write-Error ("An exception occurred - {0}" -f $_.Exception.ToString() )   
+    Write-Error ("State has been written to {0}" -f (Get-EmergencyLogFile) )
 }
 finally {
     Set-Location -Path $app_home 
-    Stop-Transcript
+    if(![bool]$WhatIfPreference.IsPresent) { Stop-Transcript }
 }

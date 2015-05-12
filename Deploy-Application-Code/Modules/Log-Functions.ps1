@@ -1,5 +1,6 @@
 ﻿#Global Variables
 $global:deploy_steps = @()
+$global:emergency_log_file = Join-Path -Path $env:TEMP -ChildPath ("Deploy-Application-Code.v2.{0}.log" -f $(Get-Date).ToString("yyyyMMdd"))
 
 #Helper Functions
 function Log-Step
@@ -9,12 +10,28 @@ function Log-Step
         [switch] $nobullet
     )
 
+    if([bool]$WhatIfPreference.IsPresent) { Write-Output -InputObject ("[{0}] - {1}" -f $(Get-Date), $step) }
     if( $nobullet ) { 
         $global:deploy_steps += "<p>" + $step + "</p>"
     }
     else {
         $global:deploy_steps += "<li>" + $step + "</li>"
     }
+}
+
+function Get-EmergencyLogFile
+{
+    return $global:emergency_log_file 
+}
+
+function Flush-LogSteps
+{   
+    $global:deploy_steps | Out-File -Encoding ascii -FilePath $global:emergency_log_file
+}
+
+function Get-LoggedSteps
+{   
+    $global:deploy_steps = @(Get-Content -Path $global:emergency_log_file)
 }
 
 function Get-SPUserViaWS
