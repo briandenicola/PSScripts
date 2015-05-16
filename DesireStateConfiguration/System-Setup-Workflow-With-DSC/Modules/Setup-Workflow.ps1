@@ -5,7 +5,8 @@
         [string] $pull_server,
         [string] $guid,
         [string] $dns               = "10.2.1.5",
-        [string] $dsc_thumbprint,
+        [string] $pfx_path,
+        [string] $pfx_password,
         [string] $windows_key,
         [System.Management.Automation.PSCredential] $cred
     )
@@ -81,8 +82,18 @@
             configuration Configure_DSCPullServer {                param ($NodeId, $PullServer, $ThumbPrint)    
                 LocalConfigurationManager                {                    AllowModuleOverwrite = 'True'                    ConfigurationID = $NodeId                    ConfigurationModeFrequencyMins = 30                     ConfigurationMode = 'ApplyAndAutoCorrect'                    RebootNodeIfNeeded = 'True'                    RefreshMode = 'PULL'                     CertificateId = $ThumbPrint                    DownloadManagerName = 'WebDownloadManager'                    DownloadManagerCustomData = (@{ServerUrl = "https://$PullServer/psdscpullserver.svc"})                }            }
 
+            $pfx = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2    
+		    $secure_pfx_pass = ConvertTo-SecureString -String $using:pfx_password -AsPlainText -Force
+   
+            $pfx.import($using:pfx_path,$secure_pfx_pass,"Exportable,PersistKeySet")    
+   
+ 	        $store = New-Object System.Security.Cryptography.X509Certificates.X509Store("My","LocalMachine")    
+ 	        $store.open("MaxAllowed")    
+ 	        $store.add($pfx)    
+ 	        $store.close()    
+
             if( $using:guid -ne [string]::empty ) {
-                Configure_DSCPullServer -NodeId $using:guid -PullServer $using:pull_server -ThumbPrint $using:dsc_thumbprint                Set-DscLocalConfigurationManager -path Configure_DSCPullServer
+                Configure_DSCPullServer -NodeId $using:guid -PullServer $using:pull_server -ThumbPrint $pfx.Thumbprint                Set-DscLocalConfigurationManager -path Configure_DSCPullServer
                 $using:guid | Add-Content -Encoding Ascii ( Join-Path "C:" $using:guid )
             }
         }

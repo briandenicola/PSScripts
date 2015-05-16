@@ -51,8 +51,11 @@ Specifies a node's GUID for DSC.  If empty, the script will generate a new GUID.
 .PARAMETER pull_server
 Specifies the DSC Pull server. Default Value = 'dsc.sharepoint.test'. DSC Parameter Set
 
-.PARAMETER dsc_thumbprint
-Specifies the thumbprint of the certificate for DSC Pull server. DSC Parameter Set
+.PARAMETER certificate_pfx_path
+Specifies the path of the certificate for DSC Pull server credentials. DSC Parameter Set
+
+.PARAMETER certificate_pfx_password
+Specifies the password of the certificate for DSC Pull server credentials. DSC Parameter Set
 
 .NOTES
 
@@ -72,37 +75,19 @@ param (
     [Parameter(Mandatory=$true)][string] $domain_user,
     [Parameter(Mandatory=$true)][string] $domain_password, 
 
-    [Parameter(ParameterSetName="DSC",Mandatory=$false)][string] $pull_server    = "dsc.sharepoint.test",
-    [Parameter(ParameterSetName="DSC",Mandatory=$false)][string] $dsc_thumbprint = [string]::empty,
-    [Parameter(ParameterSetName="DSC",Mandatory=$false)][string] $node           = [string]::empty
+    [Parameter(ParameterSetName="DSC",Mandatory=$false)][string] $pull_server              = "dsc.sharepoint.test",
+    [ValidateScript({Test-Path $_})]
+    [Parameter(ParameterSetName="DSC",Mandatory=$false)][string] $certificate_pfx_path     = [string]::empty,
+    [Parameter(ParameterSetName="DSC",Mandatory=$false)][string] $certificate_pfx_password = [string]::empty,
+    [Parameter(ParameterSetName="DSC",Mandatory=$false)][string] $node                     = [string]::empty
 )
 
 . (Join-Path $PWD.Path "Modules\Setup-Workflow.ps1")
 . (Join-Path $PWD.Path "Modules\Server-DSC-Template.ps1") -Nodeid $node 
 
-function Set-MOFHash {
-    param (
-        [string] $guid,
-        [string] $module
-    )
-
-    Set-Variable -Name dsc_path -Value "C:\Program Files\WindowsPowerShell\DscService\Configuration\" -Option Constant
-    Set-Variable -Name mof -Value ( Join-Path $PWD.Path ("{0}\{1}.mof" -f $module,$guid) )
-    Set-Variable -Name checksum -Value ( Join-Path $PWD.Path ("{0}\{1}.mof.checksum" -f $module, $guid) )
-    
-    if( !(Test-path $mof) ) {
-        throw "Could not find $mof . . "
-    }
-       
-    $hash = Get-FileHash $mof
-    [System.IO.File]::AppendAllText( $checksum, $hash.Hash )
-
-    Copy-Item $mof $dsc_path -Verbose -Force
-    Copy-Item $checksum $dsc_path -Verbose -Force
-}
-
 Set-Variable -Name domain_creds -value (New-Object System.Management.Automation.PSCredential ($domain_user, (ConvertTo-SecureString $domain_password -AsPlainText -Force)))
 Set-Variable -Name local_creds  -value (New-Object System.Management.Automation.PSCredential ($local_user,  (ConvertTo-SecureString $local_password  -AsPlainText -Force)))
+Set-Variable -Name dsc_path -Value "C:\Program Files\WindowsPowerShell\DscService\Configuration\" -Option Constant
 
 winrm s winrm/config/client ('@{TrustedHosts="' + $computer_ip + '"}')
 
@@ -114,7 +99,8 @@ $options = @{
     guid                 = $node
     cred                 = $domain_creds
     windows_key          = $windows_key
-    dsc_thumbprint       = $dsc_thumbprint
+    pfx_path             = $certificate_pfx_path
+    pfx_password         = $certificate_pfx_password
 }
 Setup-NewComputer @options -PSPersist $true -PSComputerName $computer_ip -PSCredential $local_creds -Verbose
 
@@ -128,6 +114,8 @@ switch ($PsCmdlet.ParameterSetName)
 
         Write-Output ("Using Guid - {0} for {1}. Please save. Value will also be saved on the root of the C: parition on {1}." -f $node, $computer_ip)
         ServerSetup
-        Set-MOFHash -guid $node -Module "ServerSetup"
+
+        $mof_path = Join-Path -Path $PWD.Path -ChildPath "ServerSetup"
+        New-DscCheckSum -ConfigurationPath $mof_path -OutPath $dsc_path -Verbose -Force
     }
 }
