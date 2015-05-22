@@ -94,14 +94,14 @@ if( $cfg.Azure.ActiveDirectory.Enabled -eq $true ) {
         ScriptPath    = $cfg.Azure.ActiveDirectory.ADCreateScript
         Arguments     = "E:", $cfg.Azure.ActiveDirectory.Domain.Name, $cfg.Azure.ActiveDirectory.Domain.NetBIOS, $cfg.Azure.ActiveDirectory.Domain.DomainAdminPassword
     }
-    Write-Verbose -Message ("[{0}] - Calling Configuring VM with PowerShell Remoting - {1}" -f $(Get-Date), (Write-HashTableOutput -ht $publish_opts))
+    Write-Verbose -Message ("[{0}] - Calling Configuring VM with PowerShell Remoting - {1}" -f $(Get-Date), (Write-HashTableOutput -ht $dc_promo_opts))
     Invoke-AzurePSRemoting @dc_promo_opts
    
     Restart-AzureVM -ServiceName $cfg.Azure.CloudService -Name $cfg.Azure.ActiveDirectory.VM.ComputerName
     Wait-ForVMReadyState -CloudService $cfg.Azure.CloudService -VMName $cfg.Azure.ActiveDirectory.VM.ComputerName
 
     #Install a Domain Certificate Authority 
-    if( $cfg.Azure.ActiveDirectory.CertificateAuthorityScript.Enabled -eq $true ) {
+    if( $cfg.Azure.ActiveDirectory.CertificateAuthority.Enabled -eq $true ) {
         Write-Verbose -Message ("[{0}] - Installing Certificate Authority on {1}" -f $(Get-Date), $cfg.Azure.ActiveDirectory.VM.ComputerName)
         $cert_opts = @{
             ComputerName  = $cfg.Azure.ActiveDirectory.VM.ComputerName

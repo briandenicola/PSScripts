@@ -19,7 +19,7 @@ function Install-WinRmCertificate
         [string] $vm_name
     )
     
-    Set-Variable -Name cert_store -Value (New-Object System.Security.Cryptography.X509Certificates.X509Store "Root", "LocalMachine")
+    Set-Variable -Name cert_store -Value (New-Object System.Security.Cryptography.X509Certificates.X509Store "My", "CurrentUser")
         
     $vm = Get-AzureVM -ServiceName $service -Name $vm_name 
     $winrm_cert = Get-AzureCertificate -ServiceName $service -Thumbprint ($vm.VM.DefaultWinRMCertificateThumbprint) -ThumbprintAlgorithm sha1
