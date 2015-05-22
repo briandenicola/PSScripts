@@ -17,14 +17,33 @@ function Invoke-AzurePSRemoting
         [Object[]] $Arguments
     )
     
+    $retries = 5
     $script_block = Get-ScriptBlock -file $ScriptPath
 
     Install-WinRmCertificate -service $CloudService -vm_name $ComputerName
     $uri = Get-AzureWinRMUri -ServiceName $CloudService -Name $ComputerName
     $secpasswd = ConvertTo-SecureString -String $password -AsPlainText -Force
     $creds = New-Object System.Management.Automation.PSCredential ( $user, $secpasswd )
-     
-    Invoke-Command -ConnectionUri $uri -Credential $creds -ScriptBlock $script_block -ArgumentList $Arguments
+   
+    for($retry = 0; $retry -le $retries; $retry++) {
+        try {
+            Write-Verbose -Message ("[{0}] - Attempt {1} Creating PowerShell Session to {2} in {3}" -f $(Get-Date), $retry, $ComputerName, $CloudService) 
+            $session = New-PSSession -ConnectionUri $uri -Credential $creds 
+            if ($session -ne $null){
+                break
+            }
+        }
+        catch {
+            Write-Verbose -Message ("[{0}] - Attempt {1} failed creating PowerShell Session to {2} in {3}. Sleeping for 30 seconds." -f $(Get-Date), $retry, $ComputerName, $CloudService)
+            Start-Sleep -Seconds 30
+        }
+    }
+
+    if($session -eq $null) {
+        throw ("Could not establish PowerShell Remote Sessiong to {0} in {1}" -f $ComputerName, $CloudService)
+    }
+
+    Invoke-Command -SessionName $session -ScriptBlock $script_block -ArgumentList $Arguments
     Wait-ForVMReadyState -CloudService $CloudService -VMName $ComputerName
 }
 

@@ -50,9 +50,13 @@ function Wait-ForVMReadyState
     $sleep_time = 30
 
     do {
+		Write-Host -NoNewLine .
         Start-Sleep -Seconds $sleep_time
         $vm = Get-AzureVM -ServiceName $CloudService -Name $VMName    
     } until ($vm.InstanceStatus -eq $ready_state)
+	
+	Write-Host -NoNewline "...Wait State Ready`n"
+
 }
 
 function Get-LatestAzureVMImageName

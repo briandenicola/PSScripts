@@ -165,8 +165,8 @@ foreach( $machine in $cfg.Azure.MemberServers.Server ) {
         AdminUser        = $machine.LocalAdminUser 
 		AdminPassword    = $machine.LocalAdminPassword
         AffinityGroup    = $cfg.Azure.AffinityGroup 
-        DataDrives       = Convert-XMLToHashTable -xml $machine.Drives | Select -Expand Values
-        EndPoints        = Convert-XMLToHashTable -xml $machine.Endpoints | Select -Expand Values
+        DataDrives       = if( $machine.Drives    -is [string] ) { @() } else { Convert-XmlToHashTable $machine.Drives    | Select -ExpandProperty Values }
+        EndPoints        = if( $machine.EndPoints -is [string] ) { @() } else { Convert-XmlToHashTable $machine.EndPoints | Select -ExpandProperty Values }
         VNetName         = $cfg.Azure.VNet.Name
     }
 

@@ -9,7 +9,7 @@ param(
 Import-Module ServerManager
 Add-WindowsFeature AD-domain-Services
 
-Enable-PSRemoting -Confirm:$false 
+#Enable-PSRemoting -Confirm:$false 
 Enable-WSManCredSSP -Role Client -DelegateComputer * -Force:$true
 
 tzutil.exe /s "Central Standard Time" 
