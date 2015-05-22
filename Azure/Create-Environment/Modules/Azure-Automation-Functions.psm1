@@ -43,7 +43,7 @@ function Invoke-AzurePSRemoting
         throw ("Could not establish PowerShell Remote Sessiong to {0} in {1}" -f $ComputerName, $CloudService)
     }
 
-    Invoke-Command -SessionName $session -ScriptBlock $script_block -ArgumentList $Arguments
+    Invoke-Command -Session $session -ScriptBlock $script_block -ArgumentList $Arguments
     Wait-ForVMReadyState -CloudService $CloudService -VMName $ComputerName
 }
 
