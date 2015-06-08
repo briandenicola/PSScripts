@@ -89,7 +89,7 @@ Set-Variable -Name domain_creds -value (New-Object System.Management.Automation.
 Set-Variable -Name local_creds  -value (New-Object System.Management.Automation.PSCredential ($local_user,  (ConvertTo-SecureString $local_password  -AsPlainText -Force)))
 Set-Variable -Name dsc_path -Value "C:\Program Files\WindowsPowerShell\DscService\Configuration\" -Option Constant
 
-winrm s winrm/config/client ('@{TrustedHosts="' + $computer_ip + '"}')
+Set-Item -Path 'WSMan:\localhost\Client\TrustedHosts' -Value $computer_ip
 
 #Workflow to Setup Machine
 $options = @{ 
