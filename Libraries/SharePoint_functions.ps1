@@ -21,14 +21,44 @@ $auditTypes['UserSecurity'] = 256
 
 Set-Variable -Name url -Value "http://webapp/site/web" -Option Constant
 
+function Decode-SPListViewUrl 
+{
+    param(
+        [string] $url
+    )
+
+    if( $url -inotmatch "ViewEdit.aspx") {
+        throw "Not Valid SharePoint ViewEdit Url"
+    }
+
+    $url_space = "%20"
+    $ascii_space = " "
+
+    $url_components = $url.Split("&")
+
+    $list_id   = [string]::Format("{0}{1}{2}", "{",([system.web.httputility]::UrlDecode($url_components[0].Split("=")[1])).ToUpper(),"}")
+    $view_id   = [system.web.httputility]::UrlDecode($url_components[1].Split("=")[1])
+    $source_id = ([system.web.httputility]::UrlDecode($url_components[2].Split("=")[1]) ) -replace $url_space, $ascii_space
+    
+    return ( New-Object -TypeName PSObject -Property @{ 
+        ListId   = $list_id
+        ViewId   = $view_id
+        SourceId = $source_id
+        Url      = $url
+    })
+}
+
 function Get-SharePointServersWS
 {
-	param(
-		[string] $version = "2010"
-	)
+	#param(
+	#	[string] $version = "2010"
+	#)
 	
-	if( $version -eq "2010" ) { $view = '{}' } else { $view = '{}' }
+	#if( $version -eq "2010" ) { $view = '{}' } else { $view = '{}' }
 
+    #return(	Get-SPListViaWebService -Url $url -list Servers -View $view | Select SystemName, Farm, Environment, ApplicationName)
+
+    $view = '{}'
     return(	Get-SPListViaWebService -Url $url -list Servers -View $view | Select SystemName, Farm, Environment, ApplicationName)
 }
 
