@@ -19,5 +19,5 @@ end
 
 dsc_script 'SystemSetup' do
 	command "chef-dsc-cmd-script/dsc_cmd_script_file.ps1"
-	flags ( { :Path => 'E:\Scripts' })
+	flags ( { :Path => node['chef_with_dsc']['base_path'] } )
 end

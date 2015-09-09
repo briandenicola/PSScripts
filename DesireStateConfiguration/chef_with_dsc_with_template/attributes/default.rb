@@ -1,0 +1,1 @@
+default['chef_with_dsc']['base_path'] = 'F:\Scripts'
