@@ -418,52 +418,64 @@ function Get-Uptime
 	return ("System ({0}) has been online since : {1} days {2} hours {3} minutes {4} seconds" -f $computer, $sysuptime.days, $sysuptime.hours, $sysuptime.minutes, $sysuptime.seconds)
 }
 
-function Get-TopProcesses
+function Get-CpuLoad 
 {
-	param(
-        [string] $computer = $env:COMPUTERNAME,
-        [int] $threshold = 5
+    param(
+        [string] $ComputerName = $ENV:COMPUTERNAME,
+        [int]    $Refresh      = 5
     )
- 
-    # Test connection to computer
-    if( !(Test-Connection -Destination $computer -Count 1) ){
-        throw "Could not connect to :: $computer"
-    }
- 
-    # Get all the processes
-    $processes = Get-WmiObject -ComputerName $computer -Class Win32_PerfFormattedData_PerfProc_Process -Property Name, PercentProcessorTime
-  
-    $items = @()
-    foreach( $process in ($processes | where { $_.Name -ne "Idle"  -and $_.Name -ne "_Total" }) )
-	{
-        if( $process.PercentProcessorTime -ge $threshold )
-		{
-            $items += (New-Object PSObject -Property @{
-				Name = $process.Name
-				CPU = $process.PercentProcessorTime
-			})
+
+    $query = "select * from Win32_PerfRawData_PerfProc_Process"
+    $filter = " where Name = `"{0}`""
+
+    Clear-Host
+
+    while(1) {
+                
+        $system_utilization = @()
+        $all_running_processes = Get-WmiObject -Query $query -ComputerName $ComputerName
+        
+        Start-Sleep -Milliseconds 500
+        
+        foreach( $process in $all_running_processes ) {
+            $process_utlization_delta = Get-WmiObject -Query ($query + $Filter -f $process.Name) -ComputerName $ComputerName
+            $cpu_utilization = [math]::Round((($process_utlization_delta.PercentProcessorTime - $process.PercentProcessorTime)/($process_utlization_delta.Timestamp_Sys100NS - $process.Timestamp_Sys100NS)) * 100,2)
+        
+            $system_utilization += (New-Object psobject -Property @{
+                ComputerName   = $ComputerName
+                ProcessName    = $process.Name
+                PID            = $process.IDProcess
+                ThreadCount    = $process.ThreadCount
+                PercentageCPU  = $cpu_utilization
+                WorkingSetKB  = $process.WorkingSetPrivate/1kb
+            })
         }
+        Clear-Host
+        $system_utilization | Sort-Object -Property PercentageCPU -Descending | Select -First 10 | Format-Table -AutoSize
+        Start-Sleep -Seconds $Refresh
     }
-  
-    return ( $items | Sort-Object -Property CPU -Descending)
 }
 
-function Get-ScheduledTasks([string] $server) 
+function Get-ScheduledTasks
 {
+    param(
+        [string] $ComputerName
+    )
+
 	$tasks = @()
 	
 	$tasks_com_connector = New-Object -ComObject("Schedule.Service")
-	$tasks_com_connector.Connect($server)
-	$tasks_com_connector.getFolder("\").GetTasks(0) | Select Name, LastRunTime, LastTaskResult, NextRunTime, XML | %  {
+	$tasks_com_connector.Connect($ComputerName)
+	foreach( $task in ($tasks_com_connector.getFolder("\").GetTasks(0) | Select Name, LastRunTime, LastTaskResult, NextRunTime, XML )) {
 	
-		$xml = [xml] ( $_.XML )
+		$xml = [xml] ( $task.XML )
 		
 		$tasks += (New-Object PSObject -Property @{
-			HostName = $server
-			Name = $_.Name
-			LastRunTime = $_.LastRunTime
-			LastResult = $_.LastTaskResult
-			NextRunTime = $_.NextRunTime
+			HostName = $ComputerName
+			Name = $task.Name
+			LastRunTime = $task.LastRunTime
+			LastResult = $task.LastTaskResult
+			NextRunTime = $task.NextRunTime
 			Author = $xml.Task.RegistrationInfo.Author
 			RunAsUser = $xml.Task.Principals.Principal.UserId
 			TaskToRun = $xml.Task.Actions.Exec.Command
