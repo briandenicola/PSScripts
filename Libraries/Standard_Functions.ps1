@@ -555,9 +555,9 @@ function pause
 
 function Get-PreviousMonthRange
 {
-	$Object = New-Object PSObject -Property @{            
-    	last_month_begin = $(Get-Date -Day 1).AddMonths(-1)
-		last_month_end = $(Get-Date -Day 1).AddMonths(-1).AddMonths(1).AddDays(-1)
+	$Object = New-Object PSObject -Property @{ 
+		last_month_begin = $(Get-Date -Day 1).AddMonths(-1)
+		last_month_end =   $(Get-Date -Day 1).AddMonths(-1).AddMonths(1).AddDays(-1)
 	}
 	
 	return $Object

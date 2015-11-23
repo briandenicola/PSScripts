@@ -1,62 +1,106 @@
-﻿[CmdletBinding(SupportsShouldProcess=$true)]
+﻿<#
+.SYNOPSIS
+This PowerShell Script will purge a directory of old files.  It can copy a zipped archvie to another folder for preservation.
+
+.DESCRIPTION
+Version - 1.0.0
+The script will copy files from one directory to another based on different MD5 hash values
+
+.EXAMPLE
+.\housekeeping.ps1 -Dir c:\SourceFolder
+
+.EXAMPLE
+.\housekeeping.ps1 -Dir c:\SourceFolder -Ext "*.log" -Days 2  
+
+.PARAMETER Directory
+Directory to Clean Up. Mandatory parameter
+
+.PARAMETER ext
+Extension to include in the cleanup. Default: *.*
+
+.PARAMETER Comparison
+What time stamp do you wish to compare. LastAccessTime or LastWriteTime. Default: LastWriteTime
+
+.PARAMETER Days
+Days to keep online. Default: 30
+
+.PARAMETER log
+Full Path to Log file. Parameter
+
+.PARAMETER Archive
+Switch to zip files and move the files to an Archive Directory
+
+.PARAMETER ArchiveDirectory
+Directory to Zip and Move files to
+
+.NOTES
+
+#>
+[CmdletBinding(SupportsShouldProcess=$true)]
 param (
-	[string] $dir = "",
-	[string] $ext = "*.*",
-	[string] $log = "D:\Scripts\Housekeeping\housekeeping.log",
+	[Parameter(Mandatory=$true)]
+	[Alias('dir')]
+	[ValidateScript({Test-Path $_ -PathType 'Container'})] 
+	[string] $Directory,
+	
+	[Parameter(Mandatory=$true)]
+	[Alias('ext')]
+	[string] $Extension = "*.*",
+	
+	[ValidateSet("LastWriteTime","LastAccessTime"")] 
 	[string] $Comparison = "LastWriteTime",
-	[int] $days=30,
-	[switch] $archive,
-	[string] $ArchiveDir,
-	[switch] $help=$false
+	
+	[Parameter(Mandatory=$false)]
+	[ValidateRange(0,365)]
+	[int] $Days = 30,
+	
+	[Parameter(Mandatory=$false)]
+	[switch] $Archive,
+	
+	[Parameter(Mandatory=$false)]
+	[Alias('Archivedir')]
+	[string] $ArchiveDirectory = ( Join-Path -Path $PWD.Path -ChildPath "Archive" ),
+	
+	[Parameter(Mandatory=$false)]
+	[string] $log = ( Join-Path -Path $PWD.Path -ChildPath "housekeeping.log")
 )
 
-[void] [System.Reflection.Assembly]::LoadFrom((join-path $PWD.Path "ICSharpCode.SharpZipLib.dll"))
+[void] [System.Reflection.Assembly]::LoadFrom((Join-Path -Path $PWD.Path -ChildPath "ICSharpCode.SharpZipLib.dll"))
 function Create-Zip 
 {
 	param(
-		[string] $file
+		[string] $Source,
+		[string] $ZipFile
 	)
 	
-	$zip = [ICSharpCode.SharpZipLib.Zip.ZipFile]::Create($file + ".zip")
+	$zip = [ICSharpCode.SharpZipLib.Zip.ZipFile]::Create($ZipFile)
 	$zip.BeginUpdate()
-	$zip.Add($file)
+	$zip.Add($Source)
 	$zip.CommitUpdate()
 	$zip.Close()
-
-}
-
-if( $help -or $dir -eq "" ) 
-{
-	Write-Host "housekeeping.ps1 -dir <Directory to Clean Up> [OPTION] ..."
-	Write-Host "`t-ext 	- Extension to include in the cleanup. Default: *.*"
-	Write-Host "`t-log 	- Log file for results. Default: D:\Scripts\Housekeeping\housekeeping.log "
-	Write-Host "`t-Comparison - What time stamp do you wish to compare. LastAccessTime or LastWriteTime. Default: LastWriteTime"
-	Write-Host "`t-days	- Days to keep online. Default: 30"
-	Write-Host "`t-archive - Switch to zip files and move the files to an Archive Directory"
-	Write-Host "`t-ArchiveDir -  Directory to move files to"
-	Write-Host "`t-help"
-	exit
+	
 }
 
 $now = Get-Date
-$dPurgeDate = $now.AddDays(-$days)
+$PurgeDate = $now.AddDays(-$days)
 
-if($archive)
-{	
-	$ArchiveDir += "\" + $now.ToString("yyyy-MM-dd")
-	mkdir $ArchiveDir
-	
+if($Archive){	
+	$ArchiveDirectory = Join-Path -Path $ArchiveDirectory -ChildPath $now.ToString("yyyy-MM-dd")
+	New-Item -ItemType Directory -Value $ArchiveDirectory 	
 }
 
-dir $dir -Recurse | where { $_.$Comparison -lt $dPurgeDate -and $_.Extension -like $ext } | ForEach-Object {
+$files_to_purge = Get-ChildItem -Path Directory | Where { $_.PSIsContainer -eq $false }
+ 
+foreach( $file_to_purge in $files_to_purge ) {
+	Write-Verbose -Message ("[{0}] - Working on {1} . . ." -f $(Get-Date), $file_to_purge.FullName  )
+   	if(  $file_to_purge.$Comparison -lt $PurgeDate -and $file_to_purge.Extension -imatch $ext } {
+		if($Archive){
+			$archive_name = Join-Path -Path $ArchiveDirectory -ChildPath ("{0}-{1}.zip" -f $file_to_purge.Directory.Name, $file_to_purge.BaseName)
+			Out-File $log -Append -Encoding ASCII -InputObject ("[{0}] - Archiving: {1} to {2}" -f $(Get-Date), $file_to_purge.Fullname, $archive_name )
+			Create-Zip -Source $file_to_purge.FullName -ZipFile $archive_name
+		}
 	
-	if($archive -and -not [String]::IsNullOrEmpty($ArchiveDir) )
-	{
-		"[" + $now.ToString() + "] - Archiving: " + $_.Fullname  | Out-File $log -Append -Encoding ASCII
-		Create-Zip $_.FullName
-		Move-Item ($_.FullName + ".zip") ( $ArchiveDir + "\" + $_.Directory.Name + "-" + $_.BaseName + ".zip") -Verbose
-	}
-	
-	"[" + $now.ToString() + "] - Delete: " + $_.Fullname  | Out-File $log -Append -Encoding ASCII
-	Remove-Item $_.FullName -Verbose 
+		Out-File $log -Append -Encoding ASCII -InputObject ("[{0}] - Delete: {1}" -f $(Get-Date), $file_to_purge.Fullname )
+		Remove-Item -Path $file_to_purge.FullName -Verbose
+   } 
 }
