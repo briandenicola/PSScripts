@@ -3,8 +3,10 @@
 This PowerShell Script will purge a directory of old files.  It can copy a zipped archvie to another folder for preservation.
 
 .DESCRIPTION
+Version - 1.5.0
+This version is designed to handled directories with large number of files (>10,000)
 Version - 1.0.0
-The script will copy files from one directory to another based on different MD5 hash values
+This PowerShell Script will purge a directory of old files.  It can copy a zipped archvie to another folder for preservation.
 
 .EXAMPLE
 .\housekeeping.ps1 -Dir c:\SourceFolder
@@ -43,11 +45,12 @@ param (
 	[ValidateScript({Test-Path $_ -PathType 'Container'})] 
 	[string] $Directory,
 	
-	[Parameter(Mandatory=$true)]
+	[Parameter(Mandatory=$false)]
 	[Alias('ext')]
 	[string] $Extension = "*.*",
 	
-	[ValidateSet("LastWriteTime","LastAccessTime"")] 
+    [Parameter(Mandatory=$false)]
+	[ValidateSet("LastWriteTime","LastAccessTime")] 
 	[string] $Comparison = "LastWriteTime",
 	
 	[Parameter(Mandatory=$false)]
@@ -89,11 +92,14 @@ if($Archive){
 	New-Item -ItemType Directory -Value $ArchiveDirectory 	
 }
 
-$files_to_purge = Get-ChildItem -Path Directory | Where { $_.PSIsContainer -eq $false }
+Write-Verbose -Message ("[{0}] - Parsing {1} . . ." -f $(Get-Date), $Directory)
+$files_to_purge = Get-ChildItem -Path $Directory | Where { $_.PSIsContainer -eq $false }
  
 foreach( $file_to_purge in $files_to_purge ) {
-	Write-Verbose -Message ("[{0}] - Working on {1} . . ." -f $(Get-Date), $file_to_purge.FullName  )
-   	if(  $file_to_purge.$Comparison -lt $PurgeDate -and $file_to_purge.Extension -imatch $ext } {
+	Write-Verbose -Message ("[{0}] - Working on {1}. {2} is {3} . . ." -f $(Get-Date), $file_to_purge.FullName, $Comparison, $file_to_purge.$Comparison  )
+
+   	if( $file_to_purge.$Comparison -lt $PurgeDate -and $file_to_purge.Extension -like $Extension ) {
+        
 		if($Archive){
 			$archive_name = Join-Path -Path $ArchiveDirectory -ChildPath ("{0}-{1}.zip" -f $file_to_purge.Directory.Name, $file_to_purge.BaseName)
 			Out-File $log -Append -Encoding ASCII -InputObject ("[{0}] - Archiving: {1} to {2}" -f $(Get-Date), $file_to_purge.Fullname, $archive_name )
@@ -101,6 +107,7 @@ foreach( $file_to_purge in $files_to_purge ) {
 		}
 	
 		Out-File $log -Append -Encoding ASCII -InputObject ("[{0}] - Delete: {1}" -f $(Get-Date), $file_to_purge.Fullname )
-		Remove-Item -Path $file_to_purge.FullName -Verbose
+		Remove-Item -Path $file_to_purge.FullName -Verbose -ErrorAction SilentlyContinue
+     
    } 
 }
