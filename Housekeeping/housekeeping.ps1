@@ -89,11 +89,11 @@ $PurgeDate = $now.AddDays(-$days)
 
 if($Archive){	
 	$ArchiveDirectory = Join-Path -Path $ArchiveDirectory -ChildPath $now.ToString("yyyy-MM-dd")
-	New-Item -ItemType Directory -Value $ArchiveDirectory 	
+	New-Item -ItemType Directory -Value $ArchiveDirectory -ErrorAction SilentlyContinue | Out-Null
 }
 
 Write-Verbose -Message ("[{0}] - Parsing {1} . . ." -f $(Get-Date), $Directory)
-$files_to_purge = Get-ChildItem -Path $Directory | Where { $_.PSIsContainer -eq $false }
+$files_to_purge = Get-ChildItem -Path $Directory -Recurse | Where { $_.PSIsContainer -eq $false }
  
 foreach( $file_to_purge in $files_to_purge ) {
 	Write-Verbose -Message ("[{0}] - Working on {1}. {2} is {3} . . ." -f $(Get-Date), $file_to_purge.FullName, $Comparison, $file_to_purge.$Comparison  )
