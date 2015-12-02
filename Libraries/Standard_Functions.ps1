@@ -8,6 +8,29 @@ $domain  = "mail.sharepoint.test"
 $AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
 $AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
 
+function Update-PathVariable 
+{
+	param(	
+		[Parameter(Mandatory=$true)]
+	    [ValidateScript({Test-Path $_})]
+		[string] $Path,
+		
+		[Parameter(Mandatory=$false)]
+		[ValidateSet("User","Machine")] 
+		[string] $Target = "User" 
+	)
+
+	$current_path = [Environment]::GetEnvironmentVariable( "Path", $Target )
+	
+	Write-Verbose -Message ("[Update-PathVariable] - Current Path Value: {0}" -f $current_path )
+	
+	$current_path = $current_path.Split(";") + $Path
+	$new_path = [string]::Join( ";", $current_path)
+	
+	Write-Verbose -Message ("[Update-PathVariable] - New Path Value: {0}" -f $new_path)
+	[Environment]::SetEnvironmentVariable( "Path", $new_path, $Target )
+}
+
 function Load-AzureModules
 {
 
