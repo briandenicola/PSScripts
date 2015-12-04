@@ -258,8 +258,10 @@ function Get-DetailedServices
 #http://poshcode.org/2059
 function Get-FileEncoding
 {
-    [CmdletBinding()] Param (
-     [Parameter(Mandatory = $True, ValueFromPipelineByPropertyName = $True)] [string]$Path
+    [CmdletBinding()] 
+	param (
+		[Parameter(Mandatory = $True, ValueFromPipelineByPropertyName = $True)] 
+		[string]$Path
     )
 
     [byte[]]$byte = get-content -Encoding byte -ReadCount 4 -TotalCount 4 -Path $Path
@@ -279,7 +281,6 @@ function Get-FileEncoding
     else { 
         Write-Output 'ASCII' 
     }
-
 }
 
 function Change-ServiceAccount
@@ -327,7 +328,7 @@ function Disable-UserAccessControl
 function Install-MSMQ
 {
     Import-module ServerManager
-    Get-WindowsFeature | ? { $_.Name -match "MSMQ" } | % { Add-WIndowsFeature $_.Name }
+    Get-WindowsFeature | Where { $_.Name -match "MSMQ" } | Foreach { Add-WindowsFeature $_.Name }
 }
 
 function Get-Url 
@@ -351,21 +352,18 @@ function Get-Url
     $request.ContentType = "application/x-www-form-urlencoded"
     $request.UserAgent = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0; .NET CLR 1.1.4322)"
     
-    if ($AuthType -eq "BASIC")
-    {
+    if ($AuthType -eq "BASIC") {
         $network_creds = $creds.GetNetworkCredential()
         $auth = "Basic " + [Convert]::ToBase64String([Text.Encoding]::Default.GetBytes($network_creds.UserName + ":" + $network_creds.Password))
         $request.Headers.Add("Authorization", $auth)
         $request.Credentials = $network_creds
         $request.PreAuthenticate = $true
     }
-    elseif( $AuthType -eq "NTLM" ) 
-    {
+    elseif( $AuthType -eq "NTLM" ) {
         $request.Credentials =  [System.Net.CredentialCache]::DefaultCredentials
     }
        
-    if( -not [String]::IsNullorEmpty($Server) )
-    {
+    if( -not [String]::IsNullorEmpty($Server) ) {
         #$request.Headers.Add("Host", $HostHeader)
 		$request.Proxy = new-object -typename System.Net.WebProxy -argumentlist $Server
     }
@@ -384,8 +382,7 @@ function Get-Url
 		"[{0}][REPLY] Total Time = {1} . . ." -f $(Get-Date), $timing_request.TotalSeconds
 
 	}
-	catch [System.Net.WebException]
-	{
+	catch [System.Net.WebException] {
 		Write-Error ("The request failed with the following WebException - " + $_.Exception.ToString() )
 	}
     
@@ -453,7 +450,7 @@ function Get-Clipboard
 
 function Set-Clipboard 
 {
- 	Param(
+ 	param(
 		[Parameter(ValueFromPipeline = $true)]
 		[object[]] $inputObject
 	)
@@ -477,12 +474,17 @@ function Set-Clipboard
 
 function Get-Uptime 
 {
-	param($computer)
+	param(
+		[string] $computer
+	)
 	
+	$uptime_template = "System ({0}) has been online since : {1} days {2} hours {3} minutes {4} seconds"
 	$lastboottime = (Get-WmiObject -Class Win32_OperatingSystem -computername $computer).LastBootUpTime
 	$sysuptime = (Get-Date) - [System.Management.ManagementDateTimeconverter]::ToDateTime($lastboottime)
 	
-	return ("System ({0}) has been online since : {1} days {2} hours {3} minutes {4} seconds" -f $computer, $sysuptime.days, $sysuptime.hours, $sysuptime.minutes, $sysuptime.seconds)
+	$uptime = $uptime_template -f $computer, $sysuptime.days, $sysuptime.hours, $sysuptime.minutes, $sysuptime.seconds
+	
+	return $uptime
 }
 
 function Get-CpuLoad 
@@ -533,7 +535,8 @@ function Get-ScheduledTasks
 	
 	$tasks_com_connector = New-Object -ComObject("Schedule.Service")
 	$tasks_com_connector.Connect($ComputerName)
-	foreach( $task in ($tasks_com_connector.getFolder("\").GetTasks(0) | Select Name, LastRunTime, LastTaskResult, NextRunTime, XML )) {
+	
+	foreach( $task in ($tasks_com_connector.GetFolder("\").GetTasks(0) | Select Name, LastRunTime, LastTaskResult, NextRunTime, XML )) {
 	
 		$xml = [xml] ( $task.XML )
 		
@@ -620,14 +623,12 @@ function pause
 	$null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
 
-function Get-PreviousMonthRange
+function Get-PreviousMonth
 {
-	$Object = New-Object PSObject -Property @{ 
+	return (New-Object PSObject -Property @{ 
 		last_month_begin = $(Get-Date -Day 1).AddMonths(-1)
 		last_month_end =   $(Get-Date -Day 1).AddMonths(-1).AddMonths(1).AddDays(-1)
-	}
-	
-	return $Object
+	})
 }
 
 function Get-PerformanceCounters
@@ -639,7 +640,9 @@ function Get-PerformanceCounters
 		[int] $interval = 10		
 	)
 	
-	Get-Counter $counters -ComputerName $computers -MaxSamples $samples -SampleInterval $interval | % { $t=$_.TimeStamp; $_.CounterSamples } | Select @{Name="Time";Expression={$t}},Path,CookedValue 
+	Get-Counter $counters -ComputerName $computers -MaxSamples $samples -SampleInterval $interval |
+		Foreach { $t=$_.TimeStamp; $_.CounterSamples } | 
+		Select @{Name="Time";Expression={$t}},Path,CookedValue 
 }
 
 function Get-PSSecurePassword
@@ -692,8 +695,14 @@ function Gen-Passwords
 	return $passwords
 }
 
-function Create-SQLAlias( [string] $instance, [int] $port, [string] $alias )
+function Create-SQLAlias
 {
+	param( 
+		[string] $instance, 
+		[int]    $port, 
+		[string] $alias
+	)
+	
 	[reflection.assembly]::LoadWithPartialName("Microsoft.SqlServer.Smo")
 	$objComputer=New-Object Microsoft.SqlServer.Management.Smo.Wmi.ManagedComputer "."
 
@@ -710,50 +719,18 @@ function Get-WindowsUpdateConfig
 {
 	$AUSettings = (New-Object -com "Microsoft.Update.AutoUpdate").Settings
 
-	$AUObj = New-Object -TypeName System.Object
-	Add-Member -inputObject $AuObj -MemberType NoteProperty -Name "NotificationLevel" -Value $AutoUpdateNotificationLevels[$AUSettings.NotificationLevel]
-	Add-Member -inputObject $AuObj -MemberType NoteProperty -Name "UpdateDays"  -Value $AutoUpdateDays[$AUSettings.ScheduledInstallationDay]
-	Add-Member -inputObject $AuObj -MemberType NoteProperty -Name "UpdateHour"  -Value $AUSettings.ScheduledInstallationTime 
-	Add-Member -inputObject $AuObj -MemberType NoteProperty -Name "Recommended updates" -Value $(IF ($AUSettings.IncludeRecommendedUpdates) {"Included."}  else {"Excluded."})
+	$AUObj = New-Object -TypeName PSObject -Property @{
+		NotificationLevel  = $AutoUpdateNotificationLevels[$AUSettings.NotificationLevel]
+		UpdateDays         = $AutoUpdateDays[$AUSettings.ScheduledInstallationDay]
+		UpdateHour         = $AUSettings.ScheduledInstallationTime 
+		RecommendedUpdates = $(IF ($AUSettings.IncludeRecommendedUpdates) {"Included."}  else {"Excluded."})
+	}
 	return $AuObj
 } 
 
-function Get-GoogleGraph([HashTable] $ht, [String] $title, [String] $size="750x350", [string] $file="chart.png",  [switch] $invoke)
+function Get-LocalAdmins
 {
-    Set-Variable -Option Constant -Name chartType -Value bhs
-    
-	$chartdata = [String]::Join( "," , ($ht.GetEnumerator() | sort Key -Descending | % { $_.Value } ))
-    $chartYLabel = [String]::Join( "|", ($ht.GetEnumerator() | sort Key | % { $_.Key } )) 
-	
-	$maximum = $ht.Values | Measure-Object -max | Select -Expand Maximum
-	$minimum = $ht.Values | Measure-Object -min | Select -Expand Minimum 
-	
-	if( $minimum -eq $maximum ) { $minimum = 0 } 
-	
-	$chartScale = "{0},{1}" -f $minimum, $maximum
-    
-	$url = "http://chart.apis.google.com/chart?"
-	$url += "chtt=$title&"
-	$url += "chxt=x,y&"
-	$url += "chxl=1:|$chartYLabel&"
-	$url += "chxr=0,$chartScale&"
-	$url += "chds={0},{1}&" -f $minimum, $maximum
-	$url += "cht=$chartType&"
-	$url += "chd=t:$chartdata&"
-	$url += "chco=4D89F9&"
-	$url += "chg=20,50&"
-	$url += "chbh=a&"
-	$url += "chs=$size" 
-	
-    $DownLoadFile = Join-Path -Path $ENV:TEMP -ChildPath $file 
-    $webClient = New-Object System.Net.WebClient 
-    $Webclient.DownloadFile($url, $DownLoadFile) 
-	
-    if( $invoke ) { Invoke-Item $DownLoadFile } else { return $DownLoadFile	 }
-}
-
-function Get-LocalAdmins( [string] $computer )
-{
+	param ( [string] $computer )
 	$adsi  = [ADSI]("WinNT://" + $computer + ",computer") 
 	$Group = $adsi.psbase.children.find("Administrators") 
 	$members = $Group.psbase.invoke("Members") | %{$_.GetType().InvokeMember("Name", 'GetProperty', $null, $_, $null)} 
@@ -761,8 +738,9 @@ function Get-LocalAdmins( [string] $computer )
 	return $members
 }
 
-function Get-LocalGroup( [string] $computer,[string] $Group )
+function Get-LocalGroup
 {
+	param ( [string] $computer,[string] $Group )
 	$adsi  = [ADSI]("WinNT://" + $computer + ",computer") 
 	$adGroup = $adsi.psbase.children.find($group) 
 	$members = $adGroup.psbase.invoke("Members") | %{$_.GetType().InvokeMember("Name", 'GetProperty', $null, $_, $null)} 
@@ -770,14 +748,16 @@ function Get-LocalGroup( [string] $computer,[string] $Group )
 	return $members
 }
 
-function Add-ToLocalGroup( [string] $computer, [string] $LocalGroup, [string] $DomainGroup )
+function Add-ToLocalGroup
 {
+	param ( [string] $computer, [string] $LocalGroup, [string] $DomainGroup )
     $aslocalGroup = [ADSI]"WinNT://$computer/$LocalGroup,group"
     $aslocalGroup.Add("WinNT://$domain_controller/$DomainGroup,group")
 }
 
-function Add-LocalAdmin( [string] $computer, [string] $Group )
+function Add-LocalAdmins
 {
+	param ( [string] $computer, [string] $Group )
     $localGroup = [ADSI]"WinNT://$computer/Administrators,group"
     $localGroup.Add("WinNT://$domain_controller/$Group,group")
 }
@@ -801,15 +781,16 @@ function Get-WindowsDiskSpace
 	}
 }
 
-function Convert-ObjectToHash( [Object] $obj )
+function Convert-ObjectToHash
 {
-	$ht = @{}
+	param ( 
+		[Object] $obj
+	)
 	
-	$Keys = $obj | Get-Member -MemberType NoteProperty | select Name
+	$ht = @{}
+	$Keys = $obj | Get-Member -MemberType NoteProperty | Select -Expand Name
 
-	$Keys | % { 
-		$key = $_.Name
-		
+	foreach( $key in $Keys ) { 
 		if( $obj.$key -is [System.Array] ) { 
 			$value = [String]::Join(" | ", $obj.$key )
 		} else {
@@ -821,28 +802,32 @@ function Convert-ObjectToHash( [Object] $obj )
 	return $ht
 }
 
-function Get-RunningServices( [string] $computer )
+function Get-RunningServices
 {
+	param( [string] $computer )
 	gwmi Win32_Service -computer $Computer | Where { $_.State -eq "Running" } | Select Name, PathName, Id, StartMode  
 }
 
-function Get-IntermediateCerts()
+function Get-IntermediateCerts
 {
 	Get-ChildItem -path cert:\LocalMachine\CA | Select Subject, Issuer, NotAfter | sort NotAfter
 }
 
-function Get-InstalledCerts( )
+function Get-InstalledCerts
 {
 	Get-ChildItem -path cert:\LocalMachine\My | Select FriendlyName, Issuer, NotAfter, HasPrivateKey | sort NotAfter
 }
 
-function Check-MSMQInstall ( [String] $Server )
+function Check-MSMQInstall 
 {
+	param( [string] $Server )
 	return (Get-WmiObject Win32_Service -ComputerName $Server | where {$_.Name -eq "MSMQ" -and $_.State -eq "Running" }) -ne $nul 
 }
 
-function Get-MSMQQueues ( [String] $Server )
-{
+function Get-MSMQQueues 
+{	
+	param( [string] $Server )
+	
 	$queues = @()
 	if( Check-MSMQInstall -server $Server )	{
 		[void][Reflection.Assembly]::LoadWithPartialName("System.Messaging")
@@ -869,8 +854,10 @@ function Get-MSMQQueues ( [String] $Server )
 	return $queues
 }
 
-function Audit-Server( [String] $server )
+function Audit-Server
 {
+	param( [string] $server )
+	
 	$audit = New-Object System.Object
 	$computer = Get-WmiObject Win32_ComputerSystem -ComputerName $server
 	$os = Get-WmiObject Win32_OperatingSystem -ComputerName $server
@@ -900,13 +887,22 @@ function Audit-Server( [String] $server )
 	return $audit
 }
 
-function Create-WindowsService([string[]] $Servers, [string] $Path, [string] $Service, [string] $User, [string] $Pass)
+function Create-WindowsService
 {
+	param(
+		[string[]] $Servers, 
+		[string]   $Path, 
+		[string]   $Service,
+		[string]   $User,
+		[string]   $Pass
+	)
+	
 	$class = "Win32_Service"
 	$method = "Create"
 	
-	$Servers | % { 
-		$mc = [wmiclass]"\\$_\ROOT\CIMV2:$class"
+	$result = @()
+	foreach( $server in $Servers ) { 
+		$mc = [wmiclass]"\\$server\ROOT\CIMV2:$class"
 		$inparams = $mc.PSBase.GetMethodParameters($method)
 		$inparams.DesktopInteract = $false
 		$inparams.DisplayName = $Service
@@ -933,7 +929,7 @@ function Create-WindowsService([string[]] $Servers, [string] $Path, [string] $Se
 	return $result 
 }
 	
-function sed () 
+function sed 
 {
 	param (
 		[string] $OldText,
@@ -948,19 +944,19 @@ function sed ()
 	}		
 }
 
-function Get-DirHash()
+function Get-DirHash
 {
 	begin {
 		$ErrorActionPreference = "silentlycontinue"
 	}
 	process {
-		dir -Recurse $_ | where { $_.PsIsContainer -eq $false } | select Name,DirectoryName,@{Name="SHA1 Hash"; Expression={get-hash1 $_.FullName -algorithm "sha1"}}
+		Get-ChildItem -Recurse $_ | where { $_.PsIsContainer -eq $false } | select Name,DirectoryName,@{Name="SHA1 Hash"; Expression={get-hash1 $_.FullName -algorithm "sha1"}}
 	}
 	end {
 	}
 }
 
-function Get-LoadedModules() 
+function Get-LoadedModules
 {
 	begin{
 	}
@@ -973,74 +969,32 @@ function Get-LoadedModules()
 	}
 }
 
-function Get-IPAddress ( [string] $name )
+function Get-IPAddress 
 {
+	param ( [string] $name )
  	return ( try { [System.Net.Dns]::GetHostAddresses($name) | Select -Expand IPAddressToString } catch {} )
 }
 
-## http://poshcode.org/116
-function Encrypt-String($String, $Passphrase, $salt="My Voice is my P455W0RD!", $init="Yet another key", [switch]$arrayOutput)
+function Encode-String 
 {
-   $r = new-Object System.Security.Cryptography.RijndaelManaged
-   $pass = [Text.Encoding]::UTF8.GetBytes($Passphrase)
-   $salt = [Text.Encoding]::UTF8.GetBytes($salt)
-
-   $r.Key = (new-Object Security.Cryptography.PasswordDeriveBytes $pass, $salt, "SHA1", 5).GetBytes(32) #256/8
-   $r.IV = (new-Object Security.Cryptography.SHA1Managed).ComputeHash( [Text.Encoding]::UTF8.GetBytes($init) )[0..15]
-   
-   $c = $r.CreateEncryptor()
-   $ms = new-Object IO.MemoryStream
-   $cs = new-Object Security.Cryptography.CryptoStream $ms,$c,"Write"
-   $sw = new-Object IO.StreamWriter $cs
-   $sw.Write($String)
-   $sw.Close()
-   $cs.Close()
-   $ms.Close()
-   $r.Clear()
-   [byte[]]$result = $ms.ToArray()
-   if($arrayOutput) {
-      return $result
-   } else {
-      return [Convert]::ToBase64String($result)
-   }
-}
-
-function Decrypt-String($Encrypted, $Passphrase, $salt="My Voice is my P455W0RD!", $init="Yet another key")
-{
-   if($Encrypted -is [string]){
-      $Encrypted = [Convert]::FromBase64String($Encrypted)
-   }
-
-   $r = new-Object System.Security.Cryptography.RijndaelManaged
-   $pass = [System.Text.Encoding]::UTF8.GetBytes($Passphrase)
-   $salt = [System.Text.Encoding]::UTF8.GetBytes($salt)
-
-   $r.Key = (new-Object Security.Cryptography.PasswordDeriveBytes $pass, $salt, "SHA1", 5).GetBytes(32) #256/8
-   $r.IV = (new-Object Security.Cryptography.SHA1Managed).ComputeHash( [Text.Encoding]::UTF8.GetBytes($init) )[0..15]
-
-   $d = $r.CreateDecryptor()
-   $ms = new-Object IO.MemoryStream @(,$Encrypted)
-   $cs = new-Object Security.Cryptography.CryptoStream $ms,$d,"Read"
-   $sr = new-Object IO.StreamReader $cs
-   Write-Output $sr.ReadToEnd()
-   $sr.Close()
-   $cs.Close()
-   $ms.Close()
-   $r.Clear()
-}
-
-function Encode-String( $strEncode ) 
-{
+	param( [string] $strEncode )
 	[convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($strEncode))
 }
 
-function Decode-String( $strDecode )
+function Decode-String
 {
+	param( [string] $strDecode )
 	[Text.Encoding]::Unicode.GetString([convert]::FromBase64String($strDecode))
 }
 
-function Compare-HashTable ( [HashTable] $src, [HashTable] $dst,[Object] $head  )
+function Compare-HashTable 
 {
+	param( 
+		[HashTable] $src, 
+		[HashTable] $dst,
+		[Object] $head  
+	)
+			
 	$src.Keys | % { 
 		if( ($dst.($_) -ne $null ) -and ($src.($_).GetType().Name -eq "HashTable" -and  $dst.($_).GetType().Name -eq "HashTable" ) ) {
 			Compare-HashTable -src $src.($_) -dst $dst.($_) -head $_
@@ -1059,7 +1013,8 @@ function Compare-HashTable ( [HashTable] $src, [HashTable] $dst,[Object] $head  
 function Ping-Multiple 
 {
 	param(
-		[Parameter(Mandatory=$true,ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)][string] $ComputerName
+		[Parameter(Mandatory=$true,ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
+		[string] $ComputerName
 	)
 	begin {
 		$replies  = @()
@@ -1092,7 +1047,7 @@ function Read-RegistryHive
 	
 	$regPairs = @()
 	foreach( $server in $servers ) {
-		if( ping $server ) {
+		if( Test-Connection -Computername $server -Count 1) {
 			$hive = [Microsoft.Win32.RegistryHive]::$rootHive
 			$reg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($hive, $server )
 			$regKey = $reg.OpenSubKey($key)
@@ -1116,48 +1071,33 @@ function Read-RegistryHive
 	return $regPairs
 }
 
-function Send-Email($s,$b,$to) 
+function Send-Email
 {
-	$mail = new-object System.Net.Mail.MailMessage;
+	param(
+		[Alias('s')][string]  $Subject,
+		[Alias('b')][string]  $Body,
+		[string[]] 			  $To
+	) 
+	$mail = New-Object System.Net.Mail.MailMessage
 	
 	for($i=0; $i -lt $to.Length; $i++) {
 		$mail.To.Add($to[$i]);
 	}
-	$mail.From = new-object System.Net.Mail.MailAddress($from);
+	$mail.From = New-Object System.Net.Mail.MailAddress($from)
 
-	$mail.Subject = $s;
-	$mail.Body = $b;
-
-	$smtp = new-object System.Net.Mail.SmtpClient($domain);
-	$smtp.Send($mail);
-
-}
-
-function Send-EmailWithAttachment( [string] $subject, [string] $body, [object] $to, [Object] $attachment  )
-{	
-	$mail = new-object System.Net.Mail.MailMessage
-	
-	for($i=0; $i -lt $to.Length; $i++) {
-		$mail.To.Add($to[$i]);
-	}
-
-	$mail.From = new-object System.Net.Mail.MailAddress($from)
 	$mail.Subject = $subject
 	$mail.Body = $body
-	
-	$attach = New-Object System.Net.Mail.Attachment($attachment)
-	$mail.Attachments.Add($attach)
 
-	$smtp = new-object System.Net.Mail.SmtpClient($domain)
+	$smtp = New-Object System.Net.Mail.SmtpClient($domain)
 	$smtp.Send($mail)
-
-	$attach.Dispose()
+	
 	$mail.Dispose()
 }
 
-function log( [string] $txt, [string] $log ) 
+function log
 {
-	"[" + (Get-Date).ToString() + "] - " + $txt | Out-File $log -Append -Encoding ASCII 
+	param ( [string] $txt, [string] $log ) 
+	Out-File -FilePath $log -Append -Encoding ASCII -InputObject ("[{0}] - {1}" -f $(Get-Date).ToString(), $txt )
 }
 
 function Get-Hash1 
@@ -1176,7 +1116,7 @@ function Get-Hash1
 	return ( ([system.bitconverter]::tostring($hash)).Replace("-","") )
 }
 
-function Get-FileVersion() 
+function Get-FileVersion
 {
 	begin{
 		$info = @()
@@ -1212,16 +1152,22 @@ function Get-Tail
 }
 Set-Alias -Name Tail -Value Get-Tail
 
-function Get-FileSize ( [string] $path ) 
+function Get-FileSize  
 {
+	param ( [string] $path )
 	$reader = new-object System.IO.FileStream $path, ([io.filemode]::Open), ([io.fileaccess]::Read), ([io.fileshare]::ReadWrite)
 	$len = $reader.Length
 	$reader.Close()
 	return $len
 }
 
-function Query-DatabaseTable ( [string] $server , [string] $dbs, [string] $sql )
+function Query-DatabaseTable 
 {
+	param (
+		[string] $server , 
+		[string] $dbs, 
+		[string] $sql
+	)
 	$Columns = @()
 	
 	$con = "server=$server;Integrated Security=true;Initial Catalog=$dbs"
@@ -1243,7 +1189,7 @@ function Query-DatabaseTable ( [string] $server , [string] $dbs, [string] $sql )
 	return $res
 }
 
-function Is-64Bit() 
+function Is-64Bit
 {   
 	return ( [IntPtr]::Size -eq 8 ) 
 }
