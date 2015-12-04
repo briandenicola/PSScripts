@@ -986,29 +986,6 @@ function Decode-String
 	[Text.Encoding]::Unicode.GetString([convert]::FromBase64String($strDecode))
 }
 
-function Compare-HashTable 
-{
-	param( 
-		[HashTable] $src, 
-		[HashTable] $dst,
-		[Object] $head  
-	)
-			
-	$src.Keys | % { 
-		if( ($dst.($_) -ne $null ) -and ($src.($_).GetType().Name -eq "HashTable" -and  $dst.($_).GetType().Name -eq "HashTable" ) ) {
-			Compare-HashTable -src $src.($_) -dst $dst.($_) -head $_
-		} else {
-			if( $dst.Contains($_) ) {
-				if( $src.($_) -ne $dst.($_) ) {
-					Write-Host "`t$head - $_ differs " -foregroundcolor Green
-				}
-			} else {
-				Write-Host "`t$head -  $_ is not contained in destination" -foregroundcolor DarkGray
-			}
-		}
-	}
-}
-
 function Ping-Multiple 
 {
 	param(
@@ -1032,7 +1009,7 @@ function Ping-Multiple
 		})
 	}
 	end {
-		return ( $replies  )
+		return $replies
 	}
 }
 
@@ -1046,24 +1023,23 @@ function Read-RegistryHive
 	
 	$regPairs = @()
 	foreach( $server in $servers ) {
-		if( Test-Connection -Computername $server -Count 1) {
+		if( Test-Connection -Computername $server -Count 1 ) {
 			$hive = [Microsoft.Win32.RegistryHive]::$rootHive
 			$reg = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($hive, $server )
 			$regKey = $reg.OpenSubKey($key)
-			$regKey.GetValueNames() | % { 
-				$regPair = new-object System.Object
-				$regPair | add-member -type NoteProperty -name Server -value $server
-				$regPair | add-member -type NoteProperty -name Key -value "$key\$_"
-				$regPair | add-member -type NoteProperty -name Value -value $regKey.GetValue($_.ToString())
-				$regPairs += $regPair
+			foreach( $regValue in $regKey.GetValueNames() ) { 
+				$regPairs += (New-Object PSObject -Property @{
+					Server = $server
+					Key    = $key + "\" + $regValue
+					Value  = $regKey.GetValue($_.ToString())
+				})
 			}
-			
-			$regKey.GetSubKeyNames() | % {
-				$regPairs += read-RegistryHive -servers $server -key "$key\$_"
+			foreach( $regSubKey in $regKey.GetSubKeyNames() ) {}
+				$regPairs += Read-RegistryHive -Servers $server -Key "$key\$regSubKey"
 			}
 		} 
         else  {
-			Write-Error -Message ("Could not ping " + $server + " . . .")
+			Write-Error -Message ("Could not ping {0} . . ." -f $server)
 		}
 	
 	}
@@ -1107,7 +1083,6 @@ function Get-Hash1
 	)
 
 	$fileStream = [system.io.file]::openread($file)
-	#$fileStream = [system.io.file]::openread((resolve-path $file))
 	$hasher = [System.Security.Cryptography.HashAlgorithm]::create($algorithm)
 	$hash = $hasher.ComputeHash($fileStream)
 	$fileStream.Close()
@@ -1117,15 +1092,16 @@ function Get-Hash1
 
 function Get-FileVersion
 {
+	param(
+		[Parameter(Mandatory=$false, ValueFromPipeline=$True)]
+	    [ValidateScript({Test-Path $_})]
+		[string] $FilePath
+	)
 	begin{
 		$info = @()
 	}
 	process {
-		if( test-path $_ ) {
-            $info += [system.diagnostics.fileversioninfo]::GetVersionInfo($_)
-		} else {
-			throw "Invalid Path - $_"
-		}
+        $info += [system.diagnostics.fileversioninfo]::GetVersionInfo($FilePath)
 	}
 	end {
 		return $info
@@ -1135,26 +1111,24 @@ function Get-FileVersion
 function Get-Tail
 {
     param(
-        [string] $path = $(throw "Path name must be specified."),
+		[Parameter(Mandatory=$true, ValueFromPipeline=$True)]
+	    [ValidateScript({Test-Path $_})]
+		[Alias('path')]
+        [string] $FilePath,
+		
         [int] $count = 10,
+		
         [Alias("f")]
         [switch] $wait
     )
-
-    try { 
-        Get-Content $path -Tail $count -Wait:$wait
-    }
-    catch { 
-        throw "An error occur - $_ "
-    }
-
+    Get-Content -Path $FilePath -Tail $count -Wait:$wait
 }
 Set-Alias -Name Tail -Value Get-Tail
 
 function Get-FileSize  
 {
 	param ( [string] $path )
-	$reader = new-object System.IO.FileStream $path, ([io.filemode]::Open), ([io.fileaccess]::Read), ([io.fileshare]::ReadWrite)
+	$reader = New-Object System.IO.FileStream $path, ([io.filemode]::Open), ([io.fileaccess]::Read), ([io.fileshare]::ReadWrite)
 	$len = $reader.Length
 	$reader.Close()
 	return $len
@@ -1163,22 +1137,22 @@ function Get-FileSize
 function Query-DatabaseTable 
 {
 	param (
-		[string] $server , 
+		[string] $server, 
 		[string] $dbs, 
 		[string] $sql
 	)
+	
 	$Columns = @()
+	$con = "server={0};Integrated Security=true;Initial Catalog={1}" -f $server, $dbs
 	
-	$con = "server=$server;Integrated Security=true;Initial Catalog=$dbs"
-	
-	$ds = new-object "System.Data.DataSet" "DataSet"
-	$da = new-object "System.Data.SqlClient.SqlDataAdapter" ($con)
+	$ds = New-Object "System.Data.DataSet" "DataSet"
+	$da = New-Object "System.Data.SqlClient.SqlDataAdapter" ($con)
 	
 	$da.SelectCommand.CommandText = $sql 
 	$da.SelectCommand.Connection = $con
 	
 	$da.Fill($ds) | out-null
-	$ds.Tables[0].Columns | Select ColumnName | % { $Columns += $_.ColumnName }
+	$ds.Tables[0].Columns | Select ColumnName | Foreach { $Columns += $_.ColumnName }
 	$res = $ds.Tables[0].Rows  | Select $Columns
 	
 	$ds.Clear()
