@@ -929,43 +929,42 @@ function Create-WindowsService
 	return $result 
 }
 	
-function sed 
-{
-	param (
-		[string] $OldText,
-		[string] $NewText
-	)
-	begin {
-	}
-	process {
-		$_ | % { $_.Replace( $OldText, $NewText ) } 
-	}
-	end {
-	}		
-}
-
 function Get-DirHash
 {
+	param(
+		[Parameter(Mandatory=$false, ValueFromPipeline=$True)]
+	    [ValidateScript({Test-Path $_})]
+		[string] $Directory = $PWD.Path 
+	)
 	begin {
 		$ErrorActionPreference = "silentlycontinue"
+		$hashes = @()
 	}
 	process {
-		Get-ChildItem -Recurse $_ | where { $_.PsIsContainer -eq $false } | select Name,DirectoryName,@{Name="SHA1 Hash"; Expression={get-hash1 $_.FullName -algorithm "sha1"}}
+		$hashes = Get-ChildItem -Recurse -Path $Directory | 
+			Where { $_.PsIsContainer -eq $false } | 
+			Select Name, DirectoryName, @{Name="SHA1 Hash"; Expression={Get-Hash1 $_.FullName -algorithm "sha1"}}
 	}
 	end {
+		return $hashes 
 	}
 }
 
 function Get-LoadedModules
 {
+	param(
+		[Parameter(Mandatory=$false, ValueFromPipeline=$True)]
+		[string] $proc
+	)
 	begin{
+		$modules = @()		
 	}
 	process {
-		$proc = $_
-		$procInfo = Get-Process | where { $_.Name.ToLower() -eq $proc.ToLower() }
-		$procInfo | Select Name,Modules
+		$procInfo = Get-Process | Where { $_.Name.ToLower() -eq $proc.ToLower() }
+		$modules = $procInfo | Select Name, Modules
 	}
 	end {
+		return $modules 
 	}
 }
 
