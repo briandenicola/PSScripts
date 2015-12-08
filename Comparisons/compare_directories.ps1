@@ -1,9 +1,9 @@
 param (
-	[Parameter(Mandatory=$True]
+	[Parameter(Mandatory=$True)]
 	[Alias('src')]
 	[string] $SourceDirectory,
 	
-	[Parameter(Mandatory=$True]
+	[Parameter(Mandatory=$True)]
 	[Alias('dst')]
 	[string] $DifferenceDirectory
 )

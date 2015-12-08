@@ -1,9 +1,9 @@
 param (
-	[Parameter(Mandatory=$True]
+	[Parameter(Mandatory=$True)]
 	[Alias('ref')]
 	[string] $ReferenceComputerName,
 	
-	[Parameter(Mandatory=$True]
+	[Parameter(Mandatory=$True)]
 	[Alias('dif')]
 	[string] $DifferenceComputerName
 )	
