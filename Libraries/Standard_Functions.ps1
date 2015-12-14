@@ -1034,7 +1034,7 @@ function Read-RegistryHive
 					Value  = $regKey.GetValue($_.ToString())
 				})
 			}
-			foreach( $regSubKey in $regKey.GetSubKeyNames() ) {}
+			foreach( $regSubKey in $regKey.GetSubKeyNames() ) {
 				$regPairs += Read-RegistryHive -Servers $server -Key "$key\$regSubKey"
 			}
 		} 
