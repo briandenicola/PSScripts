@@ -34,4 +34,4 @@ Set-AzureRmVMOSDisk -VM $vm -VhdUri $vhd_uri -CreateOption attach -Name $VMName 
 $nic = New-AzureRmNetworkInterface -ResourceGroupName $ResourceGroupName -Name ("{0}-nic" -f $VMName) -Location $location -SubnetId $subnet_id
 Add-AzureRmVMNetworkInterface -VM $vm -NetworkInterface $nic
  
-New-AzureRmVM -ResourceGroupName bjd-rg -Location northcentralus -VM $vm
+New-AzureRmVM -ResourceGroupName $ResourceGroupName -Location $location -VM $vm
