@@ -1,9 +1,9 @@
 #Variables
 [void] [Reflection.Assembly]::LoadWithPartialName("System.Security")
 
-$domain_controller = "ad.sharepoint.test"
-$from = "admin@sharepoint.test"
-$domain  = "mail.sharepoint.test"
+$domain_controller = ""
+$from = ""
+$domain  = ""
 
 $AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
 $AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
