@@ -12,16 +12,16 @@ param(
 Import-Module Azure
 Import-Module AzureRM.Profile
 Import-Module AzureRM.Compute
- 
+
 Login-AzureRmAccount
-Get-AzureRmSubscription -SubscriptionName $SubscriptionName | Tee-Object -Varible SubScriptionId | Select-AzureRmSubscription  | Out-Null
+Get-AzureRmSubscription -SubscriptionName $SubscriptionName | Tee-Object -Varible SubScriptionId | Select-AzureRmSubscriptionï¿½ | Out-Null
 Set-AzureRmCurrentStorageAccount -ResourceGroupName $ResourceGroupName -StorageAccountName $StorageAccountName
 
 $params = @{
-    SrcContainer  = "vhds"
-    SrcBlob       = $SourceBlobName
-    DestBlob      = $DestinationBlobName
-    DestContainer = "vhds"
+    SrcContainer = "vhds"
+    SrcBlob = $SourceBlobName
+    DestBlob = $DestinationBlobName
+    DestContainer = "vhds"
 }
 
 Start-AzureStorageBlobCopy @params
@@ -33,5 +33,5 @@ $vm = New-AzureRmVMConfig -VMName $VMName -VMSize $VMSize
 Set-AzureRmVMOSDisk -VM $vm -VhdUri $vhd_uri -CreateOption attach -Name $VMName -Windows
 $nic = New-AzureRmNetworkInterface -ResourceGroupName $ResourceGroupName -Name ("{0}-nic" -f $VMName) -Location $location -SubnetId $subnet_id
 Add-AzureRmVMNetworkInterface -VM $vm -NetworkInterface $nic
- 
+
 New-AzureRmVM -ResourceGroupName $ResourceGroupName -Location $location -VM $vm
