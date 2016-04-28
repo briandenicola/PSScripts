@@ -12,6 +12,30 @@ Import-AzurePublishSettingsFile $global:publishing_file
 Set-AzureSubscription -SubscriptionName $global:subscription
 Select-AzureSubscription -SubscriptionName $global:subscription
 
+function Get-AzureRMVMIpAddress {
+    param( 
+        [Parameter(Mandatory=$true)]
+        [string] $ResourceGroupName,
+        [String] $Name = [String]::Empty
+    )
+    
+    $vms = @()
+    $vms_to_process = Get-AzureRMVM -ResourceGroupName $ResourceGroupName | Where Name -imatch $Name
+    foreach( $vm in $vms_to_process  ){
+        $nic = Get-AzureRmNetworkInterface -Name ($vm.NetworkInterfaceIDs.Split("/") | Select -Last 1) -ResourceGroupName $ResourceGroupName
+        $pip_name = $nic.IpConfigurations.PublicIpAddress.id.Split("/") | Select -Last 1
+        
+        $values = [ordered]@{
+            Name = $vm.Name
+            PrivateIpAddress = ($nic | Select @{N="IP";E={$_.IpConfigurations.PrivateIpAddress}}).Ip
+            PublicIpAddress =  (Get-AzureRMPublicIpAddress -Name $pip_name -ResourceGroupName $ResourceGroupName | Select -Expand IpAddress)     
+        }
+        $vms += (New-Object PSObject -Property $values)
+    } 
+    
+    return $vms 
+}
+
 function Install-WinRmCertificate
 {
     param (
