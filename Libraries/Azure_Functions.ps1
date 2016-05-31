@@ -1,18 +1,44 @@
 ﻿Push-Location $PWD.Path
-#Get-ChildItem 'C:\Program Files (x86)\Microsoft SDKs\Windows Azure\PowerShell\Azure\*.psd1' | ForEach-Object {Import-Module $_}
+
 Import-Module Azure
 Import-Module MSOnline -DisableNameChecking
 Import-Module Microsoft.Online.SharePoint.PowerShell -DisableNameChecking
 Pop-Location
 
-Set-Variable -Name global:subscription -Value $ENV:AZURE_SUBSCRIPTION -Option AllScope, Constant #-ErrorAction SilentlyContinue
-Set-Variable -Name global:publishing_file -Value $ENV:AZURE_PUBLISH_FILE -Option AllScope, Constant #-ErrorAction SilentlyContinue
+#Set-Variable -Name global:subscription -Value $ENV:AZURE_SUBSCRIPTION -Option AllScope, Constant #-ErrorAction SilentlyContinue
+#Set-Variable -Name global:publishing_file -Value $ENV:AZURE_PUBLISH_FILE -Option AllScope, Constant #-ErrorAction SilentlyContinue
 
-Import-AzurePublishSettingsFile $global:publishing_file
-Set-AzureSubscription -SubscriptionName $global:subscription
-Select-AzureSubscription -SubscriptionName $global:subscription
+#Import-AzurePublishSettingsFile $global:publishing_file
+#Set-AzureSubscription -SubscriptionName $global:subscription
+#Select-AzureSubscription -SubscriptionName $global:subscription
 
-function Get-AzureRMVMIpAddress {
+function Get-AzureRMVMssIpAddress 
+{
+    param( 
+        [Parameter(Mandatory=$true)]
+        [string] $ResourceGroupName,
+        [Parameter(Mandatory=$true)]
+        [string] $VMSS
+    )
+    
+    $vms = @()
+    
+    $vms_to_process = Get-AzureRmNetworkInterface -VirtualMachineScaleSetName $VMSS -ResourceGroupName $ResourceGroupName
+    foreach( $vm in $vms_to_process  ){
+        $index = $vm.VirtualMachine.Id.Split("/") | Select -Last 1
+        $vmss_vm = Get-AzureRmVmssVM -ResourceGroupName $ResourceGroupName -VMScaleSetName $VMSS -InstanceId $index
+        $values = [ordered]@{
+            Name = $vmss_vm.Name
+            PrivateIpAddress = ( $vm.IpConfigurations | Select -First 1 | Select -Expand PrivateIpAddress )
+        }
+        $vms += (New-Object PSObject -Property $values)
+    } 
+    
+    return $vms 
+}
+
+function Get-AzureRMVMIpAddress 
+{
     param( 
         [Parameter(Mandatory=$true)]
         [string] $ResourceGroupName,
