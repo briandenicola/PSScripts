@@ -25,19 +25,26 @@ function Set-AzureRMVnetDNSServer
         [switch] $AzureDNS,
         
         [Parameter(ParameterSetName='Custom', Mandatory=$true)]
+        [ValidateScript({ $_ -imatch [IPAddress]$_ })]
         [string] $PrimaryDnsServerAddress,
         
         [Parameter(ParameterSetName='Custom', Mandatory=$false)]
+        [ValidateScript({ $_ -imatch [IPAddress]$_ })]
         [string] $SecondaryDnsServerAddress = [string]::Empty
     )
     
     $vnet = Get-AzureRmVirtualNetwork -ResourceGroupName $ResourceGroupName -Name $VnetName
     
     if($AzureDNS) {
-        $vnet2.DhcpOptions = $null
+        $vnet.DhcpOptions = $null
     }
     else {
-        $dns_servers = @($PrimaryDnsServerAddress, $SecondaryDnsServerAddress)
+        $dns_servers = @($PrimaryDnsServerAddress)
+       
+        if($SecondaryDnsServerAddress -ne [string]::Empty) {
+            if( $SecondaryDnsServerAddress -eq $PrimaryDnsServerAddress ) { throw "The Secondary DNS Server can not be the same as the Primary DNS Server . . ." }
+            $dns_servers += $SecondaryDnsServerAddress
+        }
         $dhcp_options = New-Object PSObject -Property @{
             DnsServers = $dns_servers
         }
