@@ -12,6 +12,41 @@ Pop-Location
 #Set-AzureSubscription -SubscriptionName $global:subscription
 #Select-AzureSubscription -SubscriptionName $global:subscription
 
+function Set-AzureRMVnetDNSServer
+{
+    param( 
+        [Parameter(Mandatory=$true)]
+        [string] $ResourceGroupName,
+        
+        [Parameter(Mandatory=$true)]
+        [string] $VnetName,
+        
+        [Parameter(ParameterSetName='Default', Mandatory=$true)]
+        [switch] $AzureDNS,
+        
+        [Parameter(ParameterSetName='Custom', Mandatory=$true)]
+        [string] $PrimaryDnsServerAddress,
+        
+        [Parameter(ParameterSetName='Custom', Mandatory=$false)]
+        [string] $SecondaryDnsServerAddress = [string]::Empty
+    )
+    
+    $vnet = Get-AzureRmVirtualNetwork -ResourceGroupName $ResourceGroupName -Name $VnetName
+    
+    if($AzureDNS) {
+        $vnet2.DhcpOptions = $null
+    }
+    else {
+        $dns_servers = @($PrimaryDnsServerAddress, $SecondaryDnsServerAddress)
+        $dhcp_options = New-Object PSObject -Property @{
+            DnsServers = $dns_servers
+        }
+        $vnet.DhcpOptions = $dhcp_options
+    }
+    
+    Set-AzureRmVirtualNetwork -VirtualNetwork $vnet
+}
+
 function Get-AzureRMVMssIpAddress 
 {
     param( 
