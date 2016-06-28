@@ -8,6 +8,45 @@ $domain  = ""
 $AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
 $AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
 
+function Get-MyPublicIPAddress
+{
+	return ( Resolve-DnsName -Name o-o.myaddr.l.google.com -Type TXT -NoHostsFile -DnsOnly -Server ns1.google.com | Select -ExpandProperty Strings )
+}
+
+#https://github.com/BornToBeRoot/PowerShell
+function Get-WindowsProductKey
+{
+	$key = [string]::Null 
+    $chars="BCDFGHJKMPQRTVWXY2346789" 
+
+    $ProductKeyValue =  (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion").digitalproductid[0x34..0x42]
+    $Wmi_Win32 = Get-WmiObject -Class Win32_OperatingSystem
+	   
+	for($i = 24; $i -ge 0; $i--) { 
+		$r = 0 
+
+		for($j = 14; $j -ge 0; $j--) { 
+			$r = ($r * 256) -bxor $ProductKeyValue[$j] 
+			$ProductKeyValue[$j] = [math]::Floor([double]($r/24)) 
+			$r = $r % 24 
+		}
+ 
+		$key = $Chars[$r] + $key  
+		if (($i % 5) -eq 0 -and $i -ne 0) { 
+			$key = "-" + $key 
+		} 
+	} 
+
+	return (New-Object -TypeName PSObject -Property @{
+		ComputerName   = $ENV:COMPUTERNAME
+		Caption        = $Wmi_Win32.Caption
+		WindowsVersion = $Wmi_Win32.Version
+		OSArchitecture = $Wmi_Win32.OSArchitecture
+		BuildNumber    = $Wmi_Win32.BuildNumber
+		ProductKey     = $key
+	})
+}
+
 function Set-TrustedRemotingEndpoint
 {
     param(
@@ -271,6 +310,7 @@ function Get-DetailedServices
 
     return $Services
 }
+
 
 #http://poshcode.org/2059
 function Get-FileEncoding
