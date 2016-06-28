@@ -37,8 +37,10 @@ $cert_request_template = @"
 Subject="CN={0},OU={1},O={2},L={3},C={4}"
 Exportable=TRUE
 KeyLength=2048
+HashAlgorithm=sha256
 MachineKeySet=TRUE
 FriendlyName={5}
+RequestType = PKCS10
 ProviderName = "Microsoft RSA SChannel Cryptographic Provider"
 KeySpec=1
 
