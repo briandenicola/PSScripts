@@ -8,6 +8,53 @@ $domain  = ""
 $AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
 $AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
 
+function Set-RDPFile
+{
+    param (
+        [Parameter(Mandatory=$true,ParameterSetName='Directory')]
+        [ValidateScript({Test-Path $_ -PathType 'Container'})] 
+        [string] $Path,
+
+        [Parameter(Mandatory=$true,ParameterSetName='File')]
+        [ValidateScript({Test-Path $_ -PathType 'Leaf'})] 
+        [string] $RDPFile
+    )
+
+    function Get-FullAddress {
+        param  ( [string] $file )
+        return ( Select-String -Pattern "full address"  -Path  $file | Select -Expand Line -First 1 )
+    }
+
+    $rdp_settings = @"
+        {0}
+        prompt for credentials:i:1                    
+        screen mode id:i:1                            
+        desktopwidth:i:1280                           
+        desktopheight:i:768                           
+        redirectprinters:i:0                          
+        redirectcomports:i:0                          
+        redirectclipboard:i:1                         
+        redirectposdevices:i:0                        
+        drivestoredirect:s:*                          
+"@
+
+    switch ($PsCmdlet.ParameterSetName) 
+    { 
+		"Directory" { 
+            Get-ChildItem -Path $path -Recurse -Include "*.rdp" -Depth 0 | ForEach-Object {
+				Write-Verbose -Message ("Updating RDP file {0} to preferred settings . . ." -f $_.FullName)
+                $address = Get-FullAddress -file $_.FullName
+                Set-Content -Encoding Ascii -Value ( $rdp_settings -f $address) -Path $_.FullName
+            }
+        }
+        "File" { 
+			Write-Verbose -Message ("Updating RDP file {0} to preferred settings . . ." -f $RDPFile)
+            $address = Get-FullAddress -file $RDPFile
+            Set-Content -Encoding Ascii -Value ( $rdp_settings -f $address) -Path $RDPFile
+        }
+    }
+}
+
 function Get-MyPublicIPAddress
 {
 	return ( Resolve-DnsName -Name o-o.myaddr.l.google.com -Type TXT -NoHostsFile -DnsOnly -Server ns1.google.com | Select -ExpandProperty Strings )
