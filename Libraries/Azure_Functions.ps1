@@ -1,9 +1,9 @@
-﻿Push-Location $PWD.Path
+﻿#Push-Location $PWD.Path
 
-Import-Module Azure
-Import-Module MSOnline -DisableNameChecking
-Import-Module Microsoft.Online.SharePoint.PowerShell -DisableNameChecking
-Pop-Location
+#Import-Module Azure
+#Import-Module MSOnline -DisableNameChecking
+#Import-Module Microsoft.Online.SharePoint.PowerShell -DisableNameChecking
+#Pop-Location
 
 #Set-Variable -Name global:subscription -Value $ENV:AZURE_SUBSCRIPTION -Option AllScope, Constant #-ErrorAction SilentlyContinue
 #Set-Variable -Name global:publishing_file -Value $ENV:AZURE_PUBLISH_FILE -Option AllScope, Constant #-ErrorAction SilentlyContinue
@@ -11,6 +11,11 @@ Pop-Location
 #Import-AzurePublishSettingsFile $global:publishing_file
 #Set-AzureSubscription -SubscriptionName $global:subscription
 #Select-AzureSubscription -SubscriptionName $global:subscription
+
+function Get-AzureIPRange
+{
+    return (Invoke-RestMethod http://mscloudips.azurewebsites.net/Api/azureips/all )
+}
 
 function Set-AzureRMVnetDNSServer
 {
