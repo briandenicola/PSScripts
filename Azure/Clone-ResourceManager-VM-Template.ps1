@@ -14,7 +14,7 @@ Import-Module AzureRM.Profile
 Import-Module AzureRM.Compute
 
 Login-AzureRmAccount
-Get-AzureRmSubscription -SubscriptionName $SubscriptionName | Tee-Object -Variable SubScriptionId | Select-AzureRmSubscription� | Out-Null
+Get-AzureRmSubscription -SubscriptionName $SubscriptionName | Tee-Object -Variable SubScriptionId | Select-AzureRmSubscription | Out-Null
 Set-AzureRmCurrentStorageAccount -ResourceGroupName $ResourceGroupName -StorageAccountName $StorageAccountName
 
 $params = @{
