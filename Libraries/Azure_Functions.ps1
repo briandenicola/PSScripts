@@ -1,4 +1,4 @@
-﻿function Connect-ToAzureVMviaSSH
+function Connect-ToAzureVMviaSSH
 {
     param(
         [Parameter(Mandatory=$true)]
@@ -43,6 +43,11 @@
     else{
         &$ENV:PUTTY_PATH $UserName@$ip -i $private_key    
     }
+}
+
+function Get-AzureIPRange
+{
+    return (Invoke-RestMethod http://mscloudips.azurewebsites.net/Api/azureips/all )
 }
 
 function Set-AzureRMVnetDNSServer
