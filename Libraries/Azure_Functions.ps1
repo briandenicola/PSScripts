@@ -1,16 +1,49 @@
-﻿Push-Location $PWD.Path
+﻿function Connect-ToAzureVMviaSSH
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string] $ResourceGroupName,
 
-Import-Module Azure
-Import-Module MSOnline -DisableNameChecking
-Import-Module Microsoft.Online.SharePoint.PowerShell -DisableNameChecking
-Pop-Location
+        [Parameter(Mandatory=$true)]
+        [string] $VMName,
 
-#Set-Variable -Name global:subscription -Value $ENV:AZURE_SUBSCRIPTION -Option AllScope, Constant #-ErrorAction SilentlyContinue
-#Set-Variable -Name global:publishing_file -Value $ENV:AZURE_PUBLISH_FILE -Option AllScope, Constant #-ErrorAction SilentlyContinue
+        [Parameter(Mandatory=$true)]
+        [string] $UserName,
 
-#Import-AzurePublishSettingsFile $global:publishing_file
-#Set-AzureSubscription -SubscriptionName $global:subscription
-#Select-AzureSubscription -SubscriptionName $global:subscription
+        [Parameter(ParameterSetName='Default', Mandatory=$false)]
+        [switch] $UsePrivateIPAddress,
+
+        [Parameter(ParameterSetName='Default', Mandatory=$false)]
+        [string] $PrivateKeyPath = [string]::Empty
+    )
+
+    if( [string]::IsNullOrEmpty($ENV:PUTTY_PATH) -or !(Test-Path -Path $ENV:PUTTY_PATH)) {
+        throw "The Path to putty.exe is not found. Is the environmental variable 'PUTTY_PATH' set?"
+    } 
+
+    $vm_ip = Get-AzureRMVMIpAddress -ResourceGroupName $ResourceGroupName -Name $VMName
+    if($UsePrivateIPAddress) {
+        $ip = $vm_ip | Select -ExpandProperty PrivateIpAddress
+    }
+    else {
+        $ip = $vm_ip | Select -ExpandProperty PublicIpAddress
+    }
+
+    $private_key = [string]::Empty
+    if( $PrivateKeyPath -ne [string]::Empty -and (Test-Path -Path $PrivateKeyPath)) {
+        $private_key = $PrivateKeyPath
+    }
+    elseif( $ENV:PUTTY_PRIVATE_KEY -ne [string]::Empty -and (Test-Path -Path $ENV:PUTTY_PRIVATE_KEY)) {
+        $private_key = $ENV:PUTTY_PRIVATE_KEY 
+    }
+
+    if( $private_key -eq [string]::Empty ){
+        &$ENV:PUTTY_PATH $UserName@$ip
+    }
+    else{
+        &$ENV:PUTTY_PATH $UserName@$ip -i $private_key    
+    }
+}
 
 function Set-AzureRMVnetDNSServer
 {
