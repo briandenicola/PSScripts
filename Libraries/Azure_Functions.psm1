@@ -1,4 +1,4 @@
-function Connect-ToAzureVMviaSSH
+﻿function Connect-ToAzureVMviaSSH
 {
     param(
         [Parameter(Mandatory=$true)]
@@ -10,11 +10,13 @@ function Connect-ToAzureVMviaSSH
         [Parameter(Mandatory=$true)]
         [string] $UserName,
 
-        [Parameter(ParameterSetName='Default', Mandatory=$false)]
         [switch] $UsePrivateIPAddress,
 
-        [Parameter(ParameterSetName='Default', Mandatory=$false)]
-        [string] $PrivateKeyPath = [string]::Empty
+        [Parameter(ParameterSetName='PrivateKey', Mandatory=$false)]
+        [string] $PrivateKeyPath = [string]::Empty,
+
+        [Parameter(ParameterSetName='Password', Mandatory=$false)]
+        [string] $Password = [string]::Empty
     )
 
     if( [string]::IsNullOrEmpty($ENV:PUTTY_PATH) -or !(Test-Path -Path $ENV:PUTTY_PATH)) {
@@ -29,19 +31,25 @@ function Connect-ToAzureVMviaSSH
         $ip = $vm_ip | Select -ExpandProperty PublicIpAddress
     }
 
-    $private_key = [string]::Empty
-    if( $PrivateKeyPath -ne [string]::Empty -and (Test-Path -Path $PrivateKeyPath)) {
-        $private_key = $PrivateKeyPath
-    }
-    elseif( $ENV:PUTTY_PRIVATE_KEY -ne [string]::Empty -and (Test-Path -Path $ENV:PUTTY_PRIVATE_KEY)) {
-        $private_key = $ENV:PUTTY_PRIVATE_KEY 
+    if($ip -eq $null) {
+        throw ("Could not find any IP Address for Virtual Machine {0} in Resource Group {1} . . ." -f $VMName, $ResourceGroupName)
     }
 
-    if( $private_key -eq [string]::Empty ){
+    if( !([string]::IsNullOrEmpty($PrivateKeyPath)) ) {
+        $private_key = $PrivateKeyPath
+    }
+    elseif( !([string]::IsNullOrEmpty($ENV:PUTTY_PRIVATE_KEY)) ) {
+        $private_key = $ENV:PUTTY_PRIVATE_KEY 
+    }
+    else {
+        $private_key = [string]::Empty
+    }
+
+    if( [string]::IsNullOrEmpty($private_key) ) {
         &$ENV:PUTTY_PATH $UserName@$ip
     }
     else{
-        &$ENV:PUTTY_PATH $UserName@$ip -i $private_key    
+        &$ENV:PUTTY_PATH $UserName@$ip -i $private_key
     }
 }
 
@@ -114,7 +122,7 @@ function Get-AzureRMVMssIpAddress
         $vms += (New-Object PSObject -Property $values)
     } 
     
-    return $vms 
+    re  turn $vms 
 }
 
 function Get-AzureRMVMIpAddress 
@@ -167,7 +175,7 @@ function Install-WinRmCertificate
     }
 }
 
-function Upload-FileToAzure {
+function Send-FileToAzure {
     Param (
         [ValidateScript({Test-Path $_})][string] $file,
         [Parameter(Mandatory=$true)][string] $storage,
@@ -197,3 +205,5 @@ function Get-AzureRDPFiles {
        Get-AzureRemoteDesktopFile -ServiceName $service -Name $vm.Name -LocalPath $rdp
     }
 }
+
+Export-ModuleMember -Function Get-AzureRDPFiles, Send-FileToAzure, Set-AzureRMVnetDNSServer, Get-AzureRMVMssIpAddress, Get-AzureRMVMIpAddress, Install-WinRmCertificate, Connect-ToAzureVMviaSSH, Get-AzureIPRange
