@@ -1,5 +1,5 @@
 
-﻿http://mosshater.blogspot.com/2010/11/check-replication-directory-changes.html
+﻿#http://mosshater.blogspot.com/2010/11/check-replication-directory-changes.html
 
 
 param(
