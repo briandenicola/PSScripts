@@ -1,18 +1,19 @@
 ﻿function Connect-ToAzureVMviaSSH
 {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(ParameterSetName='Default', Mandatory=$true)]
         [string] $ResourceGroupName,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(ParameterSetName='Default', Mandatory=$true)]
         [string] $VMName,
 
-        [Parameter(Mandatory=$true)]
+        [Parameter(ParameterSetName='Default', Mandatory=$true)]
         [string] $UserName,
 
+        [Parameter(ParameterSetName='Default', Mandatory=$false)]
         [switch] $UsePrivateIPAddress,
 
-        [Parameter(ParameterSetName='PrivateKey', Mandatory=$false)]
+        [Parameter(ParameterSetName='Default', Mandatory=$false)]
         [string] $PrivateKeyPath = [string]::Empty,
 
         [Parameter(ParameterSetName='Password', Mandatory=$false)]
