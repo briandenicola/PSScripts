@@ -35,10 +35,10 @@
         throw ("Could not find any IP Address for Virtual Machine {0} in Resource Group {1} . . ." -f $VMName, $ResourceGroupName)
     }
 
-    if( !([string]::IsNullOrEmpty($PrivateKeyPath)) ) {
+    if( !([string]::IsNullOrEmpty($PrivateKeyPath)) -and (Test-Path -Path $PrivateKeyPath) ) {
         $private_key = $PrivateKeyPath
     }
-    elseif( !([string]::IsNullOrEmpty($ENV:PUTTY_PRIVATE_KEY)) ) {
+    elseif( !([string]::IsNullOrEmpty($ENV:PUTTY_PRIVATE_KEY)) -and (Test-Path -Path $ENV:PUTTY_PRIVATE_KEY) ) {
         $private_key = $ENV:PUTTY_PRIVATE_KEY 
     }
     else {
