@@ -1,23 +1,24 @@
 ﻿function Connect-ToAzureVMviaSSH
 {
     param(
-        [Parameter(ParameterSetName='Default', Mandatory=$true)]
+        [Parameter(Mandatory=$true)]
         [string] $ResourceGroupName,
 
-        [Parameter(ParameterSetName='Default', Mandatory=$true)]
+        [Parameter(Mandatory=$true)]
         [string] $VMName,
 
-        [Parameter(ParameterSetName='Default', Mandatory=$true)]
+        [Parameter(Mandatory=$true)]
         [string] $UserName,
 
-        [Parameter(ParameterSetName='Default', Mandatory=$false)]
+        [Parameter(Mandatory=$false)]
         [switch] $UsePrivateIPAddress,
+        
+        [Parameter(Mandatory=$false)]
+        [switch] $UsePassword,
 
-        [Parameter(ParameterSetName='Default', Mandatory=$false)]
-        [string] $PrivateKeyPath = [string]::Empty,
+        [Parameter(ParameterSetName='PrivateKey', Mandatory=$false)]
+        [string] $PrivateKeyPath = [string]::Empty
 
-        [Parameter(ParameterSetName='Password', Mandatory=$false)]
-        [string] $Password = [string]::Empty
     )
 
     if( [string]::IsNullOrEmpty($ENV:PUTTY_PATH) -or !(Test-Path -Path $ENV:PUTTY_PATH)) {
@@ -46,7 +47,7 @@
         $private_key = [string]::Empty
     }
 
-    if( [string]::IsNullOrEmpty($private_key) ) {
+    if( $UsePassword -or [string]::IsNullOrEmpty($private_key) ) {
         &$ENV:PUTTY_PATH $UserName@$ip
     }
     else{
