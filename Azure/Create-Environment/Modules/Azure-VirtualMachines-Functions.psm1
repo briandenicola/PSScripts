@@ -1,8 +1,5 @@
 #require -module Azure
 
-. (Join-Path -Path $env:SCRIPTS_HOME -ChildPath "Libraries\Standard_Functions.ps1")
-Load-AzureModules
-
 function New-AzureVirtualMachine
 {
     param(

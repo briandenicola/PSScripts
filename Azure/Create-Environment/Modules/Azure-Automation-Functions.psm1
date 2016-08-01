@@ -1,8 +1,5 @@
 ﻿ #require -module Azure
 
-. (Join-Path -Path $env:SCRIPTS_HOME -ChildPath "Libraries\Standard_Functions.ps1")
-Load-AzureModules
-
 Set-Variable -Name Modules -Value "$ENV:ProgramFiles\WindowsPowerShell\Modules" -Option Constant
 Set-Variable -Name DSCMap  -Value (Join-Path -Path $PWD.Path -ChildPath ("DSC\Computer-To-Guid-Map.csv"))
 

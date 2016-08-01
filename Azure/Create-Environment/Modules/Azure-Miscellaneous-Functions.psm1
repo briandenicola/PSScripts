@@ -1,8 +1,5 @@
 #require -module Azure
 
-. (Join-Path -Path $env:SCRIPTS_HOME -ChildPath "Libraries\Standard_Functions.ps1")
-Load-AzureModules
-
 function Write-HashTableOutput( [HashTable] $ht )
 {
 	$ht.Keys | % { $output += $_ + ":" + $ht[$_] + "," }
@@ -289,4 +286,4 @@ function Add-AzureDnsServerConfiguration
     Set-AzureVNetConfig -ConfigurationPath $vnetFilePath
 }
 
-Export-ModuleMember -Function  Write-HashTableOutput, Set-VNetFileValues, Get-LatestAzureVMImageName, Add-AzureDnsServerConfiguration,  Convert-XmlToHashTable, Get-ScriptBlock, Wait-ForVMReadyState 
+Export-ModuleMember -Function  Write-HashTableOutput, Set-VNetFileValues, Get-LatestAzureVMImageName, Add-AzureDnsServerConfiguration,  Convert-XmlToHashTable, Get-ScriptBlock, Wait-ForVMReadyState, Add-AzureVnetConfigurationFile

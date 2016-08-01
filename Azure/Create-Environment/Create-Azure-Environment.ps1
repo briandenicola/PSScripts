@@ -9,10 +9,6 @@ param(
 
 Set-StrictMode -Version Latest 
 
-#Import Modules
-. (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
-Load-AzureModules
-
 Import-Module -Name (Join-Path -Path $PWD.Path -ChildPath "Modules\Azure-BlobStorage-Functions.psm1")
 Import-Module -Name (Join-Path -Path $PWD.Path -ChildPath "Modules\Azure-Miscellaneous-Functions.psm1")
 Import-Module -Name (Join-Path -Path $PWD.Path -ChildPath "Modules\Azure-VirtualMachines-Functions.psm1")
@@ -54,14 +50,16 @@ Write-Verbose -Message ("[{0}] - Calling New-AzureVirtualNetwork - {1}" -f $(Get
 New-AzureVirtualNetwork @opts_network
 
 #Upload Script Extensions
-$opts_uploads = @{
-    StorageName   = $cfg.Azure.BlobStorage 
-    ContainerName = $cfg.Azure.ScriptExtension.ContainerName
-    Subscription  = $cfg.Azure.Subscription
-    FilePaths     = @($cfg.Azure.ScriptExtension.Script | Select -Expand FilePath)
+if( $cfg.Azure.ScriptExtension.Enabled -eq $true ) {
+    $opts_uploads = @{
+        StorageName   = $cfg.Azure.BlobStorage 
+        ContainerName = $cfg.Azure.ScriptExtension.ContainerName
+        Subscription  = $cfg.Azure.Subscription
+        FilePaths     = @($cfg.Azure.ScriptExtension.Script | Select -Expand FilePath)
+    }
+    Write-Verbose -Message ("[{0}] - Calling Publish-AzureExtensionScriptstoStorage - {1}" -f $(Get-Date), (Write-HashTableOutput -ht $opts_uploads))
+    Publish-AzureExtensionScriptstoStorage @opts_uploads
 }
-Write-Verbose -Message ("[{0}] - Calling Publish-AzureExtensionScriptstoStorage - {1}" -f $(Get-Date), (Write-HashTableOutput -ht $opts_uploads))
-Publish-AzureExtensionScriptstoStorage @opts_uploads
 
 #Create Azure VM for AD
 if( $cfg.Azure.ActiveDirectory.Enabled -eq $true ) {

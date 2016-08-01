@@ -2,9 +2,6 @@
 
 Import-Module (Join-Path -Path $PWD.Path -ChildPath "Modules\Azure-Miscellaneous-Functions.psm1")
 
-. (Join-Path -Path $env:SCRIPTS_HOME -ChildPath "Libraries\Standard_Functions.ps1")
-Load-AzureModules
-
 function New-AzureAffinityOrResourceGroup
 {
     param (

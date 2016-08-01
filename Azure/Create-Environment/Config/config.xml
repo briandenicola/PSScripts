@@ -9,9 +9,9 @@
 		<DNSServer Name="" IpAddress="" />
 		<Subnet Name="" AddressPrefix="" />
 	</VNet>
-    <ScriptExtension ContainerName="scripts" >
-        <Script FilePath="" />
-    </ScriptExtension>
+    <ScriptExtension ContainerName="scripts" enabled="False">
+		<Script FilePath="D:\temp" />
+	</ScriptExtension>
 	<ActiveDirectory enabled="True">
         <Domain Name="" NetBIOS="" DomainAdminUser="manager" DomainAdminPassword="" />
 		<VM ComputerName="" VMSize="Small" DriveSize="60" DriveLabel="DATA-01" OS="Windows Server 2012 R2 Datacenter" IpAddress="" />
