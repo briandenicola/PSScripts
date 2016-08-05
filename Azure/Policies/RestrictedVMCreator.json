@@ -1,0 +1,25 @@
+{
+  "Name": "Restricted VM Creator Definition",
+  "Id": "0fcbfd12-852f-4270-9c83-72973aa37d27",
+  "IsCustom": true,
+  "Description": "Can only create a VM and attach to a pre-existing vNIC",
+  "Actions": [
+    "Microsoft.Storage/*",
+    "Microsoft.Compute/*",
+    "Microsoft.Authorization/*/read",
+    "Microsoft.Network/networkSecurityGroups/read",
+    "Microsoft.Network/virtualNetworks/read",
+    "Microsoft.Network/virtualNetworks/subnets/read",
+    "Microsoft.Network/virtualNetworks/subnets/join/action",
+    "Microsoft.Network/networkInterfaces/join/action",
+    "Microsoft.Network/networkInterfaces/read",
+    "Microsoft.Resources/subscriptions/resourceGroups/read",
+    "Microsoft.Resources/*",
+    "Microsoft.Support/*"
+  ],
+  "NotActions": [
+  ],
+  "AssignableScopes": [ 
+    "/subscriptions/48994fa4-13ac-4421-86e1-53616ae5e2f3" 
+  ]
+}

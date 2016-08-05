@@ -1,0 +1,17 @@
+{
+    "if" : {
+        "anyOf" : [
+            {
+                "field" : "type",
+                "equals" : "Microsoft.Network/publicIPAddresses"
+            },
+            {
+                "field" : "type",
+                "like" : "Microsoft.Web*"
+            }            
+        ]
+    },
+    "then" : {
+        "effect": "deny"
+    }
+}

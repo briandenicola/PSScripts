@@ -1,0 +1,23 @@
+{
+    "if" : {
+        "not" : {
+            "anyOf" : [
+                {
+                    "field" : "type",
+                    "like" : "Microsoft.Resources/*"
+                },
+                {
+                    "field" : "type",
+                    "equals" : "Microsoft.Network/networkInterfaces"
+                },
+                {
+                    "field" : "type",
+                    "like" : "Microsoft.Compute/*"
+                }       
+            ]
+        }
+    },
+    "then" : {
+        "effect": "deny"
+    }
+}

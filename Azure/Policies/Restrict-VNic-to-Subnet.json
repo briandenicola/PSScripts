@@ -1,0 +1,20 @@
+//Does not work. This is not supported currently
+{
+    "if" : {
+        "not" : {
+            "anyOf" : [
+                {
+                    "field" : "type",
+                    "equals" : "Microsoft.Network/networkInterfaces"
+                },
+                {
+                    "field" : "id",
+                    "equals" : "Microsoft.Network/virtualNetworks/Test/subnets/default"
+                }    
+            ]
+        }
+    },
+    "then" : {
+        "effect": "deny"
+    }
+}
