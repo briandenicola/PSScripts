@@ -35,7 +35,7 @@ function Set-RDPFile
         redirectcomports:i:0                          
         redirectclipboard:i:1                         
         redirectposdevices:i:0                        
-        drivestoredirect:s:*                          
+        drivestoredirect:s:*
 "@
 
     switch ($PsCmdlet.ParameterSetName) 
