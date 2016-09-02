@@ -8,6 +8,26 @@ $domain  = ""
 $AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
 $AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
 
+function Save-InstagramPhoto
+{
+    param(
+        [Parameter(Mandatory=$true)]
+        [string] $Url,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateScript({Test-Path $_ -PathType 'Container'})] 
+        [string] $Path
+    )
+
+    $response = Invoke-WebRequest $url
+    $html = $response.ParsedHtml
+
+    $FullPath = Join-Path -Path $Path -ChildPath ("{0}.png" -f (Get-Random) )
+
+    $meta =  $html.head.getElementsByTagName("meta")  | select -ExpandProperty Outerhtml | Where { $_ -imatch "property=`"og:image`"" }
+    Invoke-WebRequest $meta.Split(" ")[1].Split("=")[1] -Outfile $FullPath 
+}
+
 function Set-RDPFile
 {
     param (
