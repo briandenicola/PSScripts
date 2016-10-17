@@ -120,8 +120,15 @@ function Set-TrustedRemotingEndpoint
         [string] $ip_address 
     )
     
-    Set-Item -Path 'WSMan:\localhost\Client\TrustedHosts' -Value $ip_address
-    
+	$path = 'WSMan:\localhost\Client\TrustedHosts'
+	$values = Get-Item -Path $path | Select -Expand Value
+
+	if( $values -eq $null ) {
+		Set-Item -Path $path -Value $ip_address
+	}
+	else {
+		Set-Item -Path $path -Value ("{0},{1}" -f $values, $ip_address)
+	}
 }
 
 function Get-Fonts
