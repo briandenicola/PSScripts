@@ -8,6 +8,15 @@ $domain  = ""
 $AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
 $AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
 
+function Stop-RuntimeBroker 
+{
+  $log = Join-Path -Path $ENV:Temp -ChildPath "RuntimeBroker.log"
+  $process ="RuntimeBroker"
+  $ram_limit = 100000000 
+  Get-Date | Out-File -FilePath $log -Append 
+  Get-Process -Name $process |  Where PeakPagedMemorySize64 -gt $ram_limit | Tee-Object -FilePath $log -Append | Stop-Process -Force -Verbose
+}
+
 function Save-InstagramPhoto
 {
     param(
