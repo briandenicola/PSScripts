@@ -33,8 +33,11 @@ function Save-InstagramPhoto
 
     $FullPath = Join-Path -Path $Path -ChildPath ("{0}.png" -f (Get-Random) )
 
-    $meta =  $html.head.getElementsByTagName("meta")  | select -ExpandProperty Outerhtml | Where { $_ -imatch "property=`"og:image`"" }
-    Invoke-WebRequest $meta.Split(" ")[1].Split("=")[1] -Outfile $FullPath 
+    #$meta = $html.head.getElementsByTagName("meta")  | select -ExpandProperty Outerhtml | Where { $_ -imatch "property=`"og:image`"" }
+	$meta = $html.all | where NodeName -eq "META"  | select -ExpandProperty Outerhtml | Where { $_ -imatch "property=`"og:image`"" }
+
+    #Invoke-WebRequest $meta.Split(" ")[1].Split("=")[1] -Outfile $FullPath
+	Invoke-WebRequest $meta.Split(" ")[1].Split("=")[1].Trim("`"")  -Outfile $FullPath
 }
 
 function Set-RDPFile
