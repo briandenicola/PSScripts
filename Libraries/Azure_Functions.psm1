@@ -139,12 +139,18 @@ function Get-AzureRMVMIpAddress
     $vms_to_process = Get-AzureRMVM -ResourceGroupName $ResourceGroupName | Where Name -imatch $Name
     foreach( $vm in $vms_to_process  ){
         $nic = Get-AzureRmNetworkInterface -Name ($vm.NetworkInterfaceIDs.Split("/") | Select -Last 1) -ResourceGroupName $ResourceGroupName
-        $pip_name = $nic.IpConfigurations.PublicIpAddress.id.Split("/") | Select -Last 1
+        if($nic.IpConfigurations.PublicIpAddress.id) { 
+            $pip_name = $nic.IpConfigurations.PublicIpAddress.id.Split("/") | Select -Last 1  
+            $pip = (Get-AzureRMPublicIpAddress -Name $pip_name -ResourceGroupName $ResourceGroupName | Select -Expand IpAddress)     
+        }
+        else { 
+            $pip = "N/A" 
+        }
         
         $values = [ordered]@{
             Name = $vm.Name
             PrivateIpAddress = ($nic | Select @{N="IP";E={$_.IpConfigurations.PrivateIpAddress}}).Ip
-            PublicIpAddress =  (Get-AzureRMPublicIpAddress -Name $pip_name -ResourceGroupName $ResourceGroupName | Select -Expand IpAddress)     
+            PublicIpAddress =  $pip
         }
         $vms += (New-Object PSObject -Property $values)
     } 
