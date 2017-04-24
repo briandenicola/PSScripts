@@ -1,3 +1,27 @@
+<#
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,   
+
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+.SYNOPSIS 
+    This script will query an Azure subscription and report back the resources with particular focus on Public IP Addresses 
+
+.DESCRIPTION
+
+.EXAMPLE
+    .\Audit-AzureResources.ps1 -CSV c:\temp\azure.csv
+
+.NOTES
+#>
+
 [CmdletBinding()]
 param(
     [string] $CSVPath
@@ -68,6 +92,19 @@ foreach( $resource in $resources ) {
         $ips = Get-AzureRMVMIpAddress -ResourceGroupName $vm.ResourceGroupName -Name $vm.Name 
         $myResource.PublicIPAddress = $ips | Select-Object -ExpandProperty PublicIpAddress
         $myResource.PrivateIPAddress = $ips | Select-Object -ExpandProperty PrivateIpAddress
+    }
+    elseif( $resource.ResourceType -eq "Microsoft.Sql/servers/databases" ) {
+        Write-Verbose -Message ("[{0}] - Getting Azure SQL Databases Info. . ." -f $(Get-Date))
+        $server, $name = $resource.Name.Split("/")
+        $db = Get-AzureRmSqlDatabase -ResourceGroupName $resource.ResourceGroupName -ServerName $server -DatabaseName $name
+        $myResource.CreationTime = $db.CreationDate
+        $myResource.Type += ("/{0}/{1}" -f $db.CurrentServiceObjectiveName, $db.Edition)
+    }
+    elseif( $resource.ResourceType -eq "Microsoft.DocumentDb/databaseAccounts" ) {
+        Write-Verbose -Message ("[{0}] - Getting Document DB Info. . ." -f $(Get-Date))
+        $myResource.Type += ("/{0}" -f $resource.Kind)
+        $myResource.PublicUrls = ("{0}.documents.azure.com" -f $resource.Name)
+        $myResource.PublicIPAddress = Get-IpAddress -Url $myResource.PublicUrls
     }
     elseif( $resource.ResourceType -eq "Microsoft.Sql/servers" ) {
         Write-Verbose -Message ("[{0}] - Getting Azure SQL Info. . ." -f $(Get-Date))
