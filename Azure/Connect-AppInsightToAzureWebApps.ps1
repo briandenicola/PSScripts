@@ -26,6 +26,7 @@ foreach( $slot in $slots ) {
     $insight.tags.Add(('hidden-link:{0}' -f $slot.ResourceId), 'Resource')
 }
 
+Write-Verbose -Message ("[{0}] - Updating App Insight {1} with: " -f $(Get-Date), $insight.Name)
 foreach( $tag in $insight.tags.Keys ) {
     Write-Verbose -Message ("`t{0}  . . ." -f $tag)
 }
