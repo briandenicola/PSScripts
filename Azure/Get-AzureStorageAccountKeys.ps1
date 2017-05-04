@@ -18,7 +18,7 @@ foreach( $subscription in (Get-AzureRMSubscription)) {
     Write-Verbose -Message ("[{0}] - Working on Subscription {1} ({2})" -f $(Get-Date), $subscription.SubscriptionName, $subscription.SubscriptionId)
     Set-AzureRMContext -SubscriptionId $subscription.SubscriptionId | Out-Null
     $acts += Get-AzureRmStorageAccount -ResourceGroupName $ResourceGroup |
-        Select-Object StorageAccountName, Location, @{N="PrimayKey";E={((Get-AzureRmStorageAccountKey -ResourceGroupName $_.ResourceGroupName -StorageAccountName $_.StorageAccountName).Value | Select -First 1)}}
+        Select-Object StorageAccountName, Location, @{N="PrimayKey";E={$_.Context.StorageAccount.Credentials.ExportBase64EncodedKey()}}
 }
 
 $acts | Export-CSV -NoTypeInformation -Encoding ASCII -Path $CSVPath
