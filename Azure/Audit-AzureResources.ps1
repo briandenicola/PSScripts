@@ -87,7 +87,7 @@ foreach( $resource in $resources ) {
     elseif( $resource.ResourceType -eq "Microsoft.Compute/virtualMachines" ) {
         Write-Verbose -Message ("[{0}] - Getting Virtual Machine Info. . ." -f $(Get-Date))
         $vm = Get-AzureRMVM -ResourceGroupName $resource.ResourceGroupName -Name $resource.Name 
-        $myResource.Type += ("/{0}/{1}" -f $vm.StorageProfile.ImageReference.Sku, $vm.HardwareProfile.VmSize)
+        $myResource.Type += ("/{0}{1}/{2}" -f $vm.StorageProfile.ImageReference.Offer, $vm.StorageProfile.ImageReference.Sku, $vm.HardwareProfile.VmSize)
         $ips = Get-AzureRMVMIpAddress -ResourceGroupName $vm.ResourceGroupName -Name $vm.Name 
         $myResource.PublicIPAddress = $ips | Select-Object -ExpandProperty PublicIpAddress
         $myResource.PrivateIPAddress = $ips | Select-Object -ExpandProperty PrivateIpAddress

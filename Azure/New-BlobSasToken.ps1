@@ -35,6 +35,7 @@ if( $valid_uri ) {
         $Expiry = $(Get-Date).AddDays($ValidDays)
         $token =  New-AzureStorageBlobSASToken -Container $containerName -Permission $Permissions -Blob $blob -Context $ctx -StartTime $(Get-Date).AddHours(-1) -ExpiryTime $Expiry
 
+        #ToDo - Create an nice HTML based Email template and send out to the requestor. 
         return ("Blob SAS Token - {0}{1}" -f $uri, $token)
     }
     catch {
