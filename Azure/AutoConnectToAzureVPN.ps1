@@ -8,9 +8,12 @@ param (
 	[string] $RemoteNetworkPrefix
 )
 
-rasdial.exe $VPNConnectionName
+$ip = Get-NetIPAddress -InterfaceAlias $VPNConnectionName  -ErrorAction SilentlyContinue
 
-$ip = Get-NetIPAddress -InterfaceAlias $VPNConnectionName | Select -ExpandProperty IPAddress
-#Get-NetRoute | where DestinationPrefix -eq $RemoteNetworkPrefix | Remove-NetRoute -Confirm:$false
-route delete ($RemoteNetworkPrefix.Split("/")[0])
-New-NetRoute -DestinationPrefix $RemoteNetworkPrefix -NextHop $ip -InterfaceAlias $VPNConnectionName
+if($ip -eq $null) {
+	Write-Verbose -Message ("[{0}] - Establishing Connection Back to {1} . . ." -f (Get-Date), $VPNConnectionName )
+	rasdial.exe $VPNConnectionName 
+	$ip = Get-NetIPAddress -InterfaceAlias $VPNConnectionName | Select -ExpandProperty IPAddress
+	route delete ($RemoteNetworkPrefix.Split("/")[0])
+	New-NetRoute -DestinationPrefix $RemoteNetworkPrefix -NextHop $ip -InterfaceAlias $VPNConnectionName
+}

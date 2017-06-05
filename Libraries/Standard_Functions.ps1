@@ -89,7 +89,11 @@ function Set-RDPFile
 
 function Get-MyPublicIPAddress
 {
-	return ( Resolve-DnsName -Name o-o.myaddr.l.google.com -Type TXT -NoHostsFile -DnsOnly -Server ns1.google.com | Select-Object -ExpandProperty Strings )
+	param( [switch] $CopyToClipboard )
+	$ip = Resolve-DnsName -Name o-o.myaddr.l.google.com -Type TXT -NoHostsFile -DnsOnly -Server ns1.google.com | Select-Object -ExpandProperty Strings 
+
+	if( $CopyToClipboard ) { $ip | Set-Clipboard }
+	return $ip
 }
 
 #https://github.com/BornToBeRoot/PowerShell
