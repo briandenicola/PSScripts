@@ -14,7 +14,7 @@ function Stop-RuntimeBroker
   $process ="RuntimeBroker"
   $ram_limit = 100000000 
   Get-Date | Out-File -FilePath $log -Append 
-  Get-Process -Name $process |  Where PeakPagedMemorySize64 -gt $ram_limit | Tee-Object -FilePath $log -Append | Stop-Process -Force -Verbose
+  Get-Process -Name $process |  Where-Object PeakPagedMemorySize64 -gt $ram_limit | Tee-Object -FilePath $log -Append | Stop-Process -Force -Verbose
 }
 
 function Save-InstagramPhoto
@@ -34,7 +34,7 @@ function Save-InstagramPhoto
     $FullPath = Join-Path -Path $Path -ChildPath ("{0}.png" -f (Get-Random) )
 
     #$meta = $html.head.getElementsByTagName("meta")  | select -ExpandProperty Outerhtml | Where { $_ -imatch "property=`"og:image`"" }
-	$meta = $html.all | where NodeName -eq "META"  | select -ExpandProperty Outerhtml | Where { $_ -imatch "property=`"og:image`"" }
+	$meta = $html.all | Where-Object NodeName -eq "META"  | Select-Object -ExpandProperty Outerhtml | Where-Object { $_ -imatch "property=`"og:image`"" }
 
     #Invoke-WebRequest $meta.Split(" ")[1].Split("=")[1] -Outfile $FullPath
 	Invoke-WebRequest $meta.Split(" ")[1].Split("=")[1].Trim("`"")  -Outfile $FullPath
@@ -54,7 +54,7 @@ function Set-RDPFile
 
     function Get-FullAddress {
         param  ( [string] $file )
-        return ( Select-String -Pattern "full address"  -Path  $file | Select -Expand Line -First 1 )
+        return ( Select-String -Pattern "full address"  -Path  $file | Select-Object -Expand Line -First 1 )
     }
 
     $rdp_settings = @"
@@ -89,7 +89,7 @@ function Set-RDPFile
 
 function Get-MyPublicIPAddress
 {
-	return ( Resolve-DnsName -Name o-o.myaddr.l.google.com -Type TXT -NoHostsFile -DnsOnly -Server ns1.google.com | Select -ExpandProperty Strings )
+	return ( Resolve-DnsName -Name o-o.myaddr.l.google.com -Type TXT -NoHostsFile -DnsOnly -Server ns1.google.com | Select-Object -ExpandProperty Strings )
 }
 
 #https://github.com/BornToBeRoot/PowerShell
@@ -133,7 +133,7 @@ function Set-TrustedRemotingEndpoint
     )
     
 	$path = 'WSMan:\localhost\Client\TrustedHosts'
-	$values = Get-Item -Path $path | Select -Expand Value
+	$values = Get-Item -Path $path | Select-Object -Expand Value
 
 	if( $values -eq $null ) {
 		Set-Item -Path $path -Value $ip_address
@@ -196,10 +196,10 @@ function Get-GacAssembly
 
 	Set-Variable -Name assemblies -Value @()
 	
-	foreach( $location in ($gac_locations | Where Version -imatch $TargetFramework) ) {
+	foreach( $location in ($gac_locations | Where-Object Version -imatch $TargetFramework) ) {
 		$framework = $location.Version 
 		foreach( $assembly in (Get-ChildItem -Path $location.Path -Include "*.dll" -Recurse) ) {
-			$public_key = $assembly.Directory.Name.Split("_") | Select -Last 1
+			$public_key = $assembly.Directory.Name.Split("_") | Select-Object -Last 1
 		
 			$properties = [ordered] @{
 				Name         = $assembly.BaseName
@@ -310,7 +310,7 @@ function Get-RemoteDesktopSessions
             foreach( $process in (Get-WmiObject -ComputerName $computer -Class Win32_Process -Filter $filter ) ) {
                 $users += (New-Object PSObject -Property @{
                     Computer = $computer
-                    User = $process.getOwner() | Select -Expand User
+                    User = $process.getOwner() | Select-Object -Expand User
                 })                     
             }
         }
@@ -365,7 +365,7 @@ function Get-Installed-DotNet-Versions
     return (
         Get-ChildItem $path -recurse | 
         Get-ItemProperty -Name Version  -ErrorAction SilentlyContinue | 
-        Select  -Unique -Expand Version
+        Select-Object  -Unique -Expand Version
     )
 }
 
@@ -381,7 +381,7 @@ function Get-DetailedServices
     $processes = Get-WmiObject Win32_process -ComputerName $ComputerName
     foreach( $service in (Get-WmiObject -ComputerName $ComputerName -Class Win32_Service -Filter ("State='{0}'" -f $state ) )  ) {
         
-        $process = $processes | Where { $_.ProcessId -eq $service.ProcessId }
+        $process = $processes | Where-Object { $_.ProcessId -eq $service.ProcessId }
     
         $services += (New-Object PSObject -Property @{
             Name = $service.Name
@@ -397,33 +397,30 @@ function Get-DetailedServices
     return $Services
 }
 
-
-#http://poshcode.org/2059
 function Get-FileEncoding
 {
-    [CmdletBinding()] 
 	param (
-		[Parameter(Mandatory = $True, ValueFromPipelineByPropertyName = $True)] 
-		[string]$Path
+		[Parameter(Mandatory = $True)] 
+		[string] $Path
     )
 
-    [byte[]]$byte = get-content -Encoding byte -ReadCount 4 -TotalCount 4 -Path $Path
+    [byte[]]$byte = Get-Content -Encoding byte -ReadCount 4 -TotalCount 4 -Path $Path
 
+	$fileType = 'ASCII'
     if ( $byte[0] -eq 0xef -and $byte[1] -eq 0xbb -and $byte[2] -eq 0xbf ) {
-         Write-Output 'UTF8' 
+         $fileType =  'UTF8' 
     } 
     elseif ($byte[0] -eq 0xfe -and $byte[1] -eq 0xff) {
-        Write-Output 'Unicode' 
+    	$fileType = 'Unicode' 
     }
     elseif ($byte[0] -eq 0 -and $byte[1] -eq 0 -and $byte[2] -eq 0xfe -and $byte[3] -eq 0xff) {
-        Write-Output 'UTF32' 
+    	$fileType = 'UTF32' 
     }
     elseif ($byte[0] -eq 0x2b -and $byte[1] -eq 0x2f -and $byte[2] -eq 0x76) {
-        Write-Output 'UTF7'
+    	$fileType = 'UTF7'
     }
-    else { 
-        Write-Output 'ASCII' 
-    }
+
+	return $fileType
 }
 
 function Change-ServiceAccount
@@ -435,7 +432,7 @@ function Change-ServiceAccount
 		[string] $computer = "localhost"
 	)
 	
-	$svc=gwmi win32_service -computername $computer | ? { $_.Name -eq $service }
+	$svc = Get-WmiObject win32_service -ComputerName $computer | Where-Object { $_.Name -eq $service }
 	
 	$svc.StopService()
 	$svc.change($null,$null,$null,$null,$null,$null,$account,$password,$null,$null,$null)
@@ -471,7 +468,7 @@ function Disable-UserAccessControl
 function Install-MSMQ
 {
     Import-module ServerManager
-    Get-WindowsFeature | Where { $_.Name -match "MSMQ" } | Foreach { Add-WindowsFeature $_.Name }
+    Get-WindowsFeature | Where-Object { $_.Name -match "MSMQ" } | ForEach-Object { Add-WindowsFeature $_.Name }
 }
 
 function Get-Url 
@@ -515,7 +512,7 @@ function Get-Url
 	try {
 		$timing_request = Measure-Command { $response = $request.GetResponse() }
 		$stream = $response.GetResponseStream()
-		$reader = New-Object System.IO.StreamReader($stream)
+		#$reader = New-Object System.IO.StreamReader($stream)
 
 		"[{0}][REPLY] Server = {1} " -f $(Get-Date), $response.Server
 		"[{0}][REPLY] Status Code = {1} {2} . . ." -f $(Get-Date), $response.StatusCode, $response.StatusDescription
@@ -914,8 +911,8 @@ function Get-WindowsDiskSpace
 		$p = $_.Partition
 		
 		$DiskSpace += get-wmiobject -class "Win32_Volume" -namespace "root\cimv2" -computername $n |
-			where { $_.Name -eq $p } | 
-			Select @{Name="Server";Expression={$n}},@{Name="Partition";Expression={$_.Name}}, @{Name="TotalDiskSpace";Expression={$_.Capacity/1mb}}, @{Name="FreeDiskSpace";Expression={$_.FreeSpace/1mb}}
+			Where-Object { $_.Name -eq $p } | 
+			Select-Object @{Name="Server";Expression={$n}},@{Name="Partition";Expression={$_.Name}}, @{Name="TotalDiskSpace";Expression={$_.Capacity/1mb}}, @{Name="FreeDiskSpace";Expression={$_.FreeSpace/1mb}}
 	}
 	end {
 		return $DiskSpace
@@ -946,23 +943,23 @@ function Convert-ObjectToHash
 function Get-RunningServices
 {
 	param( [string] $computer )
-	gwmi Win32_Service -computer $Computer | Where { $_.State -eq "Running" } | Select Name, PathName, Id, StartMode  
+	Get-WmiObject Win32_Service -computer $Computer | Where-Object { $_.State -eq "Running" } | Select-Object Name, PathName, Id, StartMode  
 }
 
 function Get-IntermediateCerts
 {
-	Get-ChildItem -path cert:\LocalMachine\CA | Select Subject, Issuer, NotAfter | sort NotAfter
+	Get-ChildItem -path Cert:\LocalMachine\CA | Select-Object Subject, Issuer, NotAfter | Sort-Object NotAfter
 }
 
 function Get-InstalledCerts
 {
-	Get-ChildItem -path cert:\LocalMachine\My | Select FriendlyName, Issuer, NotAfter, HasPrivateKey | sort NotAfter
+	Get-ChildItem -path Cert:\LocalMachine\My | Select-Object FriendlyName, Issuer, NotAfter, HasPrivateKey | Sort-Object NotAfter
 }
 
 function Check-MSMQInstall 
 {
 	param( [string] $Server )
-	return (Get-WmiObject Win32_Service -ComputerName $Server | where {$_.Name -eq "MSMQ" -and $_.State -eq "Running" }) -ne $nul 
+	return (Get-WmiObject Win32_Service -ComputerName $Server | Where-Object {$_.Name -eq "MSMQ" -and $_.State -eq "Running" }) -ne $nul 
 }
 
 function Get-MSMQQueues 
@@ -1015,11 +1012,11 @@ function Audit-Server
 	$audit | add-member -type NoteProperty -name SerialNumber -Value ($bios.SerialNumber.TrimEnd())
 	$audit | add-member -type NoteProperty -name OperatingSystem -Value ($os.Caption + " - " + $os.ServicePackMajorVersion.ToString() + "." + $os.ServicePackMinorVersion.ToString())
 	
-	$localDisks = $disks | where { $_.DriveType -eq 3 } | Select DeviceId, @{Name="FreeSpace";Expression={($_.FreeSpace/1mb).ToString("######.#")}},@{Name="TotalSpace";Expression={($_.Size/1mb).ToString("######.#")}}
+	$localDisks = $disks | Where-Object { $_.DriveType -eq 3 } | Select-Object DeviceId, @{Name="FreeSpace";Expression={($_.FreeSpace/1mb).ToString("######.#")}},@{Name="TotalSpace";Expression={($_.Size/1mb).ToString("######.#")}}
 	$audit | add-member -type NoteProperty -name Drives -Value $localDisks
 	
 	$IPAddresses = @()
-	$nics | where { -not [string]::IsNullorEmpty($_.IPAddress)  -and $_.IPEnabled -eq $true -and $_.IpAddress -ne "0.0.0.0" } | % { $IPAddresses += $_.IPAddress }
+	$nics | Where-Object { -not [string]::IsNullorEmpty($_.IPAddress)  -and $_.IPEnabled -eq $true -and $_.IpAddress -ne "0.0.0.0" } | % { $IPAddresses += $_.IPAddress }
 	$audit | add-member -type NoteProperty -name IPAddresses -Value $IPAddresses
 	
 	$audit | Add-Member -type ScriptMethod -Name toXML -Value $xmlScriptBlock
@@ -1083,8 +1080,8 @@ function Get-DirHash
 	}
 	process {
 		$hashes = Get-ChildItem -Recurse -Path $Directory | 
-			Where { $_.PsIsContainer -eq $false } | 
-			Select Name, DirectoryName, @{Name="SHA1 Hash"; Expression={Get-Hash1 $_.FullName -algorithm "sha1"}}
+			Where-Object { $_.PsIsContainer -eq $false } | 
+			Select-Object Name, DirectoryName, @{Name="SHA1 Hash"; Expression={Get-Hash1 $_.FullName -algorithm "sha1"}}
 	}
 	end {
 		return $hashes 
@@ -1101,8 +1098,8 @@ function Get-LoadedModules
 		$modules = @()		
 	}
 	process {
-		$procInfo = Get-Process | Where { $_.Name.ToLower() -eq $proc.ToLower() }
-		$modules = $procInfo | Select Name, Modules
+		$procInfo = Get-Process | Where-Object { $_.Name.ToLower() -eq $proc.ToLower() }
+		$modules = $procInfo | Select-Object Name, Modules
 	}
 	end {
 		return $modules 
@@ -1112,7 +1109,7 @@ function Get-LoadedModules
 function Get-IPAddress 
 {
 	param ( [string] $name )
- 	return ( try { [System.Net.Dns]::GetHostAddresses($name) | Select -Expand IPAddressToString } catch {} )
+ 	return ( try { [System.Net.Dns]::GetHostAddresses($name) | Select-Object -Expand IPAddressToString } catch {} )
 }
 
 function Encode-String 
@@ -1293,8 +1290,8 @@ function Query-DatabaseTable
 	$da.SelectCommand.Connection = $con
 	
 	$da.Fill($ds) | out-null
-	$ds.Tables[0].Columns | Select ColumnName | Foreach { $Columns += $_.ColumnName }
-	$res = $ds.Tables[0].Rows  | Select $Columns
+	$ds.Tables[0].Columns | Select-Object ColumnName | ForEach-Object { $Columns += $_.ColumnName }
+	$res = $ds.Tables[0].Rows  | Select-Object $Columns
 	
 	$ds.Clear()
 	$da.Dispose()
