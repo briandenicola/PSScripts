@@ -8,6 +8,20 @@ $domain  = ""
 $AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
 $AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
 
+function Set-PublicKey
+{
+	param ( 
+		[string] $FilePath 
+	)
+
+	$ENV:PUBKEY = $FilePath
+	[Environment]::SetEnvironmentVariable( "PUBKEY", $FilePath, "User" )
+}
+function Get-PublicKey 
+{
+  	Get-Content -Path $ENV:PUBKEY | Set-Clipboard
+}
+
 function Stop-RuntimeBroker 
 {
   $log = Join-Path -Path $ENV:Temp -ChildPath "RuntimeBroker.log"
@@ -219,14 +233,6 @@ function Get-GacAssembly
 	}
 	
 	return $assemblies
-}
-
-function Load-AzureModules
-{
-
-    if (-not(Get-Module -Name Azure) ) {
-        . (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Azure_Functions.ps1")
-    }
 }
 
 function New-PSCredentials
@@ -469,12 +475,6 @@ function Disable-UserAccessControl
     Write-Verbose -Message ("User Access Control (UAC) has been disabled.")
 }
  
-function Install-MSMQ
-{
-    Import-module ServerManager
-    Get-WindowsFeature | Where-Object { $_.Name -match "MSMQ" } | ForEach-Object { Add-WindowsFeature $_.Name }
-}
-
 function Get-Url 
 {
     param(
@@ -960,42 +960,6 @@ function Get-InstalledCerts
 	Get-ChildItem -path Cert:\LocalMachine\My | Select-Object FriendlyName, Issuer, NotAfter, HasPrivateKey | Sort-Object NotAfter
 }
 
-function Check-MSMQInstall 
-{
-	param( [string] $Server )
-	return (Get-WmiObject Win32_Service -ComputerName $Server | Where-Object {$_.Name -eq "MSMQ" -and $_.State -eq "Running" }) -ne $nul 
-}
-
-function Get-MSMQQueues 
-{	
-	param( [string] $Server )
-	
-	$queues = @()
-	if( Check-MSMQInstall -server $Server )	{
-		[void][Reflection.Assembly]::LoadWithPartialName("System.Messaging")
-		$msmq = [System.Messaging.MessageQueue]
-		
-		foreach( $private in $msmq::GetPrivateQueuesByMachine($Server) ) {
-			$queues += (New-Object PSObject -Property @{
-				Name = $private.QueueName
-				Type = "Private"
-			})
-		}
-		
-		foreach( $public in $msmq::GetPublicQueuesByMachine($Server) ) {
-			$queues += (New-Object PSObject -Property @{
-				Name = $public.QueueName
-				Type = "Public"
-			})
-		}
-	} 
-	else {
-		Write-Error -Message ("MSMQ is either not installed or not running on $Server")
-	}
-		
-	return $queues
-}
-
 function Audit-Server
 {
 	param( [string] $server )
@@ -1210,7 +1174,6 @@ function Send-Email
 	
 	$mail.Dispose()
 }
-
 function log
 {
 	param ( [string] $txt, [string] $log ) 
@@ -1303,7 +1266,6 @@ function Query-DatabaseTable
 
 	return $res
 }
-
 function Is-64Bit
 {   
 	return ( [IntPtr]::Size -eq 8 ) 

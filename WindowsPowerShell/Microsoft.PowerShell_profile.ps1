@@ -1,8 +1,10 @@
 ﻿. (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 
 $MaximumHistoryCount=1024
-$github_path = "D:\GitHub\PSScripts"
-$env:EDITOR = "C:\Program Files (x86)\Microsoft VS Code\code.exe"
+$github_path = ""
+$download_path = ""
+$working_path = ""
+$env:EDITOR = ""
 
 New-Alias -name gh -value Get-History 
 New-Alias -name i -value Invoke-History
@@ -24,27 +26,32 @@ function Resize-Screen
 	$h.ui.rawui.set_windowsize($win)
 }
 
-function Goto-GitHub
+function Set-Downloads
+{
+    Set-Location -Path $download_path 
+}
+New-Alias -Name downloads -Value Set-Downloads
+
+function Set-GitHub
 {
     Set-Location -Path $github_path 
 }
-New-Alias -Name github -Value Goto-GitHub
+New-Alias -Name github -Value Set-GitHub
+
+function Set-Working
+{
+    Set-Location -Path $working_path 
+}
+New-Alias -Name working -Value Set-Working
 
 function Get-Profile
 {
 	ed $profile
 }
 
-function Add-SQLProviders
-{
-	Add-PSSnapin SqlServerCmdletSnapin100
-	Add-PSSnapin SqlServerProviderSnapin100
-}
-New-Alias -Name sql -Value Add-SQLProviders
-
 function Edit-HostFile
 {
-	&$env:editor c:\Windows\System32\drivers\etc\hosts
+  ed (Join-Path -Path $ENV:SystemRoot -ChildPath "System32\drivers\etc\hosts")
 }
 Set-Alias -Name hf -Value Edit-HostFile
 
@@ -60,13 +67,19 @@ function rexec
 	Invoke-Command -ComputerName $computers -Credential (Get-Creds) -Authentication Credssp -ScriptBlock $sb
 }
 
-function Go-Home
+function Set-Home
 {
 	Set-Location -Path $home
 }
-Set-Alias -Name home -Value Go-Home
+Set-Alias -Name home -Value Set-Home
 
-remove-item alias:cd
+function Set-Scripts
+{
+	Set-Location -Path $ENV:SCRIPTS_HOME
+}
+Set-Alias -Name scripts -Value Set-Scripts 
+
+Remove-Item alias:cd
 function cd 
 {
 	param ( $location ) 
@@ -82,7 +95,7 @@ function cd
 	}
 }
 
-function shorten-path([string] $path) { 
+function Shorten-Path([string] $path) { 
    $loc = $path.Replace($HOME, '~') 
    $loc = $loc -replace '^[^:]+::', '' 
    return ($loc -replace '\\(\.?)([^\\])[^\\]*(?=\\)','\$1$2') 
@@ -93,12 +106,12 @@ function shorten-path([string] $path) {
     { 
         $funcname = ([System.Char]($i+65)) + ':'
         $str = "function global:$funcname { set-location $funcname } " 
-        invoke-expression $str 
+        Invoke-Expression $str 
     }
 }
 
-remove-item alias:ls
-set-alias ls Get-ChildItemColor
+Remove-Item alias:ls
+Set-Alias ls Get-ChildItemColor
  
 function Get-ChildItemColor {
     $fore = $Host.UI.RawUI.ForegroundColor
@@ -143,4 +156,9 @@ function Get-ChildItemColor {
         echo $_
       }
     }
+}
+# Chocolatey profile
+$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+if (Test-Path($ChocolateyProfile)) {
+  Import-Module "$ChocolateyProfile"
 }
