@@ -124,7 +124,7 @@ function Get-AzureRMVMssIpAddress
         $vms += (New-Object PSObject -Property $values)
     } 
     
-    re  turn $vms 
+    return $vms 
 }
 
 function Get-AzureRMVMIpAddress 
