@@ -1,4 +1,48 @@
-﻿function Connect-ToAzureVMviaSSH
+﻿#https://blogs.technet.microsoft.com/paulomarques/2016/04/05/working-with-azure-rest-apis-from-powershell-getting-page-and-block-blob-information-from-arm-based-storage-account-sample-script/
+function Get-AzureRMAuthToken {
+   param(
+       [Parameter(Mandatory=$true)] $ApiEndpointUri, 
+       [Parameter(Mandatory=$true)] $AADTenant
+    )
+
+    $azure_sdk_path = "${env:ProgramFiles(x86)}\Microsoft SDKs\Azure\PowerShell\ServiceManagement\Azure\Services\"
+    $adal =  Join-Path -Path $azure_sdk_path -ChildPath "Microsoft.IdentityModel.Clients.ActiveDirectory.dll"
+    $adalforms = Join-Path -Path $azure_sdk_path -ChildPath "Microsoft.IdentityModel.Clients.ActiveDirectory.WindowsForms.dll"
+
+    [System.Reflection.Assembly]::LoadFrom($adal) | Out-Null
+    [System.Reflection.Assembly]::LoadFrom($adalforms) | Out-Null
+
+    $clientId     = "1950a258-227b-4e31-a9cf-717495945fc2"
+    $redirectUri  = "urn:ietf:wg:oauth:2.0:oob"
+    $authorityUri = "https://login.windows.net/$aadTenant"
+
+    $authContext = New-Object "Microsoft.IdentityModel.Clients.ActiveDirectory.AuthenticationContext" -ArgumentList $authorityUri
+    $authResult = $authContext.AcquireToken($ApiEndpointUri, $clientId, $redirectUri, "Auto")
+
+    return $authResult
+} 
+
+function Get-AzureRMASEInternalIpAddress {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string] $ResourceGroupName,
+
+        [Parameter(Mandatory=$true)]
+        [string] $ASEName
+    )
+
+    $context = Get-AzureRmContext
+    $access_token = Get-AzureRMAuthToken -ApiEndpointUri $context.Environment.ServiceManagementUrl -AADTenant $context.Tenant.Id
+
+    $headers = @{}
+    $headers.Add('Authorization', ('{0} {1}' -f $access_token.AccessTokenType, $access_token.AccessToken))
+    $uri = "https://management.azure.com/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Web/hostingEnvironments/{2}/capacities/virtualip?api-version=2016-09-01"
+    $uri = $uri -f $context.Subscription.Id, $ResourceGroupName, $ASEName
+    
+    return( Invoke-RestMethod -UseBasicParsing -Uri $uri -Headers $headers )
+
+}
+function Connect-ToAzureVMviaSSH
 {
     param(
         [Parameter(Mandatory=$true)]
@@ -214,4 +258,4 @@ function Get-AzureRDPFiles {
     }
 }
 
-Export-ModuleMember -Function Get-AzureRDPFiles, Send-FileToAzure, Set-AzureRMVnetDNSServer, Get-AzureRMVMssIpAddress, Get-AzureRMVMIpAddress, Install-WinRmCertificate, Connect-ToAzureVMviaSSH, Get-AzureIPRange
+Export-ModuleMember -Function  Get-AzureRMASEInternalIpAddress, Get-AzureRDPFiles, Send-FileToAzure, Set-AzureRMVnetDNSServer, Get-AzureRMVMssIpAddress, Get-AzureRMVMIpAddress, Install-WinRmCertificate, Connect-ToAzureVMviaSSH, Get-AzureIPRange
