@@ -31,9 +31,14 @@ function Get-AzureRMASEInternalIpAddress {
         [string] $ASEName
     )
 
-    $context = Get-AzureRmContext
-    $access_token = Get-AzureRMAuthToken -ApiEndpointUri $context.Environment.ServiceManagementUrl -AADTenant $context.Tenant.Id
-
+    try {
+        $context = Get-AzureRmContext
+        $access_token = Get-AzureRMAuthToken -ApiEndpointUri $context.Environment.ServiceManagementUrl -AADTenant $context.Tenant.Id
+    }
+    catch {
+        throw "Run Login-AzureRMAccount then try again."
+    }
+    
     $headers = @{}
     $headers.Add('Authorization', ('{0} {1}' -f $access_token.AccessTokenType, $access_token.AccessToken))
     $uri = "https://management.azure.com/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Web/hostingEnvironments/{2}/capacities/virtualip?api-version=2016-09-01"
