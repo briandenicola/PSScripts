@@ -14,12 +14,6 @@ $TLS_Lookup = New-Object PSObject -Property @{
     TLS12 = "TLS 1.2"
 }
 
-$DWORD = New-Object PSObject -Property @{
-    ALL_ZEROS = "00000000"
-    ALL_ONES  = "4294967295"
-    ONE       = "00000001"
-}
-
 $returnValue = @{
     PCT   = $false
     SSL2  = $false
@@ -37,7 +31,7 @@ foreach( $protocol in ($TLS_Lookup.psobject.Properties | Select -ExpandProperty 
         $server_enabled   = Get-ItemProperty -Path ($SChannelServerProtocolKey -f $TLS_Lookup.$protocol) -Name $EnabledItemPropertyValue        | Select -ExpandProperty $EnabledItemPropertyValue
         $server_bydefault = Get-ItemProperty -Path ($SChannelServerProtocolKey -f $TLS_Lookup.$protocol) -Name $DisabledByDefaultPropertyValue  | Select -ExpandProperty $DisabledByDefaultPropertyValue
 
-        if( $client_bydefault -eq $DWORD.ALL_ZEROS -and $server_enabled -eq $DWORD.ALL_ONES -and $server_bydefault -eq $DWORD.ALL_ZEROS ) {
+        if( $client_bydefault -eq 0 -and $server_enabled -eq 1 -and $server_bydefault -eq 0 ) {
             $returnValue.$protocol = $true
         }
     }
