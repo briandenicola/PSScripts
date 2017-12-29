@@ -11,7 +11,18 @@ New-Alias -name i -value Invoke-History
 New-Alias -name ed -value $env:EDITOR
 
 Set-Location -Path $github_path 
+Set-PSReadlineKeyHandler -Key Tab -Function Complete
 
+function Move-Images 
+{
+  $src = "D:\\Pictures\\InstaPic\\Saved\*"
+  $dst = "E:\\Backups\\Photos\\Instagram"
+  
+  try {
+    Move-Item -Path $src -Destination $dst -Verbose
+  }
+  catch {}
+}
 function Resize-Screen
 {
 	param (
