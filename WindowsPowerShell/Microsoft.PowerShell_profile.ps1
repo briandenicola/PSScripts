@@ -1,10 +1,12 @@
 ﻿. (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
+Import-Module -Name posh-git
 
 $MaximumHistoryCount=1024
 $github_path = ""
 $download_path = ""
 $working_path = ""
 $env:EDITOR = ""
+$pub_key_file = "C:\Users\brdenico\OneDrive\Documents\Keys\Putty\ssh_openssh_version_pub.txt"
 
 New-Alias -name gh -value Get-History 
 New-Alias -name i -value Invoke-History
@@ -12,6 +14,11 @@ New-Alias -name ed -value $env:EDITOR
 
 Set-Location -Path $github_path 
 Set-PSReadlineKeyHandler -Key Tab -Function Complete
+
+function Get-PublicKey 
+{
+  Get-Content -Path $pub_key_file | Set-Clipboard
+}
 
 function Move-Images 
 {
