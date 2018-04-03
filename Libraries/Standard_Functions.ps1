@@ -8,6 +8,31 @@ $domain  = ""
 $AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
 $AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
 
+function Set-DnsServer {
+	[CmdletBinding()]
+	param (
+		[switch] $Reset,
+
+		[ValidateScript({$_ -match [IPAddress]$_ })]  
+		[string] $DNSServer = '1.1.1.1',
+
+		[Parameter(DontShow)]
+		[string] $Alias = "Ethernet"
+	)
+
+	Set-Variable -Name update  -Value "-Command &{ Set-DnsClientServerAddress -InterfaceAlias $Alias -ServerAddresses $DNSServer}" -Option Constant
+	Set-Variable -Name restore -Value "-Command &{ Set-DnsClientServerAddress -InterfaceAlias $Alias -ResetServerAddresses}" -Option Constant
+
+	$ArgumentList = $restore
+	if(!$Reset) {
+		$ArgumentList = $update
+	}
+	Start-Process -FilePath powershell.exe -verb runas -ArgumentList $ArgumentList  -WindowStyle Hidden -Wait
+
+	$dns_addresses = Get-DnsClientServerAddress | Where-Object { $_.InterfaceAlias -eq $Alias -and $_.AddressFamily -eq 2} | Select-Object -ExpandProperty ServerAddresses
+	Write-Verbose -Message ("The local DNS Server has been set to {0} . . . " -f $dns_addresses)
+}
+
 function Set-PublicKey
 {
 	param ( 
@@ -433,11 +458,11 @@ function Get-FileEncoding
 	return $fileType
 }
 
-function Change-ServiceAccount
+function Update-ServiceAccount
 {
 	param (
 		[string] $account,
-		[string] $password,
+		[string] $pass,
 		[string] $service,
 		[string] $computer = "localhost"
 	)
@@ -445,7 +470,7 @@ function Change-ServiceAccount
 	$svc = Get-WmiObject win32_service -ComputerName $computer | Where-Object { $_.Name -eq $service }
 	
 	$svc.StopService()
-	$svc.change($null,$null,$null,$null,$null,$null,$account,$password,$null,$null,$null)
+	$svc.change($null,$null,$null,$null,$null,$null,$account,$pass,$null,$null,$null)
 	$svc.StartService()
 }
 
@@ -812,7 +837,7 @@ function Get-PlainTextPassword
 	return ([System.Runtime.InteropServices.Marshal]::PtrToStringAuto( [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure_string) ) )
 }
 
-function Gen-Passwords
+function Get-NewPasswords
 {
 	param (
 		[int] $number = 10,
@@ -837,7 +862,7 @@ function Gen-Passwords
 	return $passwords
 }
 
-function Create-SQLAlias
+function Set-SQLAlias
 {
 	param( 
 		[string] $instance, 
