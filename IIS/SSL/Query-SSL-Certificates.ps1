@@ -8,7 +8,7 @@ param(
     [switch] $parallel,
 
     [Parameter(ParameterSetName='ByUri')]
-    [string] $url
+    [string] $uri
 )
 
 $ErrorActionPreference = 'silentlycontinue'
@@ -114,16 +114,16 @@ function Get-CertFromComputer
 function Get-CertFromUrl 
 {
     param ( 
-        [string] $url
+        [string] $uri
     )
 
-    if( $url -notmatch "https://" ) {
-		write-Host "$url does not contain https://" -ForegroundColor Red
+    if( $uri -notmatch "https://" ) {
+		write-Host "$uri does not contain https://" -ForegroundColor Red
         return
 	}
     
-    Write-Host "[ $(Get-Date) ] - Request default page at $url . . ."
-    $req = [Net.HttpWebRequest]::Create($url)
+    Write-Host "[ $(Get-Date) ] - Request default page at $uri . . ."
+    $req = [Net.HttpWebRequest]::Create($uri)
 
     $req.GetResponse() |Out-Null
 
@@ -136,9 +136,8 @@ function Get-CertFromUrl
 		Thumbprint = $server_cert.GetCertHashString()
 		Issuer = $server_cert.Issuer
 		ExpirationDate = ( Get-Date( $server_cert.GetExpirationDateString()) ).ToString("yyyy-MM-ddThh:mm:ssZ")
-		Servers = Get-SPFormattedServersByURL -url $url
+		Servers = Get-SPFormattedServersByURL -url $uri
 	}
-
     return $cert 
 }
 
@@ -149,7 +148,7 @@ function main
             $certs = Get-CertFromComputer
         }
         ByUri { 
-            $certs = Get-CertFromUrl -url $url
+            $certs = Get-CertFromUrl -uri $uri
         }
     }
 	
