@@ -8,6 +8,52 @@ $domain  = ""
 $AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
 $AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
 
+#https://www.powershellgallery.com/packages/psbbix/0.1.6/Content/epoch-time-convert.ps1
+function Convert-SecondsFromEpochToDate 
+{
+    param(
+        [int64] $totalSeconds
+    )
+
+    $epoch = Get-Date -Date "1/1/1970 12:00:00 AM"
+    return $(Get-Date -date $epoch).AddSeconds($totalSeconds).ToLocalTime()
+}
+
+#https://gallery.technet.microsoft.com/JWT-Token-Decode-637cf001
+function Decode-Jwt
+{
+    param (
+        [string] $Token
+    )
+
+    function Convert-FromBase64StringWithNoPadding
+    {
+        param( [string]$data )
+        $data = $data.Replace('-', '+').Replace('_', '/')
+        switch ($data.Length % 4)
+        {
+            0 { break }
+            2 { $data += '==' }
+            3 { $data += '=' }
+            default { throw New-Object ArgumentException('data') }
+        }
+        return [System.Convert]::FromBase64String($data)
+    }
+
+    $parts = $Token.Split('.');
+    $headers = [System.Text.Encoding]::UTF8.GetString( (Convert-FromBase64StringWithNoPadding -data $parts[0]) )
+    $claims = [System.Text.Encoding]::UTF8.GetString( (Convert-FromBase64StringWithNoPadding -data $parts[1]) )
+    $signature = (Convert-FromBase64StringWithNoPadding -data $parts[2])
+
+    $customObject = [PSCustomObject] @{
+        headers = ($headers | ConvertFrom-Json)
+        claims = ($claims | ConvertFrom-Json)
+        signature = $signature
+    }
+
+    return $customObject
+}
+
 function Set-DnsServer {
 	[CmdletBinding()]
 	param (
@@ -42,6 +88,7 @@ function Set-PublicKey
 	$ENV:PUBKEY = $FilePath
 	[Environment]::SetEnvironmentVariable( "PUBKEY", $FilePath, "User" )
 }
+
 function Get-PublicKey 
 {
   	Get-Content -Path $ENV:PUBKEY | Set-Clipboard
