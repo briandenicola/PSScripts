@@ -1,13 +1,3 @@
-#Variables
-[void] [Reflection.Assembly]::LoadWithPartialName("System.Security")
-
-$domain_controller = ""
-$from = ""
-$domain  = ""
-
-$AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
-$AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
-
 #https://www.powershellgallery.com/packages/psbbix/0.1.6/Content/epoch-time-convert.ps1
 function Convert-SecondsFromEpochToDate 
 {
@@ -20,7 +10,7 @@ function Convert-SecondsFromEpochToDate
 }
 
 #https://gallery.technet.microsoft.com/JWT-Token-Decode-637cf001
-function Decode-Jwt
+function Get-DecodedJwtToken
 {
     param (
         [string] $Token
@@ -92,38 +82,6 @@ function Set-PublicKey
 function Get-PublicKey 
 {
   	Get-Content -Path $ENV:PUBKEY | Set-Clipboard
-}
-
-function Stop-RuntimeBroker 
-{
-  $log = Join-Path -Path $ENV:Temp -ChildPath "RuntimeBroker.log"
-  $process ="RuntimeBroker"
-  $ram_limit = 100000000 
-  Get-Date | Out-File -FilePath $log -Append 
-  Get-Process -Name $process |  Where-Object PeakPagedMemorySize64 -gt $ram_limit | Tee-Object -FilePath $log -Append | Stop-Process -Force -Verbose
-}
-
-function Save-InstagramPhoto
-{
-    param(
-        [Parameter(Mandatory=$true)]
-        [string] $Url,
-
-        [Parameter(Mandatory=$true)]
-        [ValidateScript({Test-Path $_ -PathType 'Container'})] 
-        [string] $Path
-    )
-
-    $response = Invoke-WebRequest $url
-    $html = $response.ParsedHtml
-
-    $FullPath = Join-Path -Path $Path -ChildPath ("{0}.png" -f (Get-Random) )
-
-    #$meta = $html.head.getElementsByTagName("meta")  | select -ExpandProperty Outerhtml | Where { $_ -imatch "property=`"og:image`"" }
-	$meta = $html.all | Where-Object NodeName -eq "META"  | Select-Object -ExpandProperty Outerhtml | Where-Object { $_ -imatch "property=`"og:image`"" }
-
-    #Invoke-WebRequest $meta.Split(" ")[1].Split("=")[1] -Outfile $FullPath
-	Invoke-WebRequest $meta.Split(" ")[1].Split("=")[1].Trim("`"")  -Outfile $FullPath
 }
 
 function Set-RDPFile
@@ -353,29 +311,6 @@ function Create-DBConnectionString
     return $builder.ConnectionString
 }
 
-function Get-BitlyLink
-{
-    param(
-        [Parameter(Mandatory = $True)][string] $url,
-        [switch] $copy_to_clipboard
-    )
-    
-    Set-Variable -Name access_token -Value "" -Option Constant
-    $link = [string]::Format( "https://api-ssl.bitly.com/v3/user/link_save?access_token={0}&longUrl={1}", $access_token,  [system.web.httputility]::urlencode($url) )
-
-    $result = Invoke-RestMethod -Method Get -Uri $link
-
-    if( $result.status_code -ne 200 ) {
-        throw ("Erorr Occured - " + $result.status_txt )
-    }
-    
-    if( $copy_to_clipboard ) { 
-        $result.data.link_save.link | Set-Clipboard
-    }
-
-    return $result.data.link_save.link 
-}
-
 function Get-RemoteDesktopSessions
 {
     param(
@@ -402,31 +337,6 @@ function Get-RemoteDesktopSessions
     }
 }
 
-function LogOff-Computer 
-{
-    param(
-        [Parameter(Mandatory = $True, ValueFromPipeline = $True)]
-        [string[]] $computer,
-        [switch] $forced
-    )
-     
-    begin {
-        $log_off = 0
-    }
-    process {
-        if( $forced ) {
-            $log_off = 4
-        }
-
-        foreach( $computer in $computers) {
-            Write-Verbose "Logging off $computer "
-            (Get-WMIObject -class Win32_OperatingSystem -Computername $computer).Win32Shutdown($log_off) | Out-Null
-        }
-    }
-    end {
-    }
-}
-
 function New-PSWindow 
 { 
 	param( 
@@ -440,7 +350,7 @@ function New-PSWindow
 	}
 }
 
-function Get-Installed-DotNet-Versions 
+function Get-InstalledDotNetVersions 
 {
     $path = 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP'
 
@@ -503,22 +413,6 @@ function Get-FileEncoding
     }
 
 	return $fileType
-}
-
-function Update-ServiceAccount
-{
-	param (
-		[string] $account,
-		[string] $pass,
-		[string] $service,
-		[string] $computer = "localhost"
-	)
-	
-	$svc = Get-WmiObject win32_service -ComputerName $computer | Where-Object { $_.Name -eq $service }
-	
-	$svc.StopService()
-	$svc.change($null,$null,$null,$null,$null,$null,$account,$pass,$null,$null,$null)
-	$svc.StartService()
 }
 
 function Disable-InternetExplorerESC 
@@ -601,60 +495,6 @@ function Get-Url
 		Write-Error ("The request failed with the following WebException - " + $_.Exception.ToString() )
 	}
     
-}
-
-function Get-JsonRequest 
-{
-    param(
-        [string] $url,
-	    [ValidateSet("NTLM", "BASIC", "NONE")]
-        [string] $AuthType = "NTLM",
-    	[int] $timeout = 8,
-        [string] $Server,
-        [Management.Automation.PSCredential] $creds
-    )
-    
-	$request = [System.Net.HttpWebRequest]::Create($url)
-    $request.Method = "GET"
-    $request.Timeout = $timeout * 1000
-    $request.AllowAutoRedirect = $false
-    $request.ContentType = "application/x-www-form-urlencoded"
-    $request.UserAgent = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0; .NET CLR 1.1.4322)"
-	$request.Accept = "application/json;odata=verbose"
-	
-	if ($AuthType -eq "BASIC") {
-        $network_creds = $creds.GetNetworkCredential()
-        $auth = "Basic " + [Convert]::ToBase64String([Text.Encoding]::Default.GetBytes($network_creds.UserName + ":" + $network_creds.Password))
-        $request.Headers.Add("Authorization", $auth)
-        $request.Credentials = $network_creds
-        $request.PreAuthenticate = $true
-    }
-    elseif( $AuthType -eq "NTLM" ) {
-        $request.Credentials =  [System.Net.CredentialCache]::DefaultCredentials
-    }
-       
-    if( $Server -ne [String]::Empty ) {
-		$request.Proxy = new-object -typename System.Net.WebProxy -argumentlist $Server
-    }
-    
-    Write-Verbose ("[{0}][REQUEST] Getting $url ..." -f $(Get-Date))
-	try {
-		$timing_request = Measure-Command { $response = $request.GetResponse() }
-		$stream = $response.GetResponseStream()
-		$reader = New-Object System.IO.StreamReader($stream)
-		
-		Write-Verbose ("[{0}][REPLY] Server = {1} " -f $(Get-Date), $response.Server)
-		Write-Verbose ("[{0}][REPLY] Status Code = {1} {2} . . ." -f $(Get-Date), $response.StatusCode, $response.StatusDescription)
-		Write-Verbose ("[{0}][REPLY] Content Type = {1} . . ." -f $(Get-Date), $response.ContentType)
-		Write-Verbose ("[{0}][REPLY] Content Length = {1} . . ." -f $(Get-Date), $response.ContentLength)
-		Write-Verbose ("[{0}][REPLY] Total Time = {1} . . ." -f $(Get-Date), $timing_request.TotalSeconds)
-
-		return ( $reader.ReadToEnd() | ConvertFrom-Json )
-	}
-	catch [System.Net.WebException] {
-		Write-Error ("The request failed with the following WebException - " + $_.Exception.ToString() )
-	}
-	
 }
 
 function Get-Clipboard 
@@ -800,7 +640,7 @@ function Remove-Certificate
 		[String] $certStore = "My"
     )
 
-	$cert = Get-ChildItem -path cert:\$certRootStore\$certStore | where { $_.Subject.ToLower().Contains($subject) }
+	$cert = Get-ChildItem -path cert:\$certRootStore\$certStore | Where-Object { $_.Subject.ToLower().Contains($subject) }
 	$store = new-object System.Security.Cryptography.X509Certificates.X509Store($certStore,$certRootStore)
 	
 	$store.Open("ReadWrite")
@@ -819,7 +659,7 @@ function Export-Certificate
 		[object] $pfxPass 
 	)
 	
-	$cert = Get-ChildItem -path cert:\$certRootStore\$certStore | where { $_.Subject.ToLower().Contains($subject) }
+	$cert = Get-ChildItem -path cert:\$certRootStore\$certStore | Where-Object { $_.Subject.ToLower().Contains($subject) }
 	$type = [System.Security.Cryptography.X509Certificates.X509ContentType]::pfx
  
     if ($pfxPass -eq $null) {
@@ -837,14 +677,6 @@ function pause
 	$null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
 
-function Get-PreviousMonth
-{
-	return (New-Object PSObject -Property @{ 
-		last_month_begin = $(Get-Date -Day 1).AddMonths(-1)
-		last_month_end =   $(Get-Date -Day 1).AddMonths(-1).AddMonths(1).AddDays(-1)
-	})
-}
-
 function Get-PerformanceCounters
 {
 	param (
@@ -855,8 +687,8 @@ function Get-PerformanceCounters
 	)
 	
 	Get-Counter $counters -ComputerName $computers -MaxSamples $samples -SampleInterval $interval |
-		Foreach { $t=$_.TimeStamp; $_.CounterSamples } | 
-		Select @{Name="Time";Expression={$t}},Path,CookedValue 
+		ForEach-Object { $t=$_.TimeStamp; $_.CounterSamples } | 
+		Select-Object @{Name="Time";Expression={$t}},Path,CookedValue 
 }
 
 function Get-PSSecurePassword
@@ -931,6 +763,9 @@ function Set-SQLAlias
 
 function Get-WindowsUpdateConfig
 {
+	$AutoUpdateNotificationLevels= @{0="Not configured"; 1="Disabled" ; 2="Notify before download"; 3="Notify before installation"; 4="Scheduled installation"}
+	$AutoUpdateDays=@{0="Every Day"; 1="Every Sunday"; 2="Every Monday"; 3="Every Tuesday"; 4="Every Wednesday";5="Every Thursday"; 6="Every Friday"; 7="EverySaturday"}
+	
 	$AUSettings = (New-Object -com "Microsoft.Update.AutoUpdate").Settings
 
 	$AUObj = New-Object -TypeName PSObject -Property @{
@@ -947,7 +782,7 @@ function Get-LocalAdmins
 	param ( [string] $computer )
 	$adsi  = [ADSI]("WinNT://" + $computer + ",computer") 
 	$Group = $adsi.psbase.children.find("Administrators") 
-	$members = $Group.psbase.invoke("Members") | %{$_.GetType().InvokeMember("Name", 'GetProperty', $null, $_, $null)} 
+	$members = $Group.psbase.invoke("Members") | % {$_.GetType().InvokeMember("Name", 'GetProperty', $null, $_, $null)} 
 	
 	return $members
 }
@@ -974,25 +809,6 @@ function Add-LocalAdmins
 	param ( [string] $computer, [string] $Group )
     $localGroup = [ADSI]"WinNT://$computer/Administrators,group"
     $localGroup.Add("WinNT://$domain_controller/$Group,group")
-}
-
-function Get-WindowsDiskSpace
-{
-	begin {
-		$DiskSpace = @()
-	}
-	process
-	{
-		$n = $_.Server
-		$p = $_.Partition
-		
-		$DiskSpace += get-wmiobject -class "Win32_Volume" -namespace "root\cimv2" -computername $n |
-			Where-Object { $_.Name -eq $p } | 
-			Select-Object @{Name="Server";Expression={$n}},@{Name="Partition";Expression={$_.Name}}, @{Name="TotalDiskSpace";Expression={$_.Capacity/1mb}}, @{Name="FreeDiskSpace";Expression={$_.FreeSpace/1mb}}
-	}
-	end {
-		return $DiskSpace
-	}
 }
 
 function Convert-ObjectToHash
@@ -1022,89 +838,9 @@ function Get-RunningServices
 	Get-WmiObject Win32_Service -computer $Computer | Where-Object { $_.State -eq "Running" } | Select-Object Name, PathName, Id, StartMode  
 }
 
-function Get-IntermediateCerts
-{
-	Get-ChildItem -path Cert:\LocalMachine\CA | Select-Object Subject, Issuer, NotAfter | Sort-Object NotAfter
-}
-
-function Get-InstalledCerts
+function Get-Certs
 {
 	Get-ChildItem -path Cert:\LocalMachine\My | Select-Object FriendlyName, Issuer, NotAfter, HasPrivateKey | Sort-Object NotAfter
-}
-
-function Audit-Server
-{
-	param( [string] $server )
-	
-	$audit = New-Object System.Object
-	$computer = Get-WmiObject Win32_ComputerSystem -ComputerName $server
-	$os = Get-WmiObject Win32_OperatingSystem -ComputerName $server
-	$bios = Get-WmiObject Win32_BIOS -ComputerName $server
-	$nics = Get-WmiObject Win32_NetworkAdapterConfiguration -ComputerName $server
-	$cpu = Get-WmiObject Win32_Processor -ComputerName $server | select -first 1 -expand MaxClockSpeed
-	$disks = Get-WmiObject Win32_LogicalDisk -ComputerName $server
-	
-	$audit | add-member -type NoteProperty -name SystemName -Value $computer.Name
-	$audit | add-member -type NoteProperty -name Domain -Value $computer.Domain		
-	$audit | add-member -type NoteProperty -name Model -Value ($computer.Manufacturer + " " + $computer.Model.TrimEnd())
-	$audit | add-member -type NoteProperty -name Processor -Value ($computer.NumberOfProcessors.toString() + " x " + ($cpu/1024).toString("#####.#") + " GHz")
-	$audit | add-member -type NoteProperty -name Memory -Value ($computer.TotalPhysicalMemory/1gb).tostring("#####.#")
-	$audit | add-member -type NoteProperty -name SerialNumber -Value ($bios.SerialNumber.TrimEnd())
-	$audit | add-member -type NoteProperty -name OperatingSystem -Value ($os.Caption + " - " + $os.ServicePackMajorVersion.ToString() + "." + $os.ServicePackMinorVersion.ToString())
-	
-	$localDisks = $disks | Where-Object { $_.DriveType -eq 3 } | Select-Object DeviceId, @{Name="FreeSpace";Expression={($_.FreeSpace/1mb).ToString("######.#")}},@{Name="TotalSpace";Expression={($_.Size/1mb).ToString("######.#")}}
-	$audit | add-member -type NoteProperty -name Drives -Value $localDisks
-	
-	$IPAddresses = @()
-	$nics | Where-Object { -not [string]::IsNullorEmpty($_.IPAddress)  -and $_.IPEnabled -eq $true -and $_.IpAddress -ne "0.0.0.0" } | % { $IPAddresses += $_.IPAddress }
-	$audit | add-member -type NoteProperty -name IPAddresses -Value $IPAddresses
-	
-	$audit | Add-Member -type ScriptMethod -Name toXML -Value $xmlScriptBlock
-	$audit | Add-Member -type ScriptMethod -Name toCSV -Value $csvScriptBlock
-
-	return $audit
-}
-
-function Create-WindowsService
-{
-	param(
-		[string[]] $Servers, 
-		[string]   $Path, 
-		[string]   $Service,
-		[string]   $User,
-		[string]   $Pass
-	)
-	
-	$class = "Win32_Service"
-	$method = "Create"
-	
-	$result = @()
-	foreach( $server in $Servers ) { 
-		$mc = [wmiclass]"\\$server\ROOT\CIMV2:$class"
-		$inparams = $mc.PSBase.GetMethodParameters($method)
-		$inparams.DesktopInteract = $false
-		$inparams.DisplayName = $Service
-		$inparams.ErrorControl = 0
-		$inparams.LoadOrderGroup = $null
-		$inparams.LoadOrderGroupDependencies = $null
-		$inparams.Name = $Service
-		$inparams.PathName = $Path
-		$inparams.ServiceDependencies = $null
-		$inparams.ServiceType = 16
-		$inparams.StartMode = "Automatic"
-		
-		if( [string]::IsNullOrEmpty( $User ) ) {
-			$inparams.StartName = $null # will start as localsystem builtin if null
-			$inparams.StartPassword = $null
-		} 
-		else {
-			$inparams.StartName = $User
-			$inparams.StartPassword = $Pass
-		}
-
-		$result += $mc.PSBase.InvokeMethod($method,$inparams,$null)
-	}
-	return $result 
 }
 	
 function Get-DirHash
@@ -1152,13 +888,13 @@ function Get-IPAddress
  	return ( try { [System.Net.Dns]::GetHostAddresses($name) | Select-Object -Expand IPAddressToString } catch {} )
 }
 
-function Encode-String 
+function Get-Base64Encoded 
 {
 	param( [string] $strEncode )
 	[convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($strEncode))
 }
 
-function Decode-String
+function Get-Base64Decoded
 {
 	param( [string] $strDecode )
 	[Text.Encoding]::Unicode.GetString([convert]::FromBase64String($strDecode))
@@ -1224,28 +960,6 @@ function Read-RegistryHive
 	return $regPairs
 }
 
-function Send-Email
-{
-	param(
-		[Alias('s')][string]  $Subject,
-		[Alias('b')][string]  $Body,
-		[string[]] 			  $To
-	) 
-	$mail = New-Object System.Net.Mail.MailMessage
-	
-	for($i=0; $i -lt $to.Length; $i++) {
-		$mail.To.Add($to[$i]);
-	}
-	$mail.From = New-Object System.Net.Mail.MailAddress($from)
-
-	$mail.Subject = $subject
-	$mail.Body = $body
-
-	$smtp = New-Object System.Net.Mail.SmtpClient($domain)
-	$smtp.Send($mail)
-	
-	$mail.Dispose()
-}
 function log
 {
 	param ( [string] $txt, [string] $log ) 
@@ -1283,32 +997,6 @@ function Get-FileVersion
 	end {
 		return $info
 	}
-}
-
-function Get-Tail
-{
-    param(
-		[Parameter(Mandatory=$true, ValueFromPipeline=$True)]
-	    [ValidateScript({Test-Path $_})]
-		[Alias('path')]
-        [string] $FilePath,
-		
-        [int] $count = 10,
-		
-        [Alias("f")]
-        [switch] $wait
-    )
-    Get-Content -Path $FilePath -Tail $count -Wait:$wait
-}
-Set-Alias -Name Tail -Value Get-Tail
-
-function Get-FileSize  
-{
-	param ( [string] $path )
-	$reader = New-Object System.IO.FileStream $path, ([io.filemode]::Open), ([io.fileaccess]::Read), ([io.fileshare]::ReadWrite)
-	$len = $reader.Length
-	$reader.Close()
-	return $len
 }
 
 function Query-DatabaseTable 
