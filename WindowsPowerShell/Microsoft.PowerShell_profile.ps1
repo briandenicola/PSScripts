@@ -1,24 +1,35 @@
 ﻿. (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 Import-Module -Name posh-git
+Import-Module CredentialManager
+
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $MaximumHistoryCount=1024
-$github_path = ""
-$download_path = ""
-$working_path = ""
-$env:EDITOR = ""
-$pub_key_file = "C:\Users\brdenico\OneDrive\Documents\Keys\Putty\ssh_openssh_version_pub.txt"
+$env:EDITOR = "C:\Program Files\Microsoft VS Code\Code.exe"
+$pub_key_file = "C:\Users\brian\.ssh\id_rsa.pub"
 
-New-Alias -name gh -value Get-History 
-New-Alias -name i -value Invoke-History
-New-Alias -name ed -value $env:EDITOR
+New-Alias -name gh    -value Get-History 
+New-Alias -name i     -Value Invoke-History
+New-Alias -name ed    -Value $env:EDITOR
+New-Alias -Name code  -Value $env:EDITOR
 
-Set-Location -Path $github_path 
+#Set-Location -Path $github_path 
 Set-PSReadlineKeyHandler -Key Tab -Function Complete
+
+function Get-VPNPassword 
+{
+  $vpn = ""
+  $secure_password = Get-StoredCredential -Target $vpn | Select-Object -ExpandProperty Password
+  Get-PlainTextPassword -password (ConvertFrom-SecureString $secure_password) | Set-Clipboard
+  Write-Verbose -Message "Password sent to clip board"
+}
+Set-Alias -Name vpn -Value Get-VPNPassword
 
 function Get-PublicKey 
 {
   Get-Content -Path $pub_key_file | Set-Clipboard
 }
+Set-Alias -Name pubkey -Value Get-PublicKey
 
 function Move-Images 
 {
@@ -30,37 +41,6 @@ function Move-Images
   }
   catch {}
 }
-function Resize-Screen
-{
-	param (
-		[int] $width
-	)
-	$h = get-host
-	$win = $h.ui.rawui.windowsize
-	$buf = $h.ui.rawui.buffersize
-	$win.width = $width # change to preferred width
-	$buf.width = $width
-	$h.ui.rawui.set_buffersize($buf)
-	$h.ui.rawui.set_windowsize($win)
-}
-
-function Set-Downloads
-{
-    Set-Location -Path $download_path 
-}
-New-Alias -Name downloads -Value Set-Downloads
-
-function Set-GitHub
-{
-    Set-Location -Path $github_path 
-}
-New-Alias -Name github -Value Set-GitHub
-
-function Set-Working
-{
-    Set-Location -Path $working_path 
-}
-New-Alias -Name working -Value Set-Working
 
 function Get-Profile
 {
@@ -69,35 +49,17 @@ function Get-Profile
 
 function Edit-HostFile
 {
-  ed (Join-Path -Path $ENV:SystemRoot -ChildPath "System32\drivers\etc\hosts")
+	&$env:editor c:\Windows\System32\drivers\etc\hosts
 }
 Set-Alias -Name hf -Value Edit-HostFile
 
-function rsh 
-{
-	param ( [string] $computer )
-	Enter-PSSession -ComputerName $computer -Credential (Get-Creds) -Authentication Credssp
-}
-
-function rexec
-{
-	param ( [string[]] $computers = "localhost", [Object] $sb )
-	Invoke-Command -ComputerName $computers -Credential (Get-Creds) -Authentication Credssp -ScriptBlock $sb
-}
-
-function Set-Home
+function Go-Home
 {
 	Set-Location -Path $home
 }
-Set-Alias -Name home -Value Set-Home
+Set-Alias -Name home -Value Go-Home
 
-function Set-Scripts
-{
-	Set-Location -Path $ENV:SCRIPTS_HOME
-}
-Set-Alias -Name scripts -Value Set-Scripts 
-
-Remove-Item alias:cd
+remove-item alias:cd
 function cd 
 {
 	param ( $location ) 
@@ -113,7 +75,7 @@ function cd
 	}
 }
 
-function Shorten-Path([string] $path) { 
+function shorten-path([string] $path) { 
    $loc = $path.Replace($HOME, '~') 
    $loc = $loc -replace '^[^:]+::', '' 
    return ($loc -replace '\\(\.?)([^\\])[^\\]*(?=\\)','\$1$2') 
@@ -124,12 +86,12 @@ function Shorten-Path([string] $path) {
     { 
         $funcname = ([System.Char]($i+65)) + ':'
         $str = "function global:$funcname { set-location $funcname } " 
-        Invoke-Expression $str 
+        invoke-expression $str 
     }
 }
 
-Remove-Item alias:ls
-Set-Alias ls Get-ChildItemColor
+remove-item alias:ls
+set-alias ls Get-ChildItemColor
  
 function Get-ChildItemColor {
     $fore = $Host.UI.RawUI.ForegroundColor
@@ -174,9 +136,4 @@ function Get-ChildItemColor {
         echo $_
       }
     }
-}
-# Chocolatey profile
-$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-if (Test-Path($ChocolateyProfile)) {
-  Import-Module "$ChocolateyProfile"
 }
