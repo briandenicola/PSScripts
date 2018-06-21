@@ -1,3 +1,11 @@
+function New-AesKey
+{
+    $aes = New-Object "System.Security.Cryptography.AesManaged"
+    $aes.KeySize = 256
+    1 .. ( Get-Random -Minimum 500 -Maximum 1500) | ForEach-Object { $aes.GenerateKey() }
+    return( [System.Convert]::ToBase64String($aes.Key) )
+}
+
 #https://www.powershellgallery.com/packages/psbbix/0.1.6/Content/epoch-time-convert.ps1
 function Convert-SecondsFromEpochToDate 
 {
