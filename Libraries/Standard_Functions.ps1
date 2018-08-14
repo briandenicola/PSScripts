@@ -182,21 +182,28 @@ function Get-WindowsProductKey
 	})
 }
 
-function Set-TrustedRemotingEndpoint
+function Add-TrustedRemotingEndpoint
 {
     param(
-        [string] $ip_address 
+        [string] $HostName
     )
     
-	$path = 'WSMan:\localhost\Client\TrustedHosts'
-	$values = Get-Item -Path $path | Select-Object -Expand Value
+	$WSMANPath = "WSMAN:\LocalHost\Client\TrustedHosts"
+	$trustedHosts = Get-Item -Path $WSMANPath | Select-Object -Expand Value
 
-	if( $values -eq $null ) {
-		Set-Item -Path $path -Value $ip_address
+	if( [string]::IsNullOrEmpty($trustedHosts) ) {
+		Set-Item -Path $WSMANPath -Value $HostName
 	}
 	else {
-		Set-Item -Path $path -Value ("{0},{1}" -f $values, $ip_address)
+		Set-Item -Path $WSMANPath -Value ("{0},{1}" -f $trustedHosts, $HostName)
 	}
+}
+
+function Get-TrustedRemotingEndpoint
+{    
+	$WSMANPath = "WSMAN:\LocalHost\Client\TrustedHosts"
+	$trustedHosts = Get-Item -Path $WSMANPath | Select-Object -Expand Value
+	return $trustedHosts.Split(",")
 }
 
 function Get-Fonts
