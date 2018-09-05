@@ -60,6 +60,16 @@ function Get-DecodedJwtToken
     return $customObject
 }
 
+function Get-DnsServer {
+	[CmdletBinding()]
+	param (
+		[Parameter(DontShow)]
+		[string] $Alias = "Ethernet"
+	)
+
+	return (Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object InterfaceAlias -eq  $Alias  | Select-Object -ExpandProperty ServerAddresses)
+}
+
 function Set-DnsServer {
 	[CmdletBinding()]
 	param (
