@@ -1,3 +1,11 @@
+function New-Salt 
+{
+	$saltLengthLimit = 32
+	$salt = [System.Byte[]]::new($saltLengthLimit)
+	$random = New-Object "System.Security.Cryptography.RNGCryptoServiceProvider"
+    $random.GetNonZeroBytes($salt)
+    return [System.Convert]::ToBase64String($salt)
+}
 function New-AesKey
 {
     $aes = New-Object "System.Security.Cryptography.AesManaged"
