@@ -1,11 +1,11 @@
 ﻿#requires -Version 2.0
 [CmdletBinding()]
 param ( 
-    [ValidateScript({Test-Path $_})]
-    [parameter(Mandatory=$true)][string] $config_filepath,
+    [ValidateScript( {Test-Path $_})]
+    [parameter(Mandatory = $true)][string] $config_filepath,
 
-    [ValidateScript({Test-Path $_})]
-    [parameter(Mandatory=$true)][string] $config_updates
+    [ValidateScript( {Test-Path $_})]
+    [parameter(Mandatory = $true)][string] $config_updates
 )
 
 . (Join-Path -Path $app_home -ChildPath "Modules\ConfigFile-Functions.ps1")
@@ -20,10 +20,9 @@ $new_backup_file = Get-NewFileName -src $last_config_file_backup
 Log -Text ("Creating a copy of {0} to {1}" -f $last_config_file_backup, $new_backup_file)
 Copy-Item -Path $last_config_file_backup -Destination $new_backup_file
 
-foreach( $update in $cfg.ConfigUpdates.Operation ) {
+foreach ( $update in $cfg.ConfigUpdates.Operation ) {
 
-    switch($update.Ops) 
-    {
+    switch ($update.Ops) {
         "Add" {
             $node = $update.xpath_node
             $parent = $update.xpath_parent

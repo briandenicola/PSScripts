@@ -1,6 +1,6 @@
 ﻿param (
     [Alias("ComputerName")]
-	[string[]] $servers,
+    [string[]] $servers,
     [int] $duration = "10000",
     [string] $appPool
 )

@@ -1,16 +1,16 @@
 ﻿#require -version 3.0
-[CmdletBinding(SupportsShouldProcess=$true)]
+[CmdletBinding(SupportsShouldProcess = $true)]
 param (
-	[Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [ValidateSet("backup", "deploy", "validate")]
     [string] $operation,
-	[string] $cfg = (Join-Path -Path $app_home -ChildPath "Config\deploy_config.xml"),
-	[switch] $force,
+    [string] $cfg = (Join-Path -Path $app_home -ChildPath "Config\deploy_config.xml"),
+    [switch] $force,
 
-    [Parameter(ParameterSetName="Component",Mandatory=$true)][string] $url,
+    [Parameter(ParameterSetName = "Component", Mandatory = $true)][string] $url,
 
-    [Parameter(ParameterSetName="Application",Mandatory=$true)][string] $app,
-    [Parameter(ParameterSetName="Application",Mandatory=$true)][string] $environment
+    [Parameter(ParameterSetName = "Application", Mandatory = $true)][string] $app,
+    [Parameter(ParameterSetName = "Application", Mandatory = $true)][string] $environment
 )
 
 Import-Module (Join-Path -Path $app_home -ChildPath "Modules\ConfigFile-DeploymentMap.psm1") -Force
@@ -18,14 +18,13 @@ Import-Module (Join-Path -Path $app_home -ChildPath "Modules\ConfigFile-Deployme
 
 $cfgFile = [xml]( Get-Content $cfg )
 
-switch ($PsCmdlet.ParameterSetName)
-{ 
+switch ($PsCmdlet.ParameterSetName) { 
     "Application" { 
         $app_components = $cfgFile.configs.application | where { $_.Name -eq $app -and $_.Environment -eq $environment } | Select -Expand Component
-        foreach( $component in $app_components ) { 
+        foreach ( $component in $app_components ) { 
             Log -text ("Executing {0} on {1} . . ." -f $operation, $component)
             Execute-ComponentCommand -url $component -operation $operation
-            "="*50 
+            "=" * 50 
         } 
     }
         

@@ -10,7 +10,7 @@ function Connect-SPOnlineServices {
         [System.Management.Automation.PSCredential] $creds
     )
 
-    if(!$creds) {
+    if (!$creds) {
         $creds = Get-Credential
     }
 
@@ -29,9 +29,9 @@ function ConvertDictionary-ToObject {
     
     $objects = @()
 
-    foreach( $item in $dictionary ) {
+    foreach ( $item in $dictionary ) {
         $object = New-Object PSObject
-        foreach( $key in $item.keys ) {
+        foreach ( $key in $item.keys ) {
             $object | Add-Member -MemberType NoteProperty -Name $key -Value $item[$key]
         }
         $objects += $object
@@ -43,10 +43,10 @@ function ConvertDictionary-ToObject {
 function Update-SPListItemViaCSOM {
 
     param (
-        [Parameter(Mandatory=$true)][string] $site,
-        [Parameter(Mandatory=$true)][string] $list,
-        [Parameter(Mandatory=$true)][int] $id,
-        [Parameter(Mandatory=$true)][Hashtable] $values,
+        [Parameter(Mandatory = $true)][string] $site,
+        [Parameter(Mandatory = $true)][string] $list,
+        [Parameter(Mandatory = $true)][int] $id,
+        [Parameter(Mandatory = $true)][Hashtable] $values,
         [string] $TitleField,
         [System.Management.Automation.PSCredential] $creds
 
@@ -57,8 +57,8 @@ function Update-SPListItemViaCSOM {
     $sp_list = $ctx.Web.Lists.GetByTitle($list)
     $item = $sp_list.getItemById($id)
 
-    foreach( $key in $values.keys ) {
-        if( $key -eq $TitleField ) {
+    foreach ( $key in $values.keys ) {
+        if ( $key -eq $TitleField ) {
             $item.set_item('Title', $values[$key] )
         }
         else {
@@ -73,9 +73,9 @@ function Update-SPListItemViaCSOM {
 function Create-SPListItemViaCSOM {
 
     param (
-        [Parameter(Mandatory=$true)][string] $site,
-        [Parameter(Mandatory=$true)][string] $list,
-        [Parameter(Mandatory=$true)][Hashtable] $values,
+        [Parameter(Mandatory = $true)][string] $site,
+        [Parameter(Mandatory = $true)][string] $list,
+        [Parameter(Mandatory = $true)][Hashtable] $values,
         [string] $TitleField,
         [System.Management.Automation.PSCredential] $creds
     )
@@ -85,8 +85,8 @@ function Create-SPListItemViaCSOM {
     $item_info = New-Object Microsoft.SharePoint.Client.ListItemCreationInformation
 
     $new_item = $sp_list.addItem($item_info)
-    foreach( $key in $values.keys ) {
-        if( $key -eq $TitleField ) {
+    foreach ( $key in $values.keys ) {
+        if ( $key -eq $TitleField ) {
             $new_item.set_item('Title', $values[$key] )
         }
         else {
@@ -102,8 +102,8 @@ function Create-SPListItemViaCSOM {
 function Get-SPListViaCSOM {
     
     param (
-        [Parameter(Mandatory=$true)][string] $site,
-        [Parameter(Mandatory=$true)][string] $list,
+        [Parameter(Mandatory = $true)][string] $site,
+        [Parameter(Mandatory = $true)][string] $list,
         [string] $query,
         [System.Management.Automation.PSCredential] $creds
     )
@@ -113,7 +113,7 @@ function Get-SPListViaCSOM {
     $ctx = Connect-SPOnlineServices -site $site -creds $creds
     $sp_list = $ctx.Web.Lists.GetByTitle($list)
 
-    if( [String]::IsNullOrEmpty($query) ) {
+    if ( [String]::IsNullOrEmpty($query) ) {
         $camlQuery.ViewXml = '<View/>'
     } 
     else {
@@ -127,16 +127,34 @@ function Get-SPListViaCSOM {
     return ( ConvertDictionary-ToObject $items.FieldValues )
 }
 
-function UploadTo-SharePointOnline{   param (
-        [Parameter(Mandatory=$true)][string] $site,
-        
-        [Parameter(Mandatory=$true)][string] $library,
 
-        [ValidateScript({Test-Path $_ -PathType leaf})] 
-        [Parameter(Mandatory=$true)][string] $file,
+function UploadTo-SharePointOnline {
+    param (
+        [Parameter(Mandatory = $true)][string] $site,
+        
+        [Parameter(Mandatory = $true)][string] $library,
+
+        [ValidateScript( {Test-Path $_ -PathType leaf})] 
+        [Parameter(Mandatory = $true)][string] $file,
 
         [System.Management.Automation.PSCredential] $credentials
-    )    $ctx = Connect-SPOnlineServices -site $site -creds $credentials    $sp_list = $ctx.Web.Lists.GetByTitle($library)    $ctx.Load($sp_list.RootFolder)    $ctx.ExecuteQuery()
+    )
+
+    $ctx = Connect-SPOnlineServices -site $site -creds $credentials
+    $sp_list = $ctx.Web.Lists.GetByTitle($library)
+    $ctx.Load($sp_list.RootFolder)
+    $ctx.ExecuteQuery()
+
     $item = Get-Item $file
 
-    $file_byte_array = Get-Content -Encoding Byte $file        $content = New-Object Microsoft.SharePoint.Client.FileCreationInformation    $content.Content = $file_byte_array    $content.Url = $sp_list.RootFolder.ServerRelativeUrl + "/" + $item.Name     $content.Overwrite = $true    $uploaded_file = $sp_list.RootFolder.Files.Add($content)    $ctx.Load($uploaded_file)    $ctx.ExecuteQuery()}
+    $file_byte_array = Get-Content -Encoding Byte $file    
+    $content = New-Object Microsoft.SharePoint.Client.FileCreationInformation
+    $content.Content = $file_byte_array
+    $content.Url = $sp_list.RootFolder.ServerRelativeUrl + "/" + $item.Name 
+    $content.Overwrite = $true
+
+    $uploaded_file = $sp_list.RootFolder.Files.Add($content)
+
+    $ctx.Load($uploaded_file)
+    $ctx.ExecuteQuery()
+}
