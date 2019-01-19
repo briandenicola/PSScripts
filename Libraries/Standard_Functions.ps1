@@ -1024,13 +1024,13 @@ function Get-IPAddress
 function Get-Base64Encoded 
 {
 	param( [string] $strEncode )
-	[convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($strEncode))
+	[convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($strEncode))
 }
 
 function Get-Base64Decoded
 {
 	param( [string] $strDecode )
-	[Text.Encoding]::Unicode.GetString([convert]::FromBase64String($strDecode))
+	[Text.Encoding]::ASCII.GetString([convert]::FromBase64String($strDecode))
 }
 
 function Ping-Multiple 
