@@ -1,22 +1,22 @@
 ﻿#Requires -version 2.0
 
 param (	
-    [ValidateSet("tfs_build","directory")]
-    [Parameter(Mandatory=$true)][string] $source_type,
+    [ValidateSet("tfs_build", "directory")]
+    [Parameter(Mandatory = $true)][string] $source_type,
     
-    [ValidateScript({Test-Path $_ -PathType 'Container'})] 
-	[Parameter(Mandatory=$true)][string] $source_directory,	
+    [ValidateScript( {Test-Path $_ -PathType 'Container'})] 
+    [Parameter(Mandatory = $true)][string] $source_directory,	
 	
-    [Parameter(ParameterSetName="WebSite",Mandatory=$true)][string] $dst_site,
-    [Parameter(ParameterSetName="WebSite")][switch] $validate,
-	[Parameter(ParameterSetName="WebSite")][switch] $include_webconfig,
-    [Parameter(ParameterSetName="WebSite")][switch] $full,
-    [Parameter(ParameterSetName="WebSite")][string] $virtual_directory, 
-    [Parameter(ParameterSetName="WebSite")][switch] $mark_deployment, 
-    [Parameter(ParameterSetName="WebSite")][switch] $disable_pingdom, 
+    [Parameter(ParameterSetName = "WebSite", Mandatory = $true)][string] $dst_site,
+    [Parameter(ParameterSetName = "WebSite")][switch] $validate,
+    [Parameter(ParameterSetName = "WebSite")][switch] $include_webconfig,
+    [Parameter(ParameterSetName = "WebSite")][switch] $full,
+    [Parameter(ParameterSetName = "WebSite")][string] $virtual_directory, 
+    [Parameter(ParameterSetName = "WebSite")][switch] $mark_deployment, 
+    [Parameter(ParameterSetName = "WebSite")][switch] $disable_pingdom, 
     
-    [Parameter(ParameterSetName="Service",Mandatory=$true)][string] $service_name,
-    [Parameter(ParameterSetName="Service",Mandatory=$true)][string] $install_location
+    [Parameter(ParameterSetName = "Service", Mandatory = $true)][string] $service_name,
+    [Parameter(ParameterSetName = "Service", Mandatory = $true)][string] $install_location
 )
 
 Add-PSSnapin WDeploySnapin3.0 -EA SilentlyContinue
@@ -34,74 +34,68 @@ Set-Variable -Name Compare-Script -Value (Join-Path $ENV:SCRIPTS_HOME "Compariso
 Set-Variable -Name farm_name -Value "-web-f" -Option Constant
 Set-Variable -Name log -Value (Join-Path $PWD.Path ("logs\{0}_deploy-{1}.log" -f ($PsCmdlet.ParameterSetName).ToString(), $now ))
 
-function Log-Entry( [string] $txt ) 
-{
+function Log-Entry( [string] $txt ) {
     $txt = "[" + (Get-Date).ToString() + "] - " + $txt + " . . . "	 
     Write-Host $txt  
     Out-File -Encoding Ascii -Append -FilePath $log
 }
 
-function Get-IISWebFarmServers
-{
-    if( $env:COMPUTERNAME -inotmatch $farm_name ) {
+function Get-IISWebFarmServers {
+    if ( $env:COMPUTERNAME -inotmatch $farm_name ) {
         throw "This script must be run from a .NET Web Farm. $ENV:COMPUTERNAME does not match expected structure. Can not determine servers in farm . . ."
     }
 
     Log-Entry -txt "Determing servers to deploy to."
-    $root_server = $env:COMPUTERNAME.Substring(0,($env:COMPUTERNAME.LastIndexOf('0')))
+    $root_server = $env:COMPUTERNAME.Substring(0, ($env:COMPUTERNAME.LastIndexOf('0')))
     
     $servers = @()
     $server_number = 1
 
     $server = $env:COMPUTERNAME
-    while( Get-IPAddress $server ) {
+    while ( Get-IPAddress $server ) {
         $servers += $server
-        $server = $root_server + ("{0}" -f ($server_number++).ToString().PadLeft(2,'0'))
+        $server = $root_server + ("{0}" -f ($server_number++).ToString().PadLeft(2, '0'))
     } 
 
     Log-Entry -txt "Will deploy to servers - $servers"
     return ($servers | Select -Unique)
 }
 
-function Backup-Site 
-{
-	Log-Entry -txt "Backup up $dst_site to $backup_directory"
-	Backup-WDSite -Site $dst_site -Output $backup_directory
+function Backup-Site {
+    Log-Entry -txt "Backup up $dst_site to $backup_directory"
+    Backup-WDSite -Site $dst_site -Output $backup_directory
 }
 
-function Get-MostRecentDeployment( [string] $src )
-{
-	return ( Get-ChildItem $src | Sort LastWriteTime -desc | Select -first 1 | Select -ExpandProperty FullName )
+function Get-MostRecentDeployment( [string] $src ) {
+    return ( Get-ChildItem $src | Sort LastWriteTime -desc | Select -first 1 | Select -ExpandProperty FullName )
 }
 
-function Get-IISPath( [string] $site ) 
-{
+function Get-IISPath( [string] $site ) {
     return ( Get-WebFilePath ( 'IIS:\Sites\{0}' -f $site ) | Select -Expand FullName )
 }
 
-function Get-VirtualDirectoryPath( [string] $site, [string] $vdir ) 
-{
+function Get-VirtualDirectoryPath( [string] $site, [string] $vdir ) {
     return ( Get-WebFilePath ( 'IIS:\Sites\{0}\{1}' -f $site, $vdir ) | Select -Expand FullName )
 }
 
-function Deploy-Site 
-{
+function Deploy-Site {
     param(
         [string] $src
     )
 
-    if( [string]::IsNullOrEmpty($virtual_directory) ) {
-	    $dst = Get-IISPath -site $dst_site
+    if ( [string]::IsNullOrEmpty($virtual_directory) ) {
+        $dst = Get-IISPath -site $dst_site
     }
     else {
         $dst = Get-VirtualDirectoryPath -site $dst_site -vdir $virtual_directory
     }
     
-    if($full) {
+    if ($full) {
         Log-Entry -txt "Moving $dst to $dst.$now to force a full sync"
         Move-Item -Path $dst -Destination ($dst + "." + $now) -Force
         New-Item -Path $dst -ItemType Directory | Out-Null
-    } elseif(!$include_webconfig) {
+    }
+    elseif (!$include_webconfig) {
         $skipfiles = "web.config"
     }
     	
@@ -110,8 +104,7 @@ function Deploy-Site
 
 }
 
-function Sync-Farm 
-{
+function Sync-Farm {
     param (
         [string[]] $farm_servers
     )
@@ -121,7 +114,7 @@ function Sync-Farm
     $src_publishing_file = Join-Path $ENV:TEMP ("{0}.publishsettings" -f $ENV:COMPUTERNAME)
     New-WDPublishSettings -ComputerName $ENV:COMPUTERNAME -AgentType MSDepSvc -FileName $src_publishing_file -Site $dst_site
 
-    foreach( $computer in ($farm_servers | where { $_ -inotmatch $ENV:COMPUTERNAME -and $_ -ne $null} )) {
+    foreach ( $computer in ($farm_servers | where { $_ -inotmatch $ENV:COMPUTERNAME -and $_ -ne $null} )) {
         Log-Entry -txt "Syncing $computer"
         $dst_publishing_file = Join-Path $ENV:TEMP ("{0}.publishsettings" -f $computer)
         New-WDPublishSettings -ComputerName $computer -AgentType MSDepSvc -FileName $dst_publishing_file -Site $dst_site
@@ -132,8 +125,7 @@ function Sync-Farm
     Remove-Item $src_publishing_file
 }
 
-function Validate-Deploy
-{
+function Validate-Deploy {
     param (
         [string[]] $farm_servers
     )
@@ -141,62 +133,57 @@ function Validate-Deploy
     &${Compare-Script} -computers $farm_servers -path (Get-IISPath -site $dst_site)
 }
 
-function Disable-PingdomMonitoring
-{
+function Disable-PingdomMonitoring {
     Import-Module (Join-Path $ENV:SCRIPTS_HOME "Libraries\Pingdom.psm1")
     $id = Get-PingdomChecks | Where { $_.Name -eq $dst_site } | Select -ExpandProperty id
     Disable-PingdomMonitoring -id $id
 }
 
-function Set-DeploymentEnvironmentInformation
-{
+function Set-DeploymentEnvironmentInformation {
     param ( [PSObject] $deployment )
 
-	if( $ENV:COMPUTERNAME -imatch ($farm_name + "\d\dp")  ) { $environment = "Prod" } else { $environment = "UAT" }
+    if ( $ENV:COMPUTERNAME -imatch ($farm_name + "\d\dp")  ) { $environment = "Prod" } else { $environment = "UAT" }
 
     $environment_property = "{0}_x0020_Deployment" -f $environment
-    $deployer_property  =  "{0}_x0020_Deployer" -f $environment
+    $deployer_property = "{0}_x0020_Deployer" -f $environment
 
-	$deployment | Add-Member -MemberType NoteProperty -Name $environment_property -Value $(Get-Date).ToString("yyyy-MM-ddThh:mm:ssZ")
-	$deployment | Add-Member -MemberType NoteProperty -Name $deployer_property -Value (Get-SPUserViaWS -url $list_url -name ($ENV:USERDOMAIN + "\" + $ENV:USERNAME))
+    $deployment | Add-Member -MemberType NoteProperty -Name $environment_property -Value $(Get-Date).ToString("yyyy-MM-ddThh:mm:ssZ")
+    $deployment | Add-Member -MemberType NoteProperty -Name $deployer_property -Value (Get-SPUserViaWS -url $list_url -name ($ENV:USERDOMAIN + "\" + $ENV:USERNAME))
 }
 
-function Record-Deployment 
-{
+function Record-Deployment {
     param(
         [string] $name
     )
 
     $deploy = New-Object PSObject -Property @{
-		Title = ("Automated .NET {0} Deployment for - {1}" -f $PsCmdlet.ParameterSetName, $name)
-		DeploymentType = "Full"
-		DeploymentSteps = ("Automated with Deploy-DotNet-Code.ps1 with code from {0}. Log file located on {1} - {2}" -f $source_directory, $ENV:COMPUTERNAME, (Get-ChildItem $log).FullName)
-		Notes = ("Code Backup location is at {0}" -f $backup_directory)
+        Title           = ("Automated .NET {0} Deployment for - {1}" -f $PsCmdlet.ParameterSetName, $name)
+        DeploymentType  = "Full"
+        DeploymentSteps = ("Automated with Deploy-DotNet-Code.ps1 with code from {0}. Log file located on {1} - {2}" -f $source_directory, $ENV:COMPUTERNAME, (Get-ChildItem $log).FullName)
+        Notes           = ("Code Backup location is at {0}" -f $backup_directory)
     }
 	
     Set-DeploymentEnvironmentInformation -deployment $deploy
     Log-Entry -txt "Recording deployment to $deploy_tracker @ $list_url - $deploy"
-	WriteTo-SPListViaWebService -url $list_url -list $deploy_tracker -Item (Convert-ObjectToHash $deploy)		
+    WriteTo-SPListViaWebService -url $list_url -list $deploy_tracker -Item (Convert-ObjectToHash $deploy)		
 }
 
-function Get-SPUserViaWS
-{
+function Get-SPUserViaWS {
     param(
         [string] $url,
         [string] $name
     )
 
-	$service = New-WebServiceProxy ($url + "/_vti_bin/UserGroup.asmx?WSDL") -Namespace User -UseDefaultCredential
-	$user = $service.GetUserInfo("i:0#.w|$name") 
+    $service = New-WebServiceProxy ($url + "/_vti_bin/UserGroup.asmx?WSDL") -Namespace User -UseDefaultCredential
+    $user = $service.GetUserInfo("i:0#.w|$name") 
 	
-	if( $user ) {
-		return ( $user.user.id + ";#" + $user.user.Name )
-	} 
-	return $null	
+    if ( $user ) {
+        return ( $user.user.id + ";#" + $user.user.Name )
+    } 
+    return $null	
 }
 
-function Backup-Service 
-{
+function Backup-Service {
     $backup_location = (Join-Path $backup_directory ("{0}\{1}" -f $service_name, $now))
     New-Item -ItemType Directory -Path $backup_location  | Out-Null
  
@@ -204,8 +191,7 @@ function Backup-Service
     &${Sync-Files} -src $install_location -dst $backup_location -logging -log $log
 }
 
-function Deploy-Service 
-{
+function Deploy-Service {
     param(
         [string] $src
     )
@@ -214,31 +200,30 @@ function Deploy-Service
     &${Sync-Files} -src $src -dst $install_location -logging -log $log
 }
 
-function main()
-{
-    if( $source_type -eq "tfs_build" ) {
+function main() {
+    if ( $source_type -eq "tfs_build" ) {
         $src = Get-MostRecentDeployment -src $source_directory
     }
     else {
         $src = $source_directory
     }
 
-    switch ($PsCmdlet.ParameterSetName)
-    { 
+    switch ($PsCmdlet.ParameterSetName) { 
         "WebSite" {
             Log-Entry -txt ("Starting a Deployment for {0}" -f $dst_site)
-	        try {   
-                if($disable_pingdom) { Disable-PingdomMonitoring } 
+            try {   
+                if ($disable_pingdom) { Disable-PingdomMonitoring } 
                 $servers = Get-IISWebFarmServers 
-		        Backup-Site
-		        Deploy-Site -src $src
-		        Sync-Farm -farm_servers $servers
-                if($validate) { Validate-Deploy -farm_servers $servers }
-                if($mark_deployment) { Import-Module (Join-Path $ENV:SCRIPTS_HOME "Libraries\Newrelic.psm1"); Set-NewRelicDeploymentMarker -iis_site_name $dst_site }
-		        Record-Deployment -name $dst_site
-	        } catch [System.SystemException] {
-		         Write-Error ("Web Deploy failed with the following exception - {0}" -f $_.Exception.ToString() )
-	        }
+                Backup-Site
+                Deploy-Site -src $src
+                Sync-Farm -farm_servers $servers
+                if ($validate) { Validate-Deploy -farm_servers $servers }
+                if ($mark_deployment) { Import-Module (Join-Path $ENV:SCRIPTS_HOME "Libraries\Newrelic.psm1"); Set-NewRelicDeploymentMarker -iis_site_name $dst_site }
+                Record-Deployment -name $dst_site
+            }
+            catch [System.SystemException] {
+                Write-Error ("Web Deploy failed with the following exception - {0}" -f $_.Exception.ToString() )
+            }
         }
         "Service" {
             Log-Entry -txt ("Starting a Deployment for {0}" -f $service_name)
@@ -246,15 +231,16 @@ function main()
                 Log-Entry -txt ("Stopping {0}" -f $service_name)
                 Stop-Service -Name $service_name 
 
-		        Backup-Service 
-		        Deploy-Service -src $src
+                Backup-Service 
+                Deploy-Service -src $src
     
                 Log-Entry -txt ("Starting {0}" -f $service_name)
                 Start-Service -Name $service_name
-		        Record-Deployment -Name $service_name
-	        } catch [System.SystemException] {
-		         Write-Error ("Service Deployment failed with the following exception - {0}" -f $_.Exception.ToString() )
-	        }
+                Record-Deployment -Name $service_name
+            }
+            catch [System.SystemException] {
+                Write-Error ("Service Deployment failed with the following exception - {0}" -f $_.Exception.ToString() )
+            }
         }
     }
 }

@@ -1,36 +1,36 @@
 ﻿[CmdletBinding()]
 param(
-    [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
+    [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
     [String[]] $ComputerName,
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
     [int[]]    $Ports = @(1..65535),
 
-    [Parameter(Mandatory=$false)]
-    [ValidateRange(1,10)]
+    [Parameter(Mandatory = $false)]
+    [ValidateRange(1, 10)]
     [int]      $TimeOut = 1,
 
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch]   $IgnoreICMP
- )
+)
 
 Set-Variable -Name opened_ports -Value @()
 
 foreach ( $computer in $ComputerName ) {
-    if( $IgnoreICMP -or (Test-Connection -ComputerName $computer -Count 1 -ErrorAction SilentlyContinue) ) { 
+    if ( $IgnoreICMP -or (Test-Connection -ComputerName $computer -Count 1 -ErrorAction SilentlyContinue) ) { 
         foreach ( $port in $ports ) {
             Write-Verbose -Message ("[{0}] - Test Port {1} - {2} . . ." -f $(Get-Date), $port, $computer)
 
             try { 
                 $socket = New-Object system.Net.Sockets.TcpClient 
                 Write-Debug -Message ("[{0}] - Begin Connect on Port {1} - {2} . . ." -f $(Get-Date), $port, $computer)
-                $connect = $socket.BeginConnect($computer,$port,$null,$null) 
+                $connect = $socket.BeginConnect($computer, $port, $null, $null) 
 
                 Write-Debug -Message ("[{0}] - Async Wait Handle on Port {1} - {2} . . ." -f $(Get-Date), $port, $computer)
-                $wait = $connect.AsyncWaitHandle.WaitOne(($TimeOut*1000),$false) 
+                $wait = $connect.AsyncWaitHandle.WaitOne(($TimeOut * 1000), $false) 
 
-                if(!$wait) {
+                if (!$wait) {
                     Write-Debug -Message ("[{0}] - Not Wait Handle on Port {1} - {2} . . ." -f $(Get-Date), $port, $computer)
                     $socket.Close()
                 }

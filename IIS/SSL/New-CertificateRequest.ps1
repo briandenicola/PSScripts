@@ -1,34 +1,34 @@
 #Version -3
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string] $CommonName,
 
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string] $OrganizationalUnit,
 
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string] $Organization,
 
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string] $City,
 
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string] $State,
 
-    [Parameter(Mandatory=$false)]
-    [string] $Country  = "US",
+    [Parameter(Mandatory = $false)]
+    [string] $Country = "US",
 
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [ValidateSet(2048, 4096)] 
     [int]    $KeyLength = 2048,
 
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string] $CertificateRequestFile
 )
 
 $cert_req = "c:\windows\system32\certreq.exe"
-if( !(Test-Path $cert_req) ) {
+if ( !(Test-Path $cert_req) ) {
     throw ("Could not find {0}..." -f $cert_req)
 }
 

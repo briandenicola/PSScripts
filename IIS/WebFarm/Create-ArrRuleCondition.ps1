@@ -1,24 +1,24 @@
 ﻿param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string] $url,
-    [Parameter(Mandatory=$true)]
-    [ValidateSet("Dev","QA","UAT","Prod")]
+    [Parameter(Mandatory = $true)]
+    [ValidateSet("Dev", "QA", "UAT", "Prod")]
     [string] $environment
 
 )
 
 $arr_environment_map = @(
-    @{Name="Dev"; Servers=@("server-1"); RuleName="ArrDev_Inbound_rules"},
-    @{Name="QA"; Servers=@("server-1"); RuleName="ArrQA_Inbound_rules"},
-    @{Name="UAT"; Servers=@("server-1"); RuleName="ArrUAT_Inbound_rules"},
-    @{Name="Prod"; Servers=@("server-2","server-3"); RuleName="ArrProd_Inbound_rules"}
+    @{Name = "Dev"; Servers = @("server-1"); RuleName = "ArrDev_Inbound_rules"},
+    @{Name = "QA"; Servers = @("server-1"); RuleName = "ArrQA_Inbound_rules"},
+    @{Name = "UAT"; Servers = @("server-1"); RuleName = "ArrUAT_Inbound_rules"},
+    @{Name = "Prod"; Servers = @("server-2", "server-3"); RuleName = "ArrProd_Inbound_rules"}
 )
 
 $sb = {
     param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string] $pattern,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [string] $rule
     )
 
@@ -29,12 +29,12 @@ $sb = {
     Set-Variable -Name input  -Value "{HTTP_HOST}"              -Option Constant
 
     $condition = @{
-	    pspath = $path
-	    filter = $filter
-	    value = @{
-		    input = $input
-		    pattern = $pattern
-	    }
+        pspath = $path
+        filter = $filter
+        value  = @{
+            input   = $input
+            pattern = $pattern
+        }
     }
 
     Add-WebConfiguration @condition
