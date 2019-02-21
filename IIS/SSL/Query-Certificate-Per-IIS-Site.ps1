@@ -1,6 +1,6 @@
-﻿[CmdletBinding(SupportsShouldProcess=$true)]
+﻿[CmdletBinding(SupportsShouldProcess = $true)]
 param( 
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string[]] $servers
 )
 
@@ -9,17 +9,17 @@ $sb = {
     $ver = (Get-WmiObject -Class Win32_OperatingSystem).Version
     
     $sites_with_certs = @()
-    if( $ver -lt 6.1 ) {
+    if ( $ver -lt 6.1 ) {
         $encoding_type = "System.Text.ASCIIEncoding"
         $encode = New-Object $encoding_type
         $WebServerQuery = "Select * from IIsWebServerSetting"
 
         $wmiWebServerSearcher = [WmiSearcher] $WebServerQuery
-		$wmiWebServerSearcher.Scope.Path = "\\{0}\root\microsoftiisv2" -f $ENV:COMPUTERNAME
-		$wmiWebServerSearcher.Scope.Options.Authentication = 6
+        $wmiWebServerSearcher.Scope.Path = "\\{0}\root\microsoftiisv2" -f $ENV:COMPUTERNAME
+        $wmiWebServerSearcher.Scope.Options.Authentication = 6
 		
-        foreach( $site in $wmiWebServerSearcher.Get() ) {
-            if( $site.SSLStoreName -eq "My" ) {    
+        foreach ( $site in $wmiWebServerSearcher.Get() ) {
+            if ( $site.SSLStoreName -eq "My" ) {    
                 $certmgr = New-Object -ComObject IIS.CertObj
                 $certmgr.ServerName = $ENV:COMPUTERNAME
                 $certmgr.InstanceName = $site.Name 
@@ -32,11 +32,11 @@ $sb = {
                 $thumbprint = Get-ChildItem cert:\LocalMachine\My | where { $_.Subject -like $subject } | Select -ExpandProperty THumbprint
 
                 $sites_with_certs += (New-Object PSObject -Property @{
-                    Site = $site.ServerComment
-                    Certficate = $subject
-                    Thumbprint = $thumbprint
-                    Server = $env:COMPUTERNAME
-                })
+                        Site       = $site.ServerComment
+                        Certficate = $subject
+                        Thumbprint = $thumbprint
+                        Server     = $env:COMPUTERNAME
+                    })
             }
         }
     }
@@ -47,14 +47,14 @@ $sb = {
         $sites = Get-ChildItem IIS:\SslBindings | Where { $_.Store -eq "MY" } | Select Thumbprint, Sites
 
         $sites_with_certs = @()
-        foreach( $sites_with_same_cert in ($sites | where { $_.Sites -ne $null }) ) {
-            foreach( $site in $sites_with_same_cert.Sites) { 
+        foreach ( $sites_with_same_cert in ($sites | where { $_.Sites -ne $null }) ) {
+            foreach ( $site in $sites_with_same_cert.Sites) { 
                 $sites_with_certs += (New-Object PSObject -Property @{
-                    Site = $site.Value
-                    Certificate = ($certs | where { $_.Thumbprint -eq $sites_with_same_cert.Thumbprint } | Select -ExpandProperty Subject).Split(",")[0].Split("=")[1]
-                    Thumbprint = $sites_with_same_cert.Thumbprint
-                    Server = $env:COMPUTERNAME
-                })
+                        Site        = $site.Value
+                        Certificate = ($certs | where { $_.Thumbprint -eq $sites_with_same_cert.Thumbprint } | Select -ExpandProperty Subject).Split(",")[0].Split("=")[1]
+                        Thumbprint  = $sites_with_same_cert.Thumbprint
+                        Server      = $env:COMPUTERNAME
+                    })
             }
         }
     }
@@ -62,8 +62,7 @@ $sb = {
 }
 
 
-function main
-{
+function main {
     Invoke-Command -ComputerName $servers -ScriptBlock $sb
 }
 main

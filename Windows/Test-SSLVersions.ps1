@@ -25,13 +25,13 @@ $returnValue = @{
 
 $TLS_Lookup.psobject.Properties | Select -ExpandProperty Name
 
-foreach( $protocol in ($TLS_Lookup.psobject.Properties | Select -ExpandProperty Name) ) {
-    if( (Test-Path -Path ($SChannelProtocolRoot -f $TLS_Lookup.$protocol) ) ) {
+foreach ( $protocol in ($TLS_Lookup.psobject.Properties | Select -ExpandProperty Name) ) {
+    if ( (Test-Path -Path ($SChannelProtocolRoot -f $TLS_Lookup.$protocol) ) ) {
         $client_bydefault = Get-ItemProperty -Path ($SChannelClientProtocolKey -f $TLS_Lookup.$protocol) -Name $DisabledByDefaultPropertyValue  | Select -ExpandProperty $DisabledByDefaultPropertyValue
-        $server_enabled   = Get-ItemProperty -Path ($SChannelServerProtocolKey -f $TLS_Lookup.$protocol) -Name $EnabledItemPropertyValue        | Select -ExpandProperty $EnabledItemPropertyValue
+        $server_enabled = Get-ItemProperty -Path ($SChannelServerProtocolKey -f $TLS_Lookup.$protocol) -Name $EnabledItemPropertyValue        | Select -ExpandProperty $EnabledItemPropertyValue
         $server_bydefault = Get-ItemProperty -Path ($SChannelServerProtocolKey -f $TLS_Lookup.$protocol) -Name $DisabledByDefaultPropertyValue  | Select -ExpandProperty $DisabledByDefaultPropertyValue
 
-        if( $client_bydefault -eq 0 -and $server_enabled -eq 1 -and $server_bydefault -eq 0 ) {
+        if ( $client_bydefault -eq 0 -and $server_enabled -eq 1 -and $server_bydefault -eq 0 ) {
             $returnValue.$protocol = $true
         }
     }
