@@ -277,13 +277,13 @@ function Get-WindowsProductKey {
     } 
 
     return (New-Object -TypeName PSObject -Property @{
-            ComputerName   = $ENV:COMPUTERNAME
-            Caption        = $Wmi_Win32.Caption
-            WindowsVersion = $Wmi_Win32.Version
-            OSArchitecture = $Wmi_Win32.OSArchitecture
-            BuildNumber    = $Wmi_Win32.BuildNumber
-            ProductKey     = $key
-        })
+        ComputerName   = $ENV:COMPUTERNAME
+        Caption        = $Wmi_Win32.Caption
+        WindowsVersion = $Wmi_Win32.Version
+        OSArchitecture = $Wmi_Win32.OSArchitecture
+        BuildNumber    = $Wmi_Win32.BuildNumber
+        ProductKey     = $key
+    })
 }
 
 function Add-TrustedRemotingEndpoint {
@@ -638,38 +638,50 @@ function Get-Uptime {
 }
 
 function Get-CpuLoad {
-    param(
-        [string] $ComputerName = $ENV:COMPUTERNAME,
-        [int]    $Refresh = 5
-    )
+    function Get-UtilizationPercentage {
+        param(
+            [int64] $cpu_time_1,
+            [int64] $cpu_time_2,
+            [int64] $time_1,
+            [int64] $time_2
+        )
+        return [math]::Round((($cpu_time_1 - $cpu_time_2) / ($time_1 - $time_2)) * 100, 2)
+    }
 
-    $query = "select * from Win32_PerfRawData_PerfProc_Process"
-    $filter = " where Name = `"{0}`""
+    $Refresh = 1
+    $query = "select Name,IDProcess,ThreadCount,WorkingSetPrivate,PercentProcessorTime,Timestamp_Sys100NS from Win32_PerfRawData_PerfProc_Process"
 
     Clear-Host
-
     while (1) {
-                
-        $system_utilization = @()
-        $all_running_processes = Get-WmiObject -Query $query -ComputerName $ComputerName
-        
-        Start-Sleep -Milliseconds 500
-        
-        foreach ( $process in $all_running_processes ) {
-            $process_utlization_delta = Get-WmiObject -Query ($query + $Filter -f $process.Name) -ComputerName $ComputerName
-            $cpu_utilization = [math]::Round((($process_utlization_delta.PercentProcessorTime - $process.PercentProcessorTime) / ($process_utlization_delta.Timestamp_Sys100NS - $process.Timestamp_Sys100NS)) * 100, 2)
-        
-            $system_utilization += (New-Object psobject -Property @{
-                    ComputerName  = $ComputerName
-                    ProcessName   = $process.Name
-                    PID           = $process.IDProcess
-                    ThreadCount   = $process.ThreadCount
-                    PercentageCPU = $cpu_utilization
-                    WorkingSetKB  = $process.WorkingSetPrivate / 1kb
-                })
+        $process_utlization = Get-WmiObject -Query $query
+        Write-Output "Gather statistics . . ."
+        Start-Sleep -Seconds $Refresh
+        $process_utlization_delta = Get-WmiObject -Query $query
+
+        $system_utilization = foreach ( $process in $process_utlization ) {
+            $delta = $process_utlization_delta | 
+                Where-Object { $_.IDProcess -eq $process.IDProcess -and $_.Name -eq $process.Name } |
+                Select-Object PercentProcessorTime, Timestamp_Sys100NS
+
+            $cpu_properties = @{
+                cpu_time_1 = $delta.PercentProcessorTime 
+                cpu_time_2 = $process.PercentProcessorTime
+                time_1 = $delta.Timestamp_Sys100NS
+                time_2 = $process.Timestamp_Sys100NS
+            }
+            $cpu_utilization = Get-UtilizationPercentage @cpu_properties
+
+            $properties = [ordered] @{
+                ProcessName   = $process.Name
+                PID           = $process.IDProcess
+                ThreadCount   = $process.ThreadCount
+                PercentageCPU = $cpu_utilization
+                WorkingSetKB  = $process.WorkingSetPrivate / 1kb
+            }
+            New-Object psobject -Property $properties 
         }
         Clear-Host
-        $system_utilization | Sort-Object -Property PercentageCPU -Descending | Select -First 10 | Format-Table -AutoSize
+        $system_utilization | Sort-Object -Property PercentageCPU -Descending | Select-Object -First 10 | Format-Table -AutoSize
         Start-Sleep -Seconds $Refresh
     }
 }
@@ -684,20 +696,19 @@ function Get-ScheduledTasks {
     $tasks_com_connector = New-Object -ComObject("Schedule.Service")
     $tasks_com_connector.Connect($ComputerName)
 	
-    foreach ( $task in ($tasks_com_connector.GetFolder("\").GetTasks(0) | Select Name, LastRunTime, LastTaskResult, NextRunTime, XML )) {
-	
+    $tasks = foreach ( $task in ($tasks_com_connector.GetFolder("\").GetTasks(0) | Select-Object Name, LastRunTime, LastTaskResult, NextRunTime, XML )) {
         $xml = [xml] ( $task.XML )
-		
-        $tasks += (New-Object PSObject -Property @{
-                HostName    = $ComputerName
-                Name        = $task.Name
-                LastRunTime = $task.LastRunTime
-                LastResult  = $task.LastTaskResult
-                NextRunTime = $task.NextRunTime
-                Author      = $xml.Task.RegistrationInfo.Author
-                RunAsUser   = $xml.Task.Principals.Principal.UserId
-                TaskToRun   = $xml.Task.Actions.Exec.Command
-            })
+        $task_properties = [ordered]@{
+            HostName    = $ComputerName
+            Name        = $task.Name
+            LastRunTime = $task.LastRunTime
+            LastResult  = $task.LastTaskResult
+            NextRunTime = $task.NextRunTime
+            Author      = $xml.Task.RegistrationInfo.Author
+            RunAsUser   = $xml.Task.Principals.Principal.UserId
+            TaskToRun   = $xml.Task.Actions.Exec.Command
+        }
+        New-Object psobject -Property $task_properties 
     }
 	
     return $tasks
@@ -713,7 +724,7 @@ function Import-PfxCertificate {
     
     $pfx = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2    
    
-    if ($pfxPass -eq $null) {
+    if ([string]::IsNullOrEmpty($pfxPass)) {
         $pfxPass = read-host "Enter the pfx password" -assecurestring
     }
    
@@ -753,7 +764,7 @@ function Export-Certificate {
     $cert = Get-ChildItem -path cert:\$certRootStore\$certStore | Where-Object { $_.Subject.ToLower().Contains($subject) }
     $type = [System.Security.Cryptography.X509Certificates.X509ContentType]::pfx
  
-    if ($pfxPass -eq $null) {
+    if ([string]::IsNullOrEmpty($pfxPass)) {
         $pfxPass = Read-Host "Enter the pfx password" -assecurestring
     }
 	
@@ -784,7 +795,7 @@ function Get-PSSecurePassword {
     param (
         [String] $password
     )
-    return ConvertFrom-SecureString ( ConvertTo-SecureString $password -AsPlainText -Force)
+    return ConvertFrom-SecureString ( ConvertTo-SecureString $password -AsPlainText -Force )
 }
 
 function Get-PlainTextPassword {
@@ -803,25 +814,25 @@ function Get-PlainTextPassword {
     return ([System.Runtime.InteropServices.Marshal]::PtrToStringAuto( [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure_string) ) )
 }
 
-function Get-NewPasswords {
+function New-Passwords {
     param (
-        [int] $number = 10,
-        [int] $length = 16,
-        [switch] $hash
-    )
+        [int] $total = 10,
+        [int] $length = 16
+    )    
+    function Get-Password {
+        param(
+            $length
+        )
 
-    [void][Reflection.Assembly]::LoadWithPartialName("System.Web")
-    $algorithm = 'sha256'
-
-    $passwords = @()
-    for ( $i = 0; $i -lt $number; $i++) {
-        $pass = [System.Web.Security.Membership]::GeneratePassword($length, 1)
-        if ( $hash ) {
-            $hasher = [System.Security.Cryptography.HashAlgorithm]::create($algorithm)
-            $computeHash = $hasher.ComputeHash( [Text.Encoding]::UTF8.GetBytes( $pass.ToString() ) )
-            $pass = ( ([system.bitconverter]::tostring($computeHash)).Replace("-", "") )
+        $tokens = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.{}()<>,;:!@#$%^&*_".ToCharArray()
+        $password = for( $i = 0; $i -le $length; $i++) {
+            $tokens[(Get-Random -Minimum 0 -Maximum $tokens.Count)]
         }
-        $passwords += $pass
+        return [string]::Join('', $password)
+    }
+
+    $passwords = for ( $i = 0; $i -lt $total; $i++ ) {
+        Get-Password -length $length
     }
     return $passwords
 }
@@ -846,8 +857,24 @@ function Set-SQLAlias {
 }
 
 function Get-WindowsUpdateConfig {
-    $AutoUpdateNotificationLevels = @{0 = "Not configured"; 1 = "Disabled" ; 2 = "Notify before download"; 3 = "Notify before installation"; 4 = "Scheduled installation"}
-    $AutoUpdateDays = @{0 = "Every Day"; 1 = "Every Sunday"; 2 = "Every Monday"; 3 = "Every Tuesday"; 4 = "Every Wednesday"; 5 = "Every Thursday"; 6 = "Every Friday"; 7 = "EverySaturday"}
+    $AutoUpdateNotificationLevels = @{
+        0 = "Not configured"; 
+        1 = "Disabled" ; 
+        2 = "Notify before download"; 
+        3 = "Notify before installation"; 
+        4 = "Scheduled installation"
+    }
+    
+    $AutoUpdateDays = @{
+        0 = "Every Day"; 
+        1 = "Every Sunday"; 
+        2 = "Every Monday"; 
+        3 = "Every Tuesday"; 
+        4 = "Every Wednesday"; 
+        5 = "Every Thursday"; 
+        6 = "Every Friday"; 
+        7 = "EverySaturday"
+    }
 	
     $AUSettings = (New-Object -com "Microsoft.Update.AutoUpdate").Settings
 
@@ -862,6 +889,7 @@ function Get-WindowsUpdateConfig {
 
 function Get-LocalAdmins {
     param ( [string] $computer )
+
     $adsi = [ADSI]("WinNT://" + $computer + ",computer") 
     $Group = $adsi.psbase.children.find("Administrators") 
     $members = $Group.psbase.invoke("Members") | % {$_.GetType().InvokeMember("Name", 'GetProperty', $null, $_, $null)} 
@@ -871,6 +899,7 @@ function Get-LocalAdmins {
 
 function Get-LocalGroup {
     param ( [string] $computer, [string] $Group )
+
     $adsi = [ADSI]("WinNT://" + $computer + ",computer") 
     $adGroup = $adsi.psbase.children.find($group) 
     $members = $adGroup.psbase.invoke("Members") | % {$_.GetType().InvokeMember("Name", 'GetProperty', $null, $_, $null)} 
@@ -880,12 +909,14 @@ function Get-LocalGroup {
 
 function Add-ToLocalGroup {
     param ( [string] $computer, [string] $LocalGroup, [string] $DomainGroup )
+
     $aslocalGroup = [ADSI]"WinNT://$computer/$LocalGroup,group"
     $aslocalGroup.Add("WinNT://$domain_controller/$DomainGroup,group")
 }
 
 function Add-LocalAdmins {
     param ( [string] $computer, [string] $Group )
+
     $localGroup = [ADSI]"WinNT://$computer/Administrators,group"
     $localGroup.Add("WinNT://$domain_controller/$Group,group")
 }
@@ -913,6 +944,7 @@ function Convert-ObjectToHash {
 
 function Get-RunningServices {
     param( [string] $computer )
+
     Get-WmiObject Win32_Service -computer $Computer | Where-Object { $_.State -eq "Running" } | Select-Object Name, PathName, Id, StartMode  
 }
 
@@ -926,6 +958,7 @@ function Get-DirHash {
         [ValidateScript( {Test-Path $_})]
         [string] $Directory = $PWD.Path 
     )
+
     begin {
         $ErrorActionPreference = "silentlycontinue"
         $hashes = @()
@@ -945,6 +978,7 @@ function Get-LoadedModules {
         [Parameter(Mandatory = $false, ValueFromPipeline = $True)]
         [string] $proc
     )
+
     begin {
         $modules = @()		
     }
@@ -959,16 +993,19 @@ function Get-LoadedModules {
 
 function Get-IPAddress {
     param ( [string] $name )
+
     return ( try { [System.Net.Dns]::GetHostAddresses($name) | Select-Object -Expand IPAddressToString } catch {} )
 }
 
 function Get-Base64Encoded {
     param( [string] $strEncode )
+
     [convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($strEncode))
 }
 
 function Get-Base64Decoded {
     param( [string] $strDecode )
+
     [Text.Encoding]::ASCII.GetString([convert]::FromBase64String($strDecode))
 }
 
@@ -987,11 +1024,11 @@ function Ping-Multiple {
 			
         $reply = $ping.Send($ComputerName , $timeout)
         $replies += (New-Object PSObject -Property @{
-                ComputerName = $ComputerName	
-                Address      = $reply.Address
-                Time         = $reply.RoundtripTime
-                Status       = $reply.Status
-            })
+            ComputerName = $ComputerName	
+            Address      = $reply.Address
+            Time         = $reply.RoundtripTime
+            Status       = $reply.Status
+        })
     }
     end {
         return $replies
@@ -1013,10 +1050,10 @@ function Read-RegistryHive {
             $regKey = $reg.OpenSubKey($key)
             foreach ( $regValue in $regKey.GetValueNames() ) { 
                 $regPairs += (New-Object PSObject -Property @{
-                        Server = $server
-                        Key    = $key + "\" + $regValue
-                        Value  = $regKey.GetValue($_.ToString())
-                    })
+                    Server = $server
+                    Key    = $key + "\" + $regValue
+                    Value  = $regKey.GetValue($_.ToString())
+                })
             }
             foreach ( $regSubKey in $regKey.GetSubKeyNames() ) {
                 $regPairs += Read-RegistryHive -Servers $server -Key "$key\$regSubKey"
@@ -1032,6 +1069,7 @@ function Read-RegistryHive {
 
 function log {
     param ( [string] $txt, [string] $log ) 
+
     Out-File -FilePath $log -Append -Encoding ASCII -InputObject ("[{0}] - {1}" -f $(Get-Date).ToString(), $txt )
 }
 
@@ -1055,6 +1093,7 @@ function Get-FileVersion {
         [ValidateScript( {Test-Path $_})]
         [string] $FilePath
     )
+
     begin {
         $info = @()
     }
