@@ -469,31 +469,33 @@ function Get-InstalledDotNetVersions {
     )
 }
 
-function Get-DetailedServices {
-    param(
-        [string] $ComputerName = $ENV:COMPUTERNAME,
-        [string] $state = "running"
-    )
-    
-    $services = @()
-
-    $processes = Get-WmiObject Win32_process -ComputerName $ComputerName
-    foreach ( $service in (Get-WmiObject -ComputerName $ComputerName -Class Win32_Service -Filter ("State='{0}'" -f $state ) )  ) {
-        
-        $process = $processes | Where-Object { $_.ProcessId -eq $service.ProcessId }
-    
-        $services += (New-Object PSObject -Property @{
-                Name        = $service.Name
-                DisplayName = $service.DisplayName
-                User        = $process.getOwner().user
-                CommandLine = $process.CommandLine
-                PID         = $process.ProcessId
-                Memory      = [math]::Round( $process.WorkingSetSize / 1mb, 2 )
-            })    
-
+function Get-DetailedServices {    
+    function  Get-MemoryInMb {
+        param (
+            [int] $Size
+        )
+        return [math]::Round( $Size / 1mb, 2 )
     }
 
-    return $Services
+    $processes = Get-WmiObject Win32_process | 
+        Group-Object -Property Processid -AsHashTable -AsString
+
+    $query = "select Name,DisplayName,ProcessId,State from Win32_Service where State = 'Running'"
+    
+    $all_services = Get-WmiObject -Query $query
+
+    $services = foreach ( $service in $all_services ) {
+        New-Object PSObject -Property @{
+            Name        = $service.Name
+            DisplayName = $service.DisplayName
+            User        = $processes[$service.ProcessId.ToString()].GetOwner().user
+            CommandLine = $processes[$service.ProcessId.ToString()].CommandLine
+            PID         = $processes[$service.ProcessId.ToString()].ProcessId
+            Memory      = Get-MemoryInMb -Size $processes[$service.ProcessId.ToString()].WorkingSetSize
+        }   
+    }
+
+    return $services
 }
 
 function Get-FileEncoding {
@@ -575,7 +577,6 @@ function Get-Url {
     }
        
     if ( -not [String]::IsNullorEmpty($Server) ) {
-        #$request.Headers.Add("Host", $HostHeader)
         $request.Proxy = new-object -typename System.Net.WebProxy -argumentlist $Server
     }
     
@@ -583,8 +584,6 @@ function Get-Url {
     "[{0}][REQUEST] Getting $url ..." -f $(Get-Date)
     try {
         $timing_request = Measure-Command { $response = $request.GetResponse() }
-        $stream = $response.GetResponseStream()
-        #$reader = New-Object System.IO.StreamReader($stream)
 
         "[{0}][REPLY] Server = {1} " -f $(Get-Date), $response.Server
         "[{0}][REPLY] Status Code = {1} {2} . . ." -f $(Get-Date), $response.StatusCode, $response.StatusDescription
@@ -632,9 +631,8 @@ function Get-Uptime {
     $lastboottime = (Get-WmiObject -Class Win32_OperatingSystem -computername $computer).LastBootUpTime
     $sysuptime = (Get-Date) - [System.Management.ManagementDateTimeconverter]::ToDateTime($lastboottime)
 	
-    $uptime = $uptime_template -f $computer, $sysuptime.days, $sysuptime.hours, $sysuptime.minutes, $sysuptime.seconds
-	
-    return $uptime
+    return $uptime_template -f $computer, $sysuptime.days, $sysuptime.hours, $sysuptime.minutes, $sysuptime.seconds
+
 }
 
 function Get-CpuLoad {
@@ -681,7 +679,10 @@ function Get-CpuLoad {
             New-Object psobject -Property $properties 
         }
         Clear-Host
-        $system_utilization | Sort-Object -Property PercentageCPU -Descending | Select-Object -First 10 | Format-Table -AutoSize
+        $system_utilization | 
+            Sort-Object -Property PercentageCPU -Descending | 
+            Select-Object -First 10 | 
+            Format-Table -AutoSize
         Start-Sleep -Seconds $Refresh
     }
 }
@@ -695,8 +696,9 @@ function Get-ScheduledTasks {
 	
     $tasks_com_connector = New-Object -ComObject("Schedule.Service")
     $tasks_com_connector.Connect($ComputerName)
-	
-    $tasks = foreach ( $task in ($tasks_com_connector.GetFolder("\").GetTasks(0) | Select-Object Name, LastRunTime, LastTaskResult, NextRunTime, XML )) {
+    
+    $all_tasks = $tasks_com_connector.GetFolder("\").GetTasks(0) | Select-Object Name, LastRunTime, LastTaskResult, NextRunTime, XML 
+    $tasks = foreach ( $task in $all_tasks ) {
         $xml = [xml] ( $task.XML )
         $task_properties = [ordered]@{
             HostName    = $ComputerName
@@ -730,7 +732,7 @@ function Import-PfxCertificate {
    
     $pfx.import($certPath, $pfxPass, "Exportable,PersistKeySet")    
    
-    $store = new-object System.Security.Cryptography.X509Certificates.X509Store($certStore, $certRootStore)    
+    $store = New-Object System.Security.Cryptography.X509Certificates.X509Store($certStore, $certRootStore)    
     $store.open("MaxAllowed")    
     $store.add($pfx)    
     $store.close()    
@@ -743,7 +745,8 @@ function Remove-Certificate {
         [String] $certStore = "My"
     )
 
-    $cert = Get-ChildItem -path cert:\$certRootStore\$certStore | Where-Object { $_.Subject.ToLower().Contains($subject) }
+    $cert = Get-ChildItem -path cert:\$certRootStore\$certStore | 
+        Where-Object { $_.Subject.ToLower().Contains($subject) }
     $store = new-object System.Security.Cryptography.X509Certificates.X509Store($certStore, $certRootStore)
 	
     $store.Open("ReadWrite")
@@ -761,7 +764,8 @@ function Export-Certificate {
         [object] $pfxPass 
     )
 	
-    $cert = Get-ChildItem -path cert:\$certRootStore\$certStore | Where-Object { $_.Subject.ToLower().Contains($subject) }
+    $cert = Get-ChildItem -path cert:\$certRootStore\$certStore | 
+        Where-Object { $_.Subject.ToLower().Contains($subject) }
     $type = [System.Security.Cryptography.X509Certificates.X509ContentType]::pfx
  
     if ([string]::IsNullOrEmpty($pfxPass)) {
@@ -773,7 +777,6 @@ function Export-Certificate {
 }
 
 function pause {
-    #From http://www.microsoft.com/technet/scriptcenter/resources/pstips/jan08/pstip0118.mspx
     Write-Output "Press any key to exit..."
     $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
@@ -821,19 +824,19 @@ function New-Passwords {
     )    
     function Get-Password {
         param(
-            $length
+            [int] $length
         )
 
         $tokens = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.{}()<>,;:!@#$%^&*_".ToCharArray()
-        $password = for( $i = 0; $i -le $length; $i++) {
-            $tokens[(Get-Random -Minimum 0 -Maximum $tokens.Count)]
-        }
+        $password = Get-Random -Count $length -InputObject $tokens
+
         return [string]::Join('', $password)
     }
 
-    $passwords = for ( $i = 0; $i -lt $total; $i++ ) {
+    $passwords = for( $i = 0; $i -lt $total; $i++ ) {
         Get-Password -length $length
     }
+
     return $passwords
 }
 
@@ -892,7 +895,8 @@ function Get-LocalAdmins {
 
     $adsi = [ADSI]("WinNT://" + $computer + ",computer") 
     $Group = $adsi.psbase.children.find("Administrators") 
-    $members = $Group.psbase.invoke("Members") | % {$_.GetType().InvokeMember("Name", 'GetProperty', $null, $_, $null)} 
+    $members = $Group.psbase.invoke("Members") | 
+        ForEach-Object {$_.GetType().InvokeMember("Name", 'GetProperty', $null, $_, $null)} 
 	
     return $members
 }
@@ -902,7 +906,8 @@ function Get-LocalGroup {
 
     $adsi = [ADSI]("WinNT://" + $computer + ",computer") 
     $adGroup = $adsi.psbase.children.find($group) 
-    $members = $adGroup.psbase.invoke("Members") | % {$_.GetType().InvokeMember("Name", 'GetProperty', $null, $_, $null)} 
+    $members = $adGroup.psbase.invoke("Members") | 
+        ForEach-Object {$_.GetType().InvokeMember("Name", 'GetProperty', $null, $_, $null)} 
 	
     return $members
 }
@@ -945,11 +950,15 @@ function Convert-ObjectToHash {
 function Get-RunningServices {
     param( [string] $computer )
 
-    Get-WmiObject Win32_Service -computer $Computer | Where-Object { $_.State -eq "Running" } | Select-Object Name, PathName, Id, StartMode  
+    Get-WmiObject Win32_Service -computer $Computer | 
+        Where-Object { $_.State -eq "Running" } | 
+        Select-Object Name, PathName, Id, StartMode  
 }
 
 function Get-Certs {
-    Get-ChildItem -path Cert:\LocalMachine\My | Select-Object FriendlyName, Issuer, NotAfter, HasPrivateKey | Sort-Object NotAfter
+    Get-ChildItem -path Cert:\LocalMachine\My | 
+        Select-Object FriendlyName, Issuer, NotAfter, HasPrivateKey | 
+        Sort-Object NotAfter
 }
 	
 function Get-DirHash {
@@ -976,15 +985,14 @@ function Get-DirHash {
 function Get-LoadedModules {
     param(
         [Parameter(Mandatory = $false, ValueFromPipeline = $True)]
-        [string] $proc
+        [string] $processName
     )
 
     begin {
         $modules = @()		
     }
     process {
-        $procInfo = Get-Process | Where-Object { $_.Name.ToLower() -eq $proc.ToLower() }
-        $modules = $procInfo | Select-Object Name, Modules
+        $modules = Get-Process -Name $processName | Select-Object Name, Modules
     }
     end {
         return $modules 
@@ -993,20 +1001,17 @@ function Get-LoadedModules {
 
 function Get-IPAddress {
     param ( [string] $name )
-
     return ( try { [System.Net.Dns]::GetHostAddresses($name) | Select-Object -Expand IPAddressToString } catch {} )
 }
 
 function Get-Base64Encoded {
     param( [string] $strEncode )
-
-    [convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($strEncode))
+    return ( [convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($strEncode)) )
 }
 
 function Get-Base64Decoded {
     param( [string] $strDecode )
-
-    [Text.Encoding]::ASCII.GetString([convert]::FromBase64String($strDecode))
+    return ( [Text.Encoding]::ASCII.GetString([convert]::FromBase64String($strDecode)) )
 }
 
 function Ping-Multiple {
