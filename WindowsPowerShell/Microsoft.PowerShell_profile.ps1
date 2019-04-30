@@ -13,6 +13,28 @@ New-Alias -Name code  -Value $env:EDITOR
 
 Set-PSReadlineKeyHandler -Key Tab -Function Complete
 
+function Invoke-GitReposPull {
+  param( 
+    [Parameter(Mandatory=$true)]
+    [ValidateScript({Test-Path $_})]
+    [string]
+    $ReposRoot 
+  )
+
+  $currentDirectory = $PWD.Path
+  
+  foreach( $repo in (Get-ChildItem -Path $ReposRoot) ) {
+    Set-Location -Path $repo
+    if( Test-Path -Path '.\.git') {
+      git pull
+    }
+    Set-Location -Path $repo.Parent.FullName
+  }
+
+  Set-location -Path $currentDirectory
+}
+Set-Alias -Name pullms -Value Invoke-GitReposPull
+
 function Get-VPNPassword {
     $vpn = ""
     $secure_password = Get-StoredCredential -Target $vpn | Select-Object -ExpandProperty Password
