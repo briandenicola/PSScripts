@@ -1,4 +1,55 @@
-﻿function log {
+﻿function Get-Url {
+    param(
+        [string] $url,
+        [ValidateSet("NTLM", "BASIC", "NONE")]
+        [string] $AuthType = "NTLM",
+        [ValidateSet("HEAD", "POST", "GET")]
+        [string] $Method = "HEAD",
+        [int] $timeout = 8,
+        [string] $Server,
+        [Management.Automation.PSCredential] $creds
+    )
+    
+    $request = [System.Net.WebRequest]::Create($url)
+    $request.Method = $Method
+    $request.Timeout = $timeout * 1000
+    $request.AllowAutoRedirect = $false
+    $request.ContentType = "application/x-www-form-urlencoded"
+    $request.UserAgent = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0; .NET CLR 1.1.4322)"
+    
+    if ($AuthType -eq "BASIC") {
+        $network_creds = $creds.GetNetworkCredential()
+        $auth = "Basic " + [Convert]::ToBase64String([Text.Encoding]::Default.GetBytes($network_creds.UserName + ":" + $network_creds.Password))
+        $request.Headers.Add("Authorization", $auth)
+        $request.Credentials = $network_creds
+        $request.PreAuthenticate = $true
+    }
+    elseif ( $AuthType -eq "NTLM" ) {
+        $request.Credentials = [System.Net.CredentialCache]::DefaultCredentials
+    }
+       
+    if ( -not [String]::IsNullorEmpty($Server) ) {
+        $request.Proxy = new-object -typename System.Net.WebProxy -argumentlist $Server
+    }
+    
+    #Wrap this with a measure-command to determine type
+    "[{0}][REQUEST] Getting $url ..." -f $(Get-Date)
+    try {
+        $timing_request = Measure-Command { $response = $request.GetResponse() }
+
+        "[{0}][REPLY] Server = {1} " -f $(Get-Date), $response.Server
+        "[{0}][REPLY] Status Code = {1} {2} . . ." -f $(Get-Date), $response.StatusCode, $response.StatusDescription
+        "[{0}][REPLY] Content Type = {1} . . ." -f $(Get-Date), $response.ContentType
+        "[{0}][REPLY] Content Length = {1} . . ." -f $(Get-Date), $response.ContentLength
+        "[{0}][REPLY] Total Time = {1} . . ." -f $(Get-Date), $timing_request.TotalSeconds
+
+    }
+    catch [System.Net.WebException] {
+        Write-Error ("The request failed with the following WebException - " + $_.Exception.ToString() )
+    }
+    
+}
+function log {
     param( 
         [string] $txt
     )

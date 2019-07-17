@@ -147,7 +147,7 @@ function Set-ObjectProperties
     return $request_type
 }
 
-function Get-GTWebserviceRequest 
+function Get-WebserviceRequest 
 {
     param(
         [string] $Url,
@@ -193,7 +193,7 @@ function Get-GTWebserviceRequest
 	
 }
 
-function Get-GTWebRequest 
+function Get-WebRequest 
 {
     param(
         [string] $url,

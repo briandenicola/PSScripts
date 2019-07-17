@@ -8,9 +8,27 @@ param (
 	[string] $DifferenceDirectory
 )
 	
-. (Join-Path -Path $ENV:SCRIPTS_HOME -ChildPath "libraries\standard_functions.ps1" )
+function Get-DirHash {
+    param(
+        [Parameter(Mandatory = $false, ValueFromPipeline = $True)]
+        [ValidateScript( {Test-Path $_})]
+        [string] $Directory = $PWD.Path 
+    )
 
-$source_hashes = $SourceDirectory | Get-DirHash
-$difference_hashes = $DifferenceDirectory | Get-DirHash
+    begin {
+        $ErrorActionPreference = "silentlycontinue"
+        $hashes = @()
+    }
+    process {
+        $hashes = Get-ChildItem -Recurse -Path $Directory | 
+            Where-Object { $_.PsIsContainer -eq $false } | 
+            Select-Object Name, DirectoryName, @{Name = "SHA1 Hash"; Expression = {Get-Hash1 $_.FullName -algorithm "sha1"}}
+    }
+    end {
+        return $hashes 
+    }
+}
 
+$source_hashes = Get-DirHash -Directory $SourceDirectory 
+$difference_hashes = Get-DirHash -Directory $DifferenceDirectory
 Compare-Object  -ReferenceObject $source_hashes -DifferenceObject $difference_hashes  -Property "Name","SHA1 Hash" -IncludeEqual

@@ -1,4 +1,5 @@
-. (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
+#. (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
+Import-Module (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.psm1") -Force
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -61,12 +62,6 @@ function Get-VPNUnlimitedPassword
   Write-Verbose -Message "Password sent to clip board"
 }
 Set-Alias -Name vpn -Value Get-VPNUnlimitedPassword
-
-function Get-PublicKey 
-{
-  Get-Content -Path $pub_key_file | Set-Clipboard
-}
-Set-Alias -Name pubkey -Value Get-PublicKey
 
 function Get-Profile
 {

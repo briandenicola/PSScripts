@@ -10,8 +10,8 @@ param (
 $url_to_validate = Get-Json -Config $cfg
 
 foreach( $url in $url_to_validate ) {
-    foreach( $server in ($url.servers | Select -Expand server) ) {
-        $results = Get-GTWebRequest -url $url.url -Server $server 
+    foreach( $server in ($url.servers | Select-Object -Expand server) ) {
+        $results = Get-WebRequest -url $url.url -Server $server 
         if( $saveReply ) { Save-Reply -Url $url -Text $results -Server $server }
         Validate-Results -Rules $url.Rules -Results $results
     }

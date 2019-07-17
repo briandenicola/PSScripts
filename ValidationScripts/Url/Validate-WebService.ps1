@@ -33,15 +33,19 @@ function AddTo-HostFile
 $url_to_validate = Get-Json -Config $cfg
 
 foreach( $url in $url_to_validate ) {
-    $hostname = Select-String -InputObject $url -Pattern 'http?://([\w-]+\.+[\w-]+\.[\w-]+).*'  | Select -Expand Matches | Select -ExpandProperty Groups |  Select -ExpandProperty Value | Select -Last 1
+    $hostname = Select-String -InputObject $url -Pattern 'http?://([\w-]+\.+[\w-]+\.[\w-]+).*'  | 
+        Select-Object -Expand Matches | 
+        Select-Object -ExpandProperty Groups |
+        Select-Object -ExpandProperty Value |
+        Select-Object -Last 1
 
-    foreach( $server in ($url.servers | Select -Expand server) ) {
+    foreach( $server in ($url.servers | Select-Object -Expand server) ) {
         
-        $ip = Resolve-DnsName $server | Select -ExpandProperty IpAddress
+        $ip = Resolve-DnsName $server | Select-Object -ExpandProperty IpAddress
         AddTo-HostFile -url $hostname -ip $ip
         Clear-DNSClientCache 
 
-        $results = Get-GTWebserviceRequest -url $url.url -Server $server -WebService $url.WebService 
+        $results = Get-WebserviceRequest -url $url.url -Server $server -WebService $url.WebService 
         if( $saveReply ) { Save-Reply -Url $url -Text $results -Server $server }
         Validate-Results -Rules $url.Rules -Results $results 
 
