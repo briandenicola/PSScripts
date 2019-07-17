@@ -1,6 +1,3 @@
-# Legacy Functions that are reference by many scripts over the years.
-# Newer stand alone functions have been moved to the Standard_Functions.psm1 module
-
 function Disable-InternetExplorerESC 
 {
     $AdminKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}"

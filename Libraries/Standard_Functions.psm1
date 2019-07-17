@@ -1,3 +1,14 @@
+function Get-EmptyDirectories 
+{
+    param(
+        [ValidateScript({Test-Path $_})]
+        [Parameter(Mandatory = $true)]
+        [string] $Path
+    )
+    
+    return (Get-ChildItem -Path $path -Recurse | Where-Object {$_.PSIsContainer -eq $True -and $_.GetFileSystemInfos().Count -eq 0 } | Select-Object -Expand FullName)
+}
+
 function New-Salt 
 {
     $saltLengthLimit = 32
