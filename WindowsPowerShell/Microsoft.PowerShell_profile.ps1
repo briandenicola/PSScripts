@@ -1,17 +1,35 @@
-﻿. (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
+. (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$MaximumHistoryCount = 1024
-$env:EDITOR = "C:\Program Files (x86)\Microsoft VS Code\code.exe"
-$github_path = "D:\GitHub\PSScripts"
+$MaximumHistoryCount=1024
+$env:EDITOR = "C:\Program Files\Microsoft VS Code\Code.exe"
+$pub_key_file = "C:\Users\brian\.ssh\id_rsa.pub"
 
 New-Alias -name gh    -value Get-History 
-New-Alias -name i     -value Invoke-History
-New-Alias -name ed    -value $env:EDITOR
+New-Alias -name i     -Value Invoke-History
+New-Alias -name ed    -Value $env:EDITOR
 New-Alias -Name code  -Value $env:EDITOR
 
 Set-PSReadlineKeyHandler -Key Tab -Function Complete
+
+if( (Test-Path -Path (Join-Path -Path $ENV:USERPROFILE -ChildPath "Contacts" ) ) ) { Remove-Item -Recurse -Force (Join-Path -Path $ENV:USERPROFILE -ChildPath "Contacts" )}
+if( (Test-Path -Path (Join-Path -Path $ENV:USERPROFILE -ChildPath "onecoremsvsmon" ) ) ) { Remove-Item -Recurse -Force (Join-Path -Path $ENV:USERPROFILE -ChildPath "onecoremsvsmon" )}
+if( (Test-Path -Path (Join-Path -Path $ENV:USERPROFILE -ChildPath "Searches" ) ) ) { Remove-Item -Recurse -Force (Join-Path -Path $ENV:USERPROFILE -ChildPath "Searches" )}
+if( (Test-Path -Path (Join-Path -Path $ENV:USERPROFILE -ChildPath "source" ) ) ) { Remove-Item -Recurse -Force (Join-Path -Path $ENV:USERPROFILE -ChildPath "source" )}
+if( (Test-Path -Path (Join-Path -Path $ENV:USERPROFILE -ChildPath "Saved Games" ) ) ) { Remove-Item -Recurse -Force (Join-Path -Path $ENV:USERPROFILE -ChildPath "Saved Games" )}
+if( (Test-Path -Path (Join-Path -Path $ENV:USERPROFILE -ChildPath "3D Objects" ) ) ) { Remove-Item -Recurse -Force (Join-Path -Path $ENV:USERPROFILE -ChildPath "3D Objects" )}
+if( (Test-Path -Path (Join-Path -Path $ENV:USERPROFILE -ChildPath "Favorites" ) ) ) { Remove-Item -Recurse -Force (Join-Path -Path $ENV:USERPROFILE -ChildPath "Favorites" )}
+if( (Test-Path -Path (Join-Path -Path $ENV:USERPROFILE -ChildPath "Links" ) ) ) { Remove-Item -Recurse -Force (Join-Path -Path $ENV:USERPROFILE -ChildPath "Links" )}
+
+function Get-AllFilesAndDirectories {
+  param (
+    [string] $Path = "."
+  )
+
+  Get-ChildItem -Path . -Attributes "Normal, Hidden" 
+}
+Set-Alias -Name ll -Value Get-AllFilesAndDirectories
 
 function Invoke-GitReposPull {
   param( 
@@ -24,6 +42,7 @@ function Invoke-GitReposPull {
   $currentDirectory = $PWD.Path
   
   foreach( $repo in (Get-ChildItem -Path $ReposRoot) ) {
+    Write-Verbose -Message ("[{0}] - Setting location to {1} . . ." -f $(Get-date), $repo)
     Set-Location -Path $repo
     if( Test-Path -Path '.\.git') {
       git pull
@@ -35,30 +54,33 @@ function Invoke-GitReposPull {
 }
 Set-Alias -Name pullms -Value Invoke-GitReposPull
 
-function Get-VPNPassword {
-    $vpn = ""
-    $secure_password = Get-StoredCredential -Target $vpn | Select-Object -ExpandProperty Password
-    Get-PlainTextPassword -password (ConvertFrom-SecureString $secure_password) | Set-Clipboard
-    Write-Verbose -Message "Password sent to clip board"
+function Get-VPNUnlimitedPassword 
+{
+  $secure_password = Get-StoredCredential -Target $ENV:VPN | Select-Object -ExpandProperty Password
+  Get-PlainTextPassword -password (ConvertFrom-SecureString $secure_password) | Set-Clipboard
+  Write-Verbose -Message "Password sent to clip board"
 }
-Set-Alias -Name vpn -Value Get-VPNPassword
+Set-Alias -Name vpn -Value Get-VPNUnlimitedPassword
 
-function Get-PublicKey {
-    Get-Content -Path $pub_key_file | Set-Clipboard
+function Get-PublicKey 
+{
+  Get-Content -Path $pub_key_file | Set-Clipboard
 }
 Set-Alias -Name pubkey -Value Get-PublicKey
 
-function Get-Profile {
-    ed $profile
+function Get-Profile
+{
+	ed $profile
 }
 
-function Edit-HostFile {
-    ed (Join-Path -Path $ENV:SystemRoot -ChildPath "System32\drivers\etc\hosts")
+function Edit-HostFile
+{
+	&$env:editor c:\Windows\System32\drivers\etc\hosts
 }
 Set-Alias -Name hf -Value Edit-HostFile
 
 function Set-Home {
-    Set-Location -Path $home
+  Set-Location -Path $home
 }
 Set-Alias -Name home -Value Set-Home
 
@@ -76,19 +98,22 @@ function cd {
 }
 
 function Shorten-Path([string] $path) { 
-    $loc = $path.Replace($HOME, '~') 
-    $loc = $loc -replace '^[^:]+::', '' 
-    return ($loc -replace '\\(\.?)([^\\])[^\\]*(?=\\)', '\$1$2') 
+  $loc = $path.Replace($HOME, '~') 
+  $loc = $loc -replace '^[^:]+::', '' 
+  return ($loc -replace '\\(\.?)([^\\])[^\\]*(?=\\)', '\$1$2') 
 }
 
 & {
-    for ($i = 0; $i -lt 26; $i++) { 
-        $funcname = ([System.Char]($i + 65)) + ':'
-        $str = "function global:$funcname { set-location $funcname } " 
-        Invoke-Expression $str 
-    }
+  for ($i = 0; $i -lt 26; $i++) { 
+      $funcname = ([System.Char]($i + 65)) + ':'
+      $str = "function global:$funcname { set-location $funcname } " 
+      Invoke-Expression $str 
+  }
 }
 
+remove-item alias:ls
+set-alias ls Get-ChildItemColor
+ 
 Remove-Item alias:ls
 Set-Alias ls Get-ChildItemColor
  
