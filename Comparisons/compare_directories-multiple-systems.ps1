@@ -67,10 +67,10 @@ function main
 {
 	$results = Invoke-Command -ComputerName $computers -ScriptBlock $map -ArgumentList $path | Select Name, FileHash, System 
 
-    if( !$ShowAllFiles ) {
-        $results = $results | Group-Object -Property Name -AsHashTable | Reduce-Set
-    }
-	
+	if( !$ShowAllFiles ) {
+		$results = $results | Group-Object -Property Name -AsHashTable | Reduce-Set
+	}
+
 	if( ![string]::IsNullOrEmpty($out) ) {
 		$results | Export-Csv -Encoding Ascii -NoTypeInformation $out
 		Invoke-Item $out
