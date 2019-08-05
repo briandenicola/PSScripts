@@ -36,6 +36,41 @@ function Convert-SecondsFromEpochToDate
     return $(Get-Date -date $epoch).AddSeconds($totalSeconds).ToLocalTime()
 }
 
+function Get-PowerShellVersion 
+{
+    return $Host.Version
+}
+
+function Start-WindowsPowerShellCmdlet
+{
+    param(
+        [string] $ArgumentList
+    )
+    
+    $pwsh = New-Object System.Diagnostics.ProcessStartInfo
+    $pwsh.FileName = "powershell.exe"
+    $pwsh.RedirectStandardError = $true
+    $pwsh.RedirectStandardOutput = $true
+    $pwsh.UseShellExecute = $false
+    $pwsh.Arguments = $ArgumentList
+
+    $p = New-Object System.Diagnostics.Process
+    $p.StartInfo = $pwsh
+    $p.Start() | Out-Null
+    $p.WaitForExit()
+
+    return $p
+}
+
+function Get-StandardOutput 
+{
+    param(
+        [System.Diagnostics.Process] $process
+    )
+
+    return $process.StandardOutput.ReadToEnd()
+}
+
 function Get-DnsServer 
 {
     [CmdletBinding()]
@@ -44,7 +79,25 @@ function Get-DnsServer
         [string] $Alias = "Ethernet"
     )
 
-    return (Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object InterfaceAlias -eq  $Alias  | Select-Object -ExpandProperty ServerAddresses)
+    Set-Variable -Name os      -Value $ENV:OS
+    Set-Variable -Name command -Value "Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object InterfaceAlias -eq  $Alias  | Select-Object -ExpandProperty ServerAddresses" -Option Constant
+
+    if( $os -eq "Windows_NT") {
+        if( Get-PowerShellVersion -ge [Version]::New(6,0,0) ) {
+            $process = Start-WindowsPowerShellCmdlet -ArgumentList "-Command &{ $command }" 
+            $dnsServers = Get-StandardOutput -Process $process
+        }
+        else {
+            $dnsServers = Invoke-Expression -Command $command
+        }
+    }
+    else {
+        Write-Errror -Message ("Get-DnsClientServerAddress does not work on {0}" -f $os)
+        return $false
+    }
+
+    return $dnsServers
+
 }
 
 function Set-DnsServer 
@@ -69,7 +122,7 @@ function Set-DnsServer
     }
     Start-Process -FilePath powershell.exe -verb runas -ArgumentList $ArgumentList  -WindowStyle Hidden -Wait
 
-    $dns_addresses = Get-DnsClientServerAddress | Where-Object { $_.InterfaceAlias -eq $Alias -and $_.AddressFamily -eq 2} | Select-Object -ExpandProperty ServerAddresses
+    $dns_addresses = Get-DnsServer -Alias $Alias
     Write-Verbose -Message ("The local DNS Server has been set to {0} . . . " -f $dns_addresses)
 }
 
