@@ -41,10 +41,10 @@ files from the destination. It will also overwrite any existing files in the des
 param (
     
     [Parameter(Mandatory=$true)] 
-	[string] $src,
+    [string] $src,
 
     [Parameter(Mandatory=$true)] 
-	[string] $dst,
+    [string] $dst,
 
     [string[]] $ignore_files = [string]::emtpy,
 
@@ -54,19 +54,19 @@ param (
 
 function Get-MD5 
 {
-	param(
-	    [string] $file = $(throw 'a filename is required')
-	)
+    param(
+        [string] $file = $(throw 'a filename is required')
+    )
 
-	$fileStream = [system.io.file]::openread($file)
-	$hasher = [System.Security.Cryptography.HashAlgorithm]::create("md5")
-	$hash = $hasher.ComputeHash($fileStream)
-	$fileStream.Close()
-	$md5 = ([system.bitconverter]::tostring($hash)).Replace("-","")
+    $fileStream = [system.io.file]::openread($file)
+    $hasher = [System.Security.Cryptography.HashAlgorithm]::create("md5")
+    $hash = $hasher.ComputeHash($fileStream)
+    $fileStream.Close()
+    $md5 = ([system.bitconverter]::tostring($hash)).Replace("-","")
 
     Write-Verbose "File - $file - has a MD5 - $md5"
 
-	return ( $md5 ) 
+    return ( $md5 ) 
 }
 
 function Strip-RootDirectory
@@ -87,26 +87,26 @@ function Get-DirectoryHash
         [string] $root
     )
 
-	begin {
-		$ErrorActionPreference = "silentlycontinue"
+    begin {
+        $ErrorActionPreference = "silentlycontinue"
         $hashes = @()
-	}
-	process {
+    }
+    process {
         if( -not ( Test-Path $root ) ) {
             throw "Could not find the directory $($root)"
         }
 
         Write-Verbose "Getting Hashes for $($root) . . ."
 
-		$hashes = @( 
+        $hashes = @( 
             Get-ChildItem -Recurse $root -Exclude $ignore_files | 
             Where { $_.PsIsContainer -eq $false } | 
             Select Name, @{Name="Directory"; Expression={Strip-RootDirectory -FullDir $_.DirectoryName -RootDir $root}}, @{Name="Hash"; Expression={Get-MD5 $_.FullName}}
         )
-	}
-	end {
+    }
+    end {
         return $hashes
-	}
+    }
 }
 
 function main

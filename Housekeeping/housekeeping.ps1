@@ -44,26 +44,26 @@ param (
 	[Alias('dir')]
 	[ValidateScript({Test-Path $_ -PathType 'Container'})] 
 	[string] $Directory,
-	
+
 	[Parameter(Mandatory=$false)]
 	[Alias('ext')]
 	[string] $Extension = "*.*",
-	
-    [Parameter(Mandatory=$false)]
+
+	[Parameter(Mandatory=$false)]
 	[ValidateSet("LastWriteTime","LastAccessTime")] 
 	[string] $Comparison = "LastWriteTime",
-	
+
 	[Parameter(Mandatory=$false)]
 	[ValidateRange(0,365)]
 	[int] $Days = 30,
-	
+
 	[Parameter(Mandatory=$false)]
 	[switch] $Archive,
-	
+
 	[Parameter(Mandatory=$false)]
 	[Alias('Archivedir')]
 	[string] $ArchiveDirectory = ( Join-Path -Path $PWD.Path -ChildPath "Archive" ),
-	
+
 	[Parameter(Mandatory=$false)]
 	[string] $log = ( Join-Path -Path $PWD.Path -ChildPath "housekeeping.log")
 )
@@ -75,13 +75,12 @@ function Create-Zip
 		[string] $Source,
 		[string] $ZipFile
 	)
-	
+
 	$zip = [ICSharpCode.SharpZipLib.Zip.ZipFile]::Create($ZipFile)
 	$zip.BeginUpdate()
 	$zip.Add($Source)
 	$zip.CommitUpdate()
 	$zip.Close()
-	
 }
 
 $now = Get-Date
@@ -98,16 +97,13 @@ $files_to_purge = Get-ChildItem -Path $Directory -Recurse | Where { $_.PSIsConta
 foreach( $file_to_purge in $files_to_purge ) {
 	Write-Verbose -Message ("[{0}] - Working on {1}. {2} is {3} . . ." -f $(Get-Date), $file_to_purge.FullName, $Comparison, $file_to_purge.$Comparison  )
 
-   	if( $file_to_purge.$Comparison -lt $PurgeDate -and $file_to_purge.Extension -like $Extension ) {
-        
+	if( $file_to_purge.$Comparison -lt $PurgeDate -and $file_to_purge.Extension -like $Extension ) {
 		if($Archive){
 			$archive_name = Join-Path -Path $ArchiveDirectory -ChildPath ("{0}-{1}.zip" -f $file_to_purge.Directory.Name, $file_to_purge.BaseName)
 			Out-File $log -Append -Encoding ASCII -InputObject ("[{0}] - Archiving: {1} to {2}" -f $(Get-Date), $file_to_purge.Fullname, $archive_name )
 			Create-Zip -Source $file_to_purge.FullName -ZipFile $archive_name
 		}
-	
 		Out-File $log -Append -Encoding ASCII -InputObject ("[{0}] - Delete: {1}" -f $(Get-Date), $file_to_purge.Fullname )
 		Remove-Item -Path $file_to_purge.FullName -Verbose -ErrorAction SilentlyContinue
-     
-   } 
+	} 
 }
