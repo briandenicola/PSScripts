@@ -1,8 +1,4 @@
-﻿$library_location = [System.IO.Path]::GetDirectoryName($myInvocation.MyCommand.Definition)
-
-Add-Type -Path ( Join-Path $library_location "Microsoft.SharePoint.Client.dll" )
-Add-Type -Path ( Join-Path $library_location "Microsoft.SharePoint.Client.Runtime.dll" )
-
+﻿
 function Connect-SPOnlineServices {
 
     param(
@@ -22,7 +18,7 @@ function Connect-SPOnlineServices {
 
 }
 
-function ConvertDictionary-ToObject {
+function Convert-DictionaryToObject {
     param (
         [object] $dictionary
     )
@@ -70,7 +66,7 @@ function Update-SPListItemViaCSOM {
     $ctx.ExecuteQuery()
 }
 
-function Create-SPListItemViaCSOM {
+function New-SPListItemViaCSOM {
 
     param (
         [Parameter(Mandatory = $true)][string] $site,
@@ -124,11 +120,11 @@ function Get-SPListViaCSOM {
     $ctx.Load($items)
     $ctx.ExecuteQuery()
 
-    return ( ConvertDictionary-ToObject $items.FieldValues )
+    return ( Convert-DictionaryToObject $items.FieldValues )
 }
 
 
-function UploadTo-SharePointOnline {
+function Push-ToSharePointOnline {
     param (
         [Parameter(Mandatory = $true)][string] $site,
         
