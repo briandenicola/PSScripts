@@ -2,7 +2,7 @@
 param (
 	[Parameter(Mandatory=$true)] [string[]] $computers,
 	[Parameter(Mandatory=$true)] [string] $path,
-    [switch] $ShowAllFiles,
+	[switch] $ShowAllFiles,
 	[string] $out
 )
 
