@@ -298,11 +298,18 @@ function Query-DatabaseTable
     param (
         [string] $server, 
         [string] $dbs, 
-        [string] $sql
+        [string] $sql,
+        [pscredential] $creds
     )
 	
     $Columns = @()
-    $con = "server={0};Integrated Security=true;Initial Catalog={1}" -f $server, $dbs
+
+    if($null -eq $creds) {
+        $con = "server={0};Integrated Security=true;Initial Catalog={1}" -f $server, $dbs
+    }
+    else {
+        $con = "server={0};User Id={1};Password={2};Database={3}" -f $server, $creds.UserName, $creds.GetNetworkCredential().Password, $dbs
+    }
 	
     $ds = New-Object "System.Data.DataSet" "DataSet"
     $da = New-Object "System.Data.SqlClient.SqlDataAdapter" ($con)
