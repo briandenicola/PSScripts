@@ -143,8 +143,19 @@ function Get-PublicKey
 
 function Get-MyPublicIPAddress 
 {
-    param( [switch] $CopyToClipboard )
-    $ip = Resolve-DnsName -Name o-o.myaddr.l.google.com -Type TXT -NoHostsFile -DnsOnly -Server ns1.google.com | Select-Object -ExpandProperty Strings 
+    param( 
+        [switch] $UsingDNS,
+        [switch] $CopyToClipboard 
+    )
+
+    if($DNS) {
+        $ip = Resolve-DnsName -Name o-o.myaddr.l.google.com -Type TXT -NoHostsFile -DnsOnly -Server ns1.google.com | Select-Object -ExpandProperty Strings 
+    }
+    else {
+        $reply = Invoke-WebRequest -UseBasicParsing -Uri http://checkip.dyndns.org | Select-Object -ExpandProperty Content 
+        $reply -imatch "([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})" | Out-Null 
+        $ip = $Matches[1]
+    }
 
     if ( $CopyToClipboard ) { $ip | Set-Clipboard }
     return $ip
