@@ -17,6 +17,7 @@ function New-Salt
     $random.GetNonZeroBytes($salt)
     return [System.Convert]::ToBase64String($salt)
 }
+
 function New-AesKey 
 {
     $aes = New-Object "System.Security.Cryptography.AesManaged"
@@ -60,6 +61,12 @@ function Start-WindowsPowerShellCmdlet
     $p.WaitForExit()
 
     return $p
+}
+
+function Start-ElevatedConsole 
+{
+    $pwsh = "C:\\Program Files\\PowerShell\\6.0.0\\pwsh.exe"
+    Start-process -FilePath $pwsh -Verb RunAs -WorkingDirectory $PWD.Path 
 }
 
 function Get-StandardOutput 
@@ -184,6 +191,7 @@ function Get-TrustedRemotingEndpoint
     $trustedHosts = Get-Item -Path $WSMANPath | Select-Object -Expand Value
     return $trustedHosts.Split(",")
 }
+
 function Update-PathVariable 
 {
     param(	
@@ -241,7 +249,6 @@ function New-PSWindow
         cmd.exe /c start powershell.exe 
     }
 }
-
 
 function Get-PSSecurePassword 
 {
