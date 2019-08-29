@@ -1,3 +1,7 @@
+function New-Uuid {
+    return (New-Guid).ToString('N').Substring(20)
+}
+
 function Get-EmptyDirectories 
 {
     param(
@@ -133,6 +137,37 @@ function Set-DnsServer
     Write-Verbose -Message ("The local DNS Server has been set to {0} . . . " -f $dns_addresses)
 }
 
+function Get-EnvironmentVariable
+{
+    [cmdletbinding(DefaultParameterSetName='ALL')]
+    param ( 
+        [Parameter(ParameterSetName='ID', Mandatory = $true)]
+        [string] $Key,
+
+        [Parameter(ParameterSetName='ALL')]
+        [switch] $ALL
+    )
+
+    if($PSCmdlet.ParameterSetName -eq "ALL" -or $all) {
+        return [Environment]::GetEnvironmentVariables()
+    }
+    else {
+        return [Environment]::GetEnvironmentVariable($key)
+    }
+}
+
+function Set-EnvironmentVariable
+{
+    param ( 
+        [string] $Key,
+        [string] $Value,
+        [ValidateSet("User","Machine")]
+        [string] $Scope = "User"
+    )
+
+    [Environment]::SetEnvironmentVariable( $Key, $Value, $Scope )
+}
+
 function Set-PublicKey 
 {
     param ( 
@@ -140,7 +175,7 @@ function Set-PublicKey
     )
 
     $ENV:PUBKEY = $FilePath
-    [Environment]::SetEnvironmentVariable( "PUBKEY", $FilePath, "User" )
+    Set-EnvironmentVariable -key "PUBKEY" -Value $FilePath -Scope "User"
 }
 
 function Get-PublicKey 
