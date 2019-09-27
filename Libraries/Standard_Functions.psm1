@@ -69,7 +69,7 @@ function Start-WindowsPowerShellCmdlet
 
 function Start-ElevatedConsole 
 {
-    $pwsh = "C:\\Program Files\\PowerShell\\6.0.0\\pwsh.exe"
+    $pwsh = "pwsh.exe"
     Start-process -FilePath $pwsh -Verb RunAs -WorkingDirectory $PWD.Path 
 }
 
@@ -230,24 +230,33 @@ function Get-TrustedRemotingEndpoint
 function Update-PathVariable 
 {
     param(	
-        [Parameter(Mandatory = $true)]
+        [Parameter(Position = 0, Mandatory = $true, ParameterSetName = "Refresh")]
+        [switch] $Refresh,
+
+        [Parameter(Position = 0, Mandatory = $true, ParameterSetName = "Update")]
         [ValidateScript( {Test-Path $_})]
         [string] $Path,
-		
-        [Parameter(Mandatory = $false)]
+        
+        [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "Update")]
         [ValidateSet("User", "Machine")] 
         [string] $Target = "User" 
     )
 
-    $current_path = [Environment]::GetEnvironmentVariable( "Path", $Target )
+    if( $PSBoundParameters.ContainsKey('Path') ) {
+        $current_path = [Environment]::GetEnvironmentVariable( "Path", $Target )
+	    Write-Verbose -Message ("[Update-PathVariable] - Current {0} Path Value: {1}" -f $Target, $current_path )
 	
-    Write-Verbose -Message ("[Update-PathVariable] - Current Path Value: {0}" -f $current_path )
+        $current_path = $current_path.Split(";") + $Path | Select-Object -Unique
+        $new_path = [string]::Join( ";", $current_path)
 	
-    $current_path = $current_path.Split(";") + $Path
-    $new_path = [string]::Join( ";", $current_path)
-	
-    Write-Verbose -Message ("[Update-PathVariable] - New Path Value: {0}" -f $new_path)
-    [Environment]::SetEnvironmentVariable( "Path", $new_path, $Target )
+        Write-Verbose -Message ("[Update-PathVariable] - New {0} Path Value: {1}" -f $Target, $new_path)
+        [Environment]::SetEnvironmentVariable( "Path", $new_path, $Target )
+    }
+
+    $updated_path = "Machine", "User" | ForEach-Object { [Environment]::GetEnvironmentVariable( "Path", $_ ) + ";" }
+    Write-Verbose -Message ("[Update-PathVariable] - Refreshing Complete Path Value: {0}" -f $updated_path)
+    $ENV:Path = $updated_path
+    return
 }
 
 function New-PSCredentials 
