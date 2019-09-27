@@ -188,7 +188,7 @@ function Update-PathVariable
         [switch] $Force
     )
 
-    if( $PSBoundParameters.ContainsKey('Path') ) {
+    if( $PsCmdlet.ParameterSetName -eq "Update" ) {
         if( $Force -or (Test-Path -Path $Path -PathType Container)) {
             $current_path = [Environment]::GetEnvironmentVariable( "Path", $Target )
 	        Write-Verbose -Message ("Current {0} Path Value: {1}" -f $Target, $current_path )
