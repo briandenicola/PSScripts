@@ -180,14 +180,23 @@ function Update-PathVariable
         
         [Parameter(Position = 1, Mandatory = $false, ParameterSetName = "Update")]
         [ValidateSet("User", "Machine")] 
-        [string] $Target = "User" 
+        [string] $Target = "User",
+
+        [Parameter(Position = 2, Mandatory = $false, ParameterSetName = "Update")]
+        [switch] $Remove
     )
 
     if( $PSBoundParameters.ContainsKey('Path') ) {
         $current_path = [Environment]::GetEnvironmentVariable( "Path", $Target )
 	    Write-Verbose -Message ("[Update-PathVariable] - Current {0} Path Value: {1}" -f $Target, $current_path )
 	
-        $current_path = $current_path.Split(";") + $Path | Select-Object -Unique
+        if($Remove) {
+            $current_path = $current_path -split ";"  | Where-Object { $_ -ine $Path } | Select-Object -Unique
+        }
+        else {
+            $current_path = ($current_path -split ";") + $Path | Select-Object -Unique
+        }
+
         $new_path = [string]::Join( ";", $current_path)
 	
         Write-Verbose -Message ("[Update-PathVariable] - New {0} Path Value: {1}" -f $Target, $new_path)
