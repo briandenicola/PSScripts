@@ -175,7 +175,6 @@ function Update-PathVariable
         [switch] $Refresh,
 
         [Parameter(Position = 0, Mandatory = $true, ParameterSetName = "Update")]
-        [ValidateScript( {Test-Path $_})]
         [string] $Path,
         
         [Parameter(Position = 1, Mandatory = $false, ParameterSetName = "Update")]
@@ -183,28 +182,37 @@ function Update-PathVariable
         [string] $Target = "User",
 
         [Parameter(Position = 2, Mandatory = $false, ParameterSetName = "Update")]
-        [switch] $Remove
+        [switch] $Remove,
+
+        [Parameter(Position = 3, Mandatory = $false, ParameterSetName = "Update")]
+        [switch] $Force
     )
 
     if( $PSBoundParameters.ContainsKey('Path') ) {
-        $current_path = [Environment]::GetEnvironmentVariable( "Path", $Target )
-	    Write-Verbose -Message ("[Update-PathVariable] - Current {0} Path Value: {1}" -f $Target, $current_path )
+        if( $Force -or (Test-Path -Path $Path -PathType Container)) {
+            $current_path = [Environment]::GetEnvironmentVariable( "Path", $Target )
+	        Write-Verbose -Message ("Current {0} Path Value: {1}" -f $Target, $current_path )
 	
-        if($Remove) {
-            $current_path = $current_path -split ";"  | Where-Object { $_ -ine $Path } | Select-Object -Unique
+            if($Remove) {
+                $current_path = $current_path -split ";"  | Where-Object { $_ -ine $Path } | Select-Object -Unique
+            }
+            else {
+                $current_path = ($current_path -split ";") + $Path | Where-Object { $_ -ine [string]::Empty } | Select-Object -Unique
+            }
+
+            $new_path = [string]::Join( ";", $current_path)
+    
+            Write-Verbose -Message ("New {0} Path Value: {1}" -f $Target, $new_path)
+            [Environment]::SetEnvironmentVariable( "Path", $new_path, $Target )
         }
         else {
-            $current_path = ($current_path -split ";") + $Path | Select-Object -Unique
+            Write-Error -Message ("Path Value: {0} could not be found. Exiting" -f $Path )
+            return 
         }
-
-        $new_path = [string]::Join( ";", $current_path)
-	
-        Write-Verbose -Message ("[Update-PathVariable] - New {0} Path Value: {1}" -f $Target, $new_path)
-        [Environment]::SetEnvironmentVariable( "Path", $new_path, $Target )
     }
 
     $updated_path = "Machine", "User" | ForEach-Object { [Environment]::GetEnvironmentVariable( "Path", $_ ) + ";" }
-    Write-Verbose -Message ("[Update-PathVariable] - Refreshing Complete Path Value: {0}" -f $updated_path)
+    Write-Verbose -Message ("Refreshing Complete Path Value: {0}" -f $updated_path)
     $ENV:Path = $updated_path
     return
 }
