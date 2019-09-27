@@ -168,6 +168,38 @@ function Set-EnvironmentVariable
     [Environment]::SetEnvironmentVariable( $Key, $Value, $Scope )
 }
 
+function Update-PathVariable 
+{
+    param(	
+        [Parameter(Position = 0, Mandatory = $true, ParameterSetName = "Refresh")]
+        [switch] $Refresh,
+
+        [Parameter(Position = 0, Mandatory = $true, ParameterSetName = "Update")]
+        [ValidateScript( {Test-Path $_})]
+        [string] $Path,
+        
+        [Parameter(Position = 1, Mandatory = $false, ParameterSetName = "Update")]
+        [ValidateSet("User", "Machine")] 
+        [string] $Target = "User" 
+    )
+
+    if( $PSBoundParameters.ContainsKey('Path') ) {
+        $current_path = [Environment]::GetEnvironmentVariable( "Path", $Target )
+	    Write-Verbose -Message ("[Update-PathVariable] - Current {0} Path Value: {1}" -f $Target, $current_path )
+	
+        $current_path = $current_path.Split(";") + $Path | Select-Object -Unique
+        $new_path = [string]::Join( ";", $current_path)
+	
+        Write-Verbose -Message ("[Update-PathVariable] - New {0} Path Value: {1}" -f $Target, $new_path)
+        [Environment]::SetEnvironmentVariable( "Path", $new_path, $Target )
+    }
+
+    $updated_path = "Machine", "User" | ForEach-Object { [Environment]::GetEnvironmentVariable( "Path", $_ ) + ";" }
+    Write-Verbose -Message ("[Update-PathVariable] - Refreshing Complete Path Value: {0}" -f $updated_path)
+    $ENV:Path = $updated_path
+    return
+}
+
 function Set-PublicKey 
 {
     param ( 
@@ -180,7 +212,14 @@ function Set-PublicKey
 
 function Get-PublicKey 
 {
-    Get-Content -Path $ENV:PUBKEY | Set-Clipboard
+    param(
+        [switch] $CopyToClipboard 
+    )
+
+    $pub_key = Get-Content -Path $ENV:PUBKEY 
+    
+    if ( $CopyToClipboard ) { $pub_key | Set-Clipboard }
+    return $pub_key
 }
 
 function Get-MyPublicIPAddress 
@@ -225,38 +264,6 @@ function Get-TrustedRemotingEndpoint
     $WSMANPath = "WSMAN:\LocalHost\Client\TrustedHosts"
     $trustedHosts = Get-Item -Path $WSMANPath | Select-Object -Expand Value
     return $trustedHosts.Split(",")
-}
-
-function Update-PathVariable 
-{
-    param(	
-        [Parameter(Position = 0, Mandatory = $true, ParameterSetName = "Refresh")]
-        [switch] $Refresh,
-
-        [Parameter(Position = 0, Mandatory = $true, ParameterSetName = "Update")]
-        [ValidateScript( {Test-Path $_})]
-        [string] $Path,
-        
-        [Parameter(Position = 0, Mandatory = $false, ParameterSetName = "Update")]
-        [ValidateSet("User", "Machine")] 
-        [string] $Target = "User" 
-    )
-
-    if( $PSBoundParameters.ContainsKey('Path') ) {
-        $current_path = [Environment]::GetEnvironmentVariable( "Path", $Target )
-	    Write-Verbose -Message ("[Update-PathVariable] - Current {0} Path Value: {1}" -f $Target, $current_path )
-	
-        $current_path = $current_path.Split(";") + $Path | Select-Object -Unique
-        $new_path = [string]::Join( ";", $current_path)
-	
-        Write-Verbose -Message ("[Update-PathVariable] - New {0} Path Value: {1}" -f $Target, $new_path)
-        [Environment]::SetEnvironmentVariable( "Path", $new_path, $Target )
-    }
-
-    $updated_path = "Machine", "User" | ForEach-Object { [Environment]::GetEnvironmentVariable( "Path", $_ ) + ";" }
-    Write-Verbose -Message ("[Update-PathVariable] - Refreshing Complete Path Value: {0}" -f $updated_path)
-    $ENV:Path = $updated_path
-    return
 }
 
 function New-PSCredentials 

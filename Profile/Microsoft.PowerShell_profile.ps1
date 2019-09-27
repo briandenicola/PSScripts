@@ -1,19 +1,16 @@
-#. (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
+. (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.ps1")
 Import-Module (Join-PATH $ENV:SCRIPTS_HOME "Libraries\Standard_Functions.psm1") -Force
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $MaximumHistoryCount=1024
 $ENV:EDITOR = "C:\Program Files (x86)\Microsoft VS Code\code.exe"
-$pub_key_file = "C:\Users\brian\.ssh\id_rsa.pub"
 
 New-Alias -name gh    -value Get-History 
 New-Alias -name i     -Value Invoke-History
 New-Alias -name ed    -Value $env:EDITOR
 New-Alias -Name code  -Value $env:EDITOR
 New-Alias -Name sudo  -Value Start-ElevatedConsole
-
-#Set-PSReadlineKeyHandler -Key Tab -Function Complete
 
 if( (Test-Path -Path (Join-Path -Path $ENV:USERPROFILE -ChildPath "Contacts" ) ) ) { Remove-Item -Recurse -Force (Join-Path -Path $ENV:USERPROFILE -ChildPath "Contacts" )}
 if( (Test-Path -Path (Join-Path -Path $ENV:USERPROFILE -ChildPath "onecoremsvsmon" ) ) ) { Remove-Item -Recurse -Force (Join-Path -Path $ENV:USERPROFILE -ChildPath "onecoremsvsmon" )}
