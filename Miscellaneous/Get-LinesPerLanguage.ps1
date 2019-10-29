@@ -27,8 +27,11 @@ $excludedFileNames = @(
 $includedFileTypes = @(
     "*.go",
     "*.cs",
+    "*.csx",
     "*.ps1",
     "*.psm1",
+    "*.yaml",
+    "*.yml",
     "*.json",
     "*.js",
     "*.ts",
