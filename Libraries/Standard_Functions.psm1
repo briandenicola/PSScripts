@@ -1,3 +1,21 @@
+function Get-EncodedHtml {
+    param(
+        [string] $html
+    )
+
+    Add-Type -AssemblyName System.Web
+    return ( [System.Web.HttpUtility]::HtmlEncode($html)  )
+}
+
+function Get-DecodedHtml {
+    param(
+        [string] $html
+    )
+
+    Add-Type -AssemblyName System.Web
+    return ( [System.Web.HttpUtility]::HtmlDecode($html)  )
+}
+
 function New-Uuid {
     return (New-Guid).ToString('N').Substring(20)
 }
