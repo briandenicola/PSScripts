@@ -1,3 +1,41 @@
+$pshistory_file = Join-Path -Path $ENV:USERPROFILE -ChildPath "AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt"
+
+function Get-PSHistory {
+    param(
+        [int] $last = 4096
+    )
+   
+    if( -not( Test-Path -Path $pshistory_file ) ) {
+        Write-Errror -Message ("History file not fount - {0}" -f $history_file)
+        return $false
+    }
+
+    $count = 1
+    $lines = [System.Object[]]::new($last+1)
+
+    foreach( $line in (Get-Content -Tail $last -Path $pshistory_file) ) {
+        $lines[$count] = New-Object psobject -Property @{"Id" = $count; "CommandLine" = $line} 
+        $count++
+    }
+     
+    return $lines
+}
+
+function Clear-PSHistory {
+    param(
+        [switch] $Force
+    )
+
+    if( -not( Test-Path -Path $pshistory_file ) ) {
+        Write-Errror -Message ("History file not fount - {0}" -f $history_file)
+        return $false
+    }
+
+    Clear-History 
+    Out-File -FilePath $pshistory_file -InputObject $Nul -Confirm:(!$Force)
+
+}
+
 function Get-EncodedHtml {
     param(
         [string] $html
