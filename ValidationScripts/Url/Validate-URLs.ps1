@@ -1,4 +1,4 @@
-﻿[CmdletBinding(SupportsShouldProcess=$true)]
+﻿[CmdletBinding(SupportsShouldProcess = $true)]
 param (
     [string] $cfg,
     [switch] $SaveReply
@@ -9,10 +9,10 @@ param (
 
 $url_to_validate = Get-Json -Config $cfg
 
-foreach( $url in $url_to_validate ) {
-    foreach( $server in ($url.servers | Select-Object -Expand server) ) {
+foreach ( $url in $url_to_validate ) {
+    foreach ( $server in ($url.servers | Select-Object -Expand server) ) {
         $results = Get-WebRequest -url $url.url -Server $server 
-        if( $saveReply ) { Save-Reply -Url $url -Text $results -Server $server }
+        if ( $saveReply ) { Save-Reply -Url $url -Text $results -Server $server }
         Validate-Results -Rules $url.Rules -Results $results
     }
 }
