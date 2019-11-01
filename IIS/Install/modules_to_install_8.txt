@@ -1,5 +1,0 @@
-Web-Asp-Net45
-Web-Net-Ext45
-Web-AppInit
-Web-Http-Redirect
-Web-Mgmt-Service
