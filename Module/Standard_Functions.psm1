@@ -1,5 +1,28 @@
 $pshistory_file = Join-Path -Path $ENV:USERPROFILE -ChildPath "AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt"
 
+function Get-ExecutablePath {
+    param(
+        [string] $processName
+    )
+
+    if( $processName -inotmatch "\.exe" ) {
+        $processName = "{0}.exe" -f $processName
+    }
+
+    $directories = (Get-EnvironmentVariable -Key Path) -split ";"
+
+    foreach( $directory in $directories ) {
+        $processPath = Get-ChildItem -Path $directory -Filter "*.exe" -ErrorAction SilentlyContinue | 
+            Where-Object Name -ieq $processName
+
+        if(-not [string]::IsNullOrEmpty($processPath)) {
+            return $processPath.FullName
+        }
+    }
+
+    return $null
+}
+
 function Get-PSHistory {
     param(
         [int] $last = 4096
