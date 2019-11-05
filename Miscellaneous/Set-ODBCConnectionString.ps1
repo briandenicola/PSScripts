@@ -31,7 +31,7 @@ $settings = @(
 if( -not (Test-Path -Path $odbcPath)) {
     New-Item -Path $odbcPath -ItemType Key    
 }
-Set-ItemProperty -Path $odbcPath -Name $connectionName -Value "ODBC Drive 17 for SQL Server"
+Set-ItemProperty -Path $odbcPath -Name $connectionName -Value "ODBC Driver 17 for SQL Server"
 
 New-Item -Path $keyName -ItemType Key
 foreach( $setting in $settings ) {
