@@ -5,15 +5,14 @@ function Get-ExecutablePath {
         [string] $processName
     )
 
+    #Get-Command -CommandType Application -Name $processName | Select -ExpandProperty Source
+
     if( $processName -inotmatch "\.exe" ) {
         $processName = "{0}.exe" -f $processName
     }
 
-    $directories = (Get-EnvironmentVariable -Key Path) -split ";"
-
     foreach( $directory in $directories ) {
-        $processPath = Get-ChildItem -Path $directory -Filter "*.exe" -ErrorAction SilentlyContinue | 
-            Where-Object Name -ieq $processName
+        $processPath = Get-ChildItem -Path $directory -Filter $processName -ErrorAction SilentlyContinue -File 
 
         if(-not [string]::IsNullOrEmpty($processPath)) {
             return $processPath.FullName
