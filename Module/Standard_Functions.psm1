@@ -6,7 +6,8 @@ function Get-ExecutablePath {
     )
 
     #Get-Command -CommandType Application -Name $processName | Select -ExpandProperty Source
-
+    $directories = (Get-EnvironmentVariable -Key Path) -split ";"
+    
     if( $processName -inotmatch "\.exe" ) {
         $processName = "{0}.exe" -f $processName
     }
