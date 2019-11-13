@@ -7,7 +7,7 @@ function Get-ExecutablePath {
 
     #Get-Command -CommandType Application -Name $processName | Select -ExpandProperty Source
     $directories = (Get-EnvironmentVariable -Key Path) -split ";"
-    
+
     if( $processName -inotmatch "\.exe" ) {
         $processName = "{0}.exe" -f $processName
     }
@@ -89,7 +89,7 @@ function Get-EmptyDirectories
         [string] $Path
     )
     
-    return (Get-ChildItem -Path $path -Recurse | Where-Object {$_.PSIsContainer -eq $True -and $_.GetFileSystemInfos().Count -eq 0 } | Select-Object -Expand FullName)
+    return (Get-ChildItem -Path $path -Recurse -Directory | Where-Object { $_.GetFileSystemInfos().Count -eq 0 } | Select-Object -Expand FullName)
 }
 
 function New-Salt 
