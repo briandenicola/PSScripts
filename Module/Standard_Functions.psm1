@@ -1,5 +1,17 @@
 $pshistory_file = Join-Path -Path $ENV:USERPROFILE -ChildPath "AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt"
 
+function Update-FileTimeStamp {
+    param(
+        [ValidateScript({Test-Path $_})]
+        [Parameter(Mandatory = $true)]
+        [string] $FileName
+    )
+
+    $file= Get-Item -Path $FileName
+    $file.LastWriteTime = (Get-Date)
+
+}
+
 function Get-ExecutablePath {
     param(
         [string] $processName
