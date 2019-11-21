@@ -2,14 +2,17 @@ $pshistory_file = Join-Path -Path $ENV:USERPROFILE -ChildPath "AppData\Roaming\M
 
 function Update-FileTimeStamp {
     param(
-        [ValidateScript({Test-Path $_})]
         [Parameter(Mandatory = $true)]
         [string] $FileName
     )
 
-    $file= Get-Item -Path $FileName
-    $file.LastWriteTime = (Get-Date)
-
+    if( Test-Path -Path $FileName ) {
+        $file= Get-Item -Path $FileName
+        $file.LastWriteTime = (Get-Date)
+    }
+    else {
+        Add-Content -Path $FileName -Value ([string]::Empty)
+    }
 }
 
 function Get-ExecutablePath {
