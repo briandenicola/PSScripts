@@ -1,5 +1,20 @@
 $pshistory_file = Join-Path -Path $ENV:USERPROFILE -ChildPath "AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt"
 
+function Remove-3DObjects {
+    $regRoot = "HKLM:\SOFTWARE"
+    $regChildPaths = @(
+        'WOW6432Node\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}',
+        'Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}'
+    )
+
+    foreach( $regChildPath in $regChildPaths ) {
+        $regPath = Join-Path -Path $regRoot -ChildPath $regChildPath
+        if( Test-Path -Path $regPath ) {
+            Remove-Item -Path $regPath -Confirm:$false -Force
+        }
+    }
+}
+
 function Update-FileTimeStamp {
     param(
         [Parameter(Mandatory = $true)]
