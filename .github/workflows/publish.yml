@@ -1,0 +1,18 @@
+steps:
+name: PowerShell Publish
+on: [push]
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@master
+
+    - name: Setup Nuget.exe
+      uses: warrenbuckley/Setup-Nuget@v1
+      
+    - name: Nuget Pack
+      run: nuget pack *.nuspec
+
+    - name: Nuget Push
+      run: nuget push *.nupkg
