@@ -1,4 +1,3 @@
-steps:
 name: PowerShell Publish
 on: [push]
 jobs:
