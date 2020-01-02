@@ -1,3 +1,27 @@
+<#
+.SYNOPSIS
+The script will encrypt a file using AES 256-bit encryption
+
+.DESCRIPTION
+Version - 1.0.0
+The script will encrypt a file using AES 256-bit encryption
+
+.EXAMPLE
+.\Encrypt-File.ps1 -FileName .\test.text
+
+.EXAMPLE
+.\Encrypt-File.ps1 -FileName .\test.text -Key uGeZVn1cSkTdI633yyIZ4fmit4SwCpA0rFLgKYuFhMk= -Remove
+
+.PARAMETER FileName
+Name of file to encrypt
+
+.PARAMETER Key 
+(Optional) An AES key used to encrypt the file. If not passed then a key will be generated. 
+
+.PARAMETER Remove
+Switch to remove the source file after encryption
+
+#>
 param(
     [Parameter(Mandatory = $true)]
     [string] $fileName,

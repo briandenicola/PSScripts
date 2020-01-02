@@ -1,3 +1,27 @@
+<#
+.SYNOPSIS
+The script display process utilization on the current system
+
+.DESCRIPTION
+Version - 1.0.0
+The script display process utilization on the current system
+
+.EXAMPLE
+.\Get-CpuLoad.ps1
+
+.EXAMPLE
+.\Get-CpuLoad.ps1 -RefreshRate 2 -Filter 15
+
+.PARAMETER RefreshRate
+How fast in seconds to refresh the screen. Default 1 second
+Valid Range - 0 to 5 seconds 
+
+.PARAMETER Filter 
+How many processes to display
+Valid Range - 5 to 25 
+
+#>
+
 param(
     [ValidateRange(0.0,5.0)]
     [double] $RefreshRate = 1,
@@ -18,13 +42,11 @@ $query = "select Name,IDProcess,ThreadCount,WorkingSetPrivate,PercentProcessorTi
 
 Clear-Host
 while (1) {
-    #$process_utlization = Get-WmiObject -Query $query
     $process_utlization = Get-CimInstance -Query $query
 
     Write-Output "Gather statistics . . ."
     Start-Sleep -Seconds $RefreshRate
     
-    #$process_utlization_delta = Get-WmiObject -Query $query
     $process_utlization_delta = Get-CimInstance -Query $query
 
     $system_utilization = foreach ( $process in $process_utlization ) {
