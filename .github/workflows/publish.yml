@@ -6,7 +6,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@master
-    - name: Display the path
+    - name: Replace Name of Repository 
       run: |
         (Get-Content .\bjd.Common.Functions\bjd.Common.Functions.nuspec -Raw).Replace('bjd.Common.Functions','PSScripts') |
           Out-File .\bjd.Common.Functions\bjd.Common.Functions.nuspec
