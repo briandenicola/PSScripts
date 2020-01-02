@@ -6,12 +6,19 @@ jobs:
 
     steps:
     - uses: actions/checkout@master
-
+      
+    - name: Find and Replace
+      uses: jacobtomlinson/gha-find-replace@0.1.1
+      with:
+        include: bjd.Common.Functions/bjd.Common.Functions.nuspec
+        find: bjd.Common.Functions
+        replace:  PSScripts
+        
     - name: Setup Nuget.exe
       uses: warrenbuckley/Setup-Nuget@v1
       
     - name: Add private GitHub registry to NuGet
-      run: nuget sources add -name "PSScripts" -Source https://nuget.pkg.github.com/PSScripts/index.json -Username bjd145 -Password ${{ secrets.MY_GITHUB_TOKEN }}
+      run: nuget sources add -name "PSScripts" -Source https://nuget.pkg.github.com/bjd145/index.json -Username bjd145 -Password ${{ secrets.MY_GITHUB_TOKEN }}
        
     - name: Nuget Pack
       run: nuget pack bjd.Common.Functions/bjd.Common.Functions.nuspec
