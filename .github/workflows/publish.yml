@@ -11,7 +11,7 @@ jobs:
       uses: warrenbuckley/Setup-Nuget@v1
       
     - name: Add private GitHub registry to NuGet
-      run: nuget sources add -name "PSScripts" -Source https://nuget.pkg.github.com/bjd145/PSScripts/index.json -Username bjd145 -Password ${{ secrets.MY_GITHUB_TOKEN }}
+      run: nuget sources add -name "PSScripts" -Source https://nuget.pkg.github.com/PSScripts/index.json -Username bjd145 -Password ${{ secrets.MY_GITHUB_TOKEN }}
        
     - name: Nuget Pack
       run: nuget pack bjd.Common.Functions/bjd.Common.Functions.nuspec
