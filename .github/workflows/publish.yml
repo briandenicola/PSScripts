@@ -2,17 +2,15 @@ name: PowerShell Publish
 on: [push]
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@master
-      
-    - name: Find and Replace
-      uses: jacobtomlinson/gha-find-replace@0.1.1
-      with:
-        include: bjd.Common.Functions/bjd.Common.Functions.nuspec
-        find: bjd.Common.Functions
-        replace:  PSScripts
+    - name: Display the path
+      run: |
+        (Get-Content .\bjd.Common.Functions\bjd.Common.Functions.nuspec -Raw).Replace('bjd.Common.Functions','PSScripts') |
+          Out-File .\bjd.Common.Functions\bjd.Common.Functions.nuspec
+      shell: pwsh
         
     - name: Setup Nuget.exe
       uses: warrenbuckley/Setup-Nuget@v1
