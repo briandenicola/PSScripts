@@ -386,7 +386,7 @@ function Get-MyPublicIPAddress
         [switch] $CopyToClipboard 
     )
 
-    if($DNS) {
+    if($UsingDNS) {
         $ip = Resolve-DnsName -Name o-o.myaddr.l.google.com -Type TXT -NoHostsFile -DnsOnly -Server ns1.google.com | Select-Object -ExpandProperty Strings 
     }
     else {
