@@ -1,0 +1,25 @@
+name: PowerShell Publish
+on: [push]
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@master
+    - name: Replace Name of Repository 
+      run: |
+        (Get-Content .\bjd.Common.Functions\bjd.Common.Functions.nuspec -Raw).Replace('bjd.Common.Functions','PSScripts') |
+          Out-File .\bjd.Common.Functions\bjd.Common.Functions.nuspec
+      shell: pwsh
+        
+    - name: Setup Nuget.exe
+      uses: warrenbuckley/Setup-Nuget@v1
+      
+    - name: Add private GitHub registry to NuGet
+      run: nuget sources add -name "PSScripts" -Source https://nuget.pkg.github.com/bjd145/index.json -Username bjd145 -Password ${{ secrets.MY_GITHUB_TOKEN }}
+       
+    - name: Nuget Pack
+      run: nuget pack bjd.Common.Functions/bjd.Common.Functions.nuspec
+
+    - name: Nuget Push
+      run: nuget push *.nupkg -Source "PSScripts" -SkipDuplicate
