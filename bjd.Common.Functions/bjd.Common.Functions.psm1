@@ -1,5 +1,50 @@
 $pshistory_file = Join-Path -Path $ENV:USERPROFILE -ChildPath "AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt"
 
+function Get-IsAdminConsole {
+    $role = [Security.Principal.WindowsBuiltInRole] "Administrator"
+    if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole($role) ) {
+        return $false
+    }
+    return $true 
+}
+function Get-OSType {
+    return $PSVersionTable.Platform
+}
+
+function Get-RunningServicesCommandline { 
+
+    if ( (Get-OSType) -ne "Win32NT" ) {
+        throw "Unsupported Operating system for this function"
+        return -1 
+    }
+
+    if ( -not (Get-IsAdminConsole) ) {
+        throw "Script must run in an Administrator console. Please restart console with Runas Administrator"
+        return -1 
+    }
+  
+    Set-Variable -Name Query -Value "SELECT Name,DisplayName,ProcessId,State FROM Win32_Service WHERE State = 'Running'" -Option Constant
+
+    $processes = Get-Process -IncludeUserName | Group-Object -Property Id -AsHashTable -AsString 
+    $all_services = Get-CimInstance -Query $Query
+
+    $services = foreach ( $service in $all_services ) {
+        
+        $key = $service.ProcessId.ToString()
+        $process = $processes[$key]
+
+        New-Object PSObject -Property @{
+            Name        = $service.Name
+            DisplayName = $service.DisplayName
+            User        = $process.UserName
+            CommandLine = $process.Path
+            PID         = $process.Id
+        }   
+    }
+
+    return $services
+}
+
 function Resolve-JwtToken {
     param (
         [string] $Token
