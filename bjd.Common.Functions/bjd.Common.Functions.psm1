@@ -45,6 +45,32 @@ function Get-RunningServicesCommandline {
     return $services
 }
 
+function Invoke-GitReposPull {
+    param( 
+      [Parameter(Mandatory=$true)]
+      [ValidateScript({Test-Path $_})]
+      [string] $ReposRoot 
+    )
+  
+    if( !(Get-ExecutablePath -processName git.exe) ) {
+        throw "Could not find git.exe process."
+    }
+
+    Set-Variable -Name currentDirectory -Value $PWD.Path
+
+    foreach( $repo in (Get-ChildItem -Path $ReposRoot) ) {
+      Write-Verbose -Message ("[{0}] - Setting location to {1} . . ." -f $(Get-date), $repo)
+      
+      Set-Location -Path $repo
+      if( Test-Path -Path '.\.git' ) {
+        git pull
+      }
+      Set-Location -Path $repo.Parent.FullName
+    }
+  
+    Set-location -Path $currentDirectory
+  }
+
 function Resolve-JwtToken {
     param (
         [string] $Token
