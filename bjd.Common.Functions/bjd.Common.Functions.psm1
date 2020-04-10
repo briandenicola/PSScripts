@@ -1,5 +1,43 @@
 $pshistory_file = Join-Path -Path $ENV:USERPROFILE -ChildPath "AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt"
 
+
+function New-Password {
+    param(
+        [ValidateRange(8,32)]
+        [int] $Length = 15
+    )
+
+    function Get-SecureRandomNumber {
+        param(
+            [int] $min,
+            [int] $max
+        )
+
+        $rng = New-Object "System.Security.Cryptography.RNGCryptoServiceProvider"
+        $rand = [System.Byte[]]::new(1)
+
+        while($true) {
+            $rand = [System.Byte[]]::new(1)
+            $rng.GetNonZeroBytes($rand)
+            
+            $randInt = [convert]::ToInt32($rand[0])
+            if( ($randInt -ge $min) -and $randInt -le $max) {
+                return $randInt
+            }
+        }
+        #return Get-Random -Min $min -Max $max
+    }
+
+    $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !@$%^&*(){}|:?>[]\';/.,<".ToCharArray()
+    $charsLength = $chars.Length
+    
+    for($i=0;$i -lt $length; $i++) {
+        $index = Get-SecureRandomNumber -Min 0 -Max $charsLength
+        $password += $chars[$index]
+    }
+
+    return $password
+}
 function Get-IsAdminConsole {
     $role = [Security.Principal.WindowsBuiltInRole] "Administrator"
     if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole($role) ) {

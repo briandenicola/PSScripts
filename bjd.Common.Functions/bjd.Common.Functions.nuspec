@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>bjd.Common.Functions</id>
-    <version>1.0.4</version>
+    <version>1.0.5</version>
     <authors>Brian Denicola</authors>
     <owners>Brian Denicola</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
