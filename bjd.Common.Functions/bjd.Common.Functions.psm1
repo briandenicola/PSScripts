@@ -4,7 +4,9 @@ $pshistory_file = Join-Path -Path $ENV:USERPROFILE -ChildPath "AppData\Roaming\M
 function New-Password {
     param(
         [ValidateRange(8,32)]
-        [int] $Length = 15
+        [int] $Length = 16,
+        [switch] $ExcludedSpecialCharacters,
+        [string[]] $ExcludedCharacters = @()
     )
 
     function Get-SecureRandomNumber {
@@ -12,7 +14,7 @@ function New-Password {
             [int] $min,
             [int] $max
         )
-
+        
         $rng = New-Object "System.Security.Cryptography.RNGCryptoServiceProvider"
         $rand = [System.Byte[]]::new(1)
 
@@ -25,15 +27,23 @@ function New-Password {
                 return $randInt
             }
         }
-        #return Get-Random -Min $min -Max $max
     }
 
-    $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !@$%^&*(){}|:?>[]\';/.,<".ToCharArray()
+    $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !@#$%^&*()-_+={}|:?>[]\;.,<>?".ToCharArray()
     $charsLength = $chars.Length
-    
+
+    if($ExcludedSpecialCharacters) {
+        $ExcludedCharacters += " !@#$%^&*()-_+={}|:?>[]\;.,<>?".ToCharArray()
+    }
+
     for($i=0;$i -lt $length; $i++) {
         $index = Get-SecureRandomNumber -Min 0 -Max $charsLength
-        $password += $chars[$index]
+        if( $ExcludedCharacters -inotcontains $chars[$index] ) {
+            $password += $chars[$index]
+        }
+        else {
+            $i--
+        }
     }
 
     return $password

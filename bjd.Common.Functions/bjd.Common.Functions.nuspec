@@ -2,14 +2,14 @@
 <package >
   <metadata>
     <id>bjd.Common.Functions</id>
-    <version>1.0.5</version>
+    <version>1.0.6</version>
     <authors>Brian Denicola</authors>
     <owners>Brian Denicola</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">MIT</license>
     <projectUrl>https://github.com/bjd145/PSScripts</projectUrl>
     <description>A series of common functions used across all my systems</description>
-    <releaseNotes>Initial Module Release</releaseNotes>
+    <releaseNotes>New parameters to New-Password function</releaseNotes>
     <copyright>Copyright 2020</copyright>
     <repository type="git" url="https://github.com/bjd145/PSScripts.git" />
     <dependencies/>
