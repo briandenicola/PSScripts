@@ -29,21 +29,19 @@ function New-Password {
         }
     }
 
-    $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !@#$%^&*()-_+={}|:?>[]\;.,<>?".ToCharArray()
-    $charsLength = $chars.Length
-
-    if($ExcludedSpecialCharacters) {
-        $ExcludedCharacters += " !@#$%^&*()-_+={}|:?>[]\;.,<>?".ToCharArray()
+    $potentialCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    if(-not($ExcludedSpecialCharacters)) {
+        $potentialCharacters += " !@#$%^&*()-_+={}|:?>[]\;.,<>?"
     }
 
+    foreach( $ExcludedCharacter in $ExcludedCharacters ) {
+        $potentialCharacters = $potentialCharacters.Replace($ExcludedCharacter, [string]::Empty )
+    }
+
+    $chars = $potentialCharacters.ToCharArray()
     for($i=0;$i -lt $length; $i++) {
-        $index = Get-SecureRandomNumber -Min 0 -Max $charsLength
-        if( $ExcludedCharacters -inotcontains $chars[$index] ) {
-            $password += $chars[$index]
-        }
-        else {
-            $i--
-        }
+        $index = Get-SecureRandomNumber -Min 0 -Max $chars.Length
+        $password += $chars[$index]
     }
 
     return $password
