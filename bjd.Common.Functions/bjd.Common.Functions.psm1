@@ -327,7 +327,7 @@ function Start-WindowsPowerShellCmdlet
 function Start-ElevatedConsole 
 {
     $pwsh = "pwsh.exe"
-    Start-process -FilePath $pwsh -Verb RunAs -WorkingDirectory $PWD.Path 
+    Start-process -FilePath $pwsh -Verb RunAs -WorkingDirectory $PWD.Path  -ArgumentList "-nologo"
 }
 
 function Get-StandardOutput 
