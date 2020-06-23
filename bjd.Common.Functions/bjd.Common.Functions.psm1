@@ -1,5 +1,19 @@
 $pshistory_file = Join-Path -Path $ENV:USERPROFILE -ChildPath "AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt"
 
+function Get-FunctionScriptBlock {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string] $FunctionName
+    )
+
+    $functionObject = Get-Command -Name $FunctionName
+    if( $functionObject.CommandType -ne "Function" ) {
+        throw ("{0} is not a Function. It is of type {1}." -f $functionName, $functionObject.CommandType)
+    }
+
+    return $functionObject.ScriptBlock
+
+}
 
 function New-Password {
     param(
