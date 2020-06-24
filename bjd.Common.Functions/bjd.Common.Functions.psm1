@@ -45,7 +45,7 @@ function New-Password {
 
     $potentialCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     if(-not($ExcludedSpecialCharacters)) {
-        $potentialCharacters += " !@#$%^&*()-_+={}|:?>[]\;.,<>?"
+        $potentialCharacters += " !@#$%^&*()-_+={}|:[]\;.,<>?"
     }
 
     foreach( $ExcludedCharacter in $ExcludedCharacters ) {
