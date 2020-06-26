@@ -1,5 +1,20 @@
 $pshistory_file = Join-Path -Path $ENV:USERPROFILE -ChildPath "AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt"
 
+function Get-HostFileEntries {
+    param(
+        [switch] $Raw
+    )
+    $hostFile = Join-Path -Path $ENV:SystemRoot -ChildPath "system32\drivers\etc\hosts"
+
+    $hostEntries = Get-Content -Path $hostFile
+
+    if($Raw) {
+        return $hostEntries
+    }
+
+    return ( $hostEntries | Where-Object { $_ -inotmatch "^#" -and !([string]::IsNullOrWhiteSpace($_)) } | ConvertFrom-StringData -Delimiter " " )
+}
+
 function Get-FunctionScriptBlock {
     param(
         [Parameter(Mandatory=$true)]
@@ -60,6 +75,7 @@ function New-Password {
 
     return $password
 }
+
 function Get-IsAdminConsole {
     $role = [Security.Principal.WindowsBuiltInRole] "Administrator"
     if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole($role) ) {
@@ -67,6 +83,7 @@ function Get-IsAdminConsole {
     }
     return $true 
 }
+
 function Get-OSType {
     return $PSVersionTable.Platform
 }
