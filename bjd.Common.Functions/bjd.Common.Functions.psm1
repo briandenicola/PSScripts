@@ -211,22 +211,39 @@ function Update-FileTimeStamp {
 
 function Get-ExecutablePath {
     param(
-        [string] $processName
+        [string] $ProcessName,
+        [switch] $TestBatchExtensions
     )
 
-    #Get-Command -CommandType Application -Name $processName | Select -ExpandProperty Source
-    $directories = (Get-EnvironmentVariable -Key Path) -split ";"
-
-    if( $processName -inotmatch "\.exe" ) {
-        $processName = "{0}.exe" -f $processName
+    function Test-ForProcessExtension {
+        return ($ProcessName -inotmatch "\.exe|\.bat|\.cmd")
+    }
+    
+    function Test-Directories {
+        param (
+            [string] $processToTest
+        )
+        $directories = (Get-EnvironmentVariable -Key Path) -split ";" | Where-Object { ![string]::IsNullOrEmpty($_)}
+        foreach( $directory in $directories ) {
+            if( Test-Path -Path (Join-Path -Path $directory -ChildPath $processToTest ) ) {
+                return  (Join-Path -Path $directory -ChildPath $processToTest )
+            }
+        }
     }
 
-    foreach( $directory in $directories ) {
-        $processPath = Get-ChildItem -Path $directory -Filter $processName -ErrorAction SilentlyContinue -File 
-
-        if(-not [string]::IsNullOrEmpty($processPath)) {
-            return $processPath.FullName
+    if( $TestBatchExtensions -and (Test-ForProcessExtension)) {
+        foreach( $extension in @(".bat", ".cmd", ".exe")) {
+            return (Test-Directories -processToTest ("{0}{1}" -f $ProcessName, $extension))
         }
+    }
+    else {
+        if( Test-ForProcessExtension )  {
+            $processToTest = "{0}{1}" -f $ProcessName, ".exe"
+        }
+        else {
+            $processToTest = $ProcessName
+        }
+        return (Test-Directories -processToTest $processToTest)
     }
 
     return $null
