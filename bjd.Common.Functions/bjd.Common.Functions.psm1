@@ -218,32 +218,30 @@ function Get-ExecutablePath {
     function Test-ForProcessExtension {
         return ($ProcessName -inotmatch "\.exe|\.bat|\.cmd")
     }
-    
-    function Test-Directories {
-        param (
-            [string] $processToTest
-        )
-        $directories = (Get-EnvironmentVariable -Key Path) -split ";" | Where-Object { ![string]::IsNullOrEmpty($_)}
-        foreach( $directory in $directories ) {
-            if( Test-Path -Path (Join-Path -Path $directory -ChildPath $processToTest ) ) {
-                return  (Join-Path -Path $directory -ChildPath $processToTest )
-            }
-        }
-    }
 
+    $processesToTest = @()
     if( $TestBatchExtensions -and (Test-ForProcessExtension)) {
-        foreach( $extension in @(".bat", ".cmd", ".exe")) {
-            return (Test-Directories -processToTest ("{0}{1}" -f $ProcessName, $extension))
+        foreach($extension in @(".exe", ".bat", ".cmd")) {
+            $processesToTest += "{0}{1}" -f $ProcessName, $extension
         }
     }
     else {
         if( Test-ForProcessExtension )  {
-            $processToTest = "{0}{1}" -f $ProcessName, ".exe"
+            $processesToTest += "{0}{1}" -f $ProcessName, ".exe"
         }
         else {
-            $processToTest = $ProcessName
+            $processesToTest += $ProcessName
         }
-        return (Test-Directories -processToTest $processToTest)
+    }
+
+    $directories = (Get-EnvironmentVariable -Key Path) -split ";" | Where-Object { ![string]::IsNullOrEmpty($_)}
+    foreach( $directory in $directories ) {
+        foreach( $processToTest in $processesToTest ) {
+            $processFullName = Join-Path -Path $directory -ChildPath $processToTest 
+            if( Test-Path -Path $processFullName ) {
+                return $processFullName
+            }
+        }
     }
 
     return $null
