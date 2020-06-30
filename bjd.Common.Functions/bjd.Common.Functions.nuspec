@@ -2,14 +2,14 @@
 <package >
   <metadata>
     <id>bjd.Common.Functions</id>
-    <version>1.0.13</version>
+    <version>1.0.14</version>
     <authors>Brian Denicola</authors>
     <owners>Brian Denicola</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">MIT</license>
     <projectUrl>https://github.com/briandenicola/PSScripts</projectUrl>
     <description>A series of common functions used across all my systems</description>
-    <releaseNotes>Updated Get-ExecutablePath</releaseNotes>
+    <releaseNotes>New functions ConvertFrom-EncodedUri and ConvertFrom-DecodedUri</releaseNotes>
     <copyright>Copyright 2020</copyright>
     <repository type="git" url="https://github.com/briandenicola/PSScripts.git" />
     <dependencies/>

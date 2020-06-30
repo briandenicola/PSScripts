@@ -283,21 +283,32 @@ function Clear-PSHistory {
 
 }
 
-function Get-EncodedHtml {
+function ConvertTo-EncodedUri {
+    param(
+        [string] $uri
+    )
+    return ( [System.Web.HttpUtility]::UrlEncode($uri)  )
+}
+
+function ConvertFrom-EncodedUri {
+    param(
+        [string] $uri
+    )
+    return ( [System.Web.HttpUtility]::UrlDecode($uri)  )
+}
+
+
+function ConvertTo-EncodedHtml {
     param(
         [string] $html
     )
-
-    Add-Type -AssemblyName System.Web
     return ( [System.Web.HttpUtility]::HtmlEncode($html)  )
 }
 
-function Get-DecodedHtml {
+function ConvertFrom-EncodedHtml {
     param(
         [string] $html
     )
-
-    Add-Type -AssemblyName System.Web
     return ( [System.Web.HttpUtility]::HtmlDecode($html)  )
 }
 
@@ -646,16 +657,16 @@ function Get-PlainTextPassword
     return ([System.Runtime.InteropServices.Marshal]::PtrToStringAuto( [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure_string) ) )
 }
 
-function Get-Base64Encoded 
+function ConvertFrom-Base64EncodedString
 {
-    param( [string] $strEncode )
-    return ( [convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($strEncode)) )
+    param( [string] $Text )
+    return ( [convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($Text)) )
 }
 
-function Get-Base64Decoded 
+function ConvertTo-Base64EncodedString  
 {
-    param( [string] $strDecode )
-    return ( [Text.Encoding]::ASCII.GetString([convert]::FromBase64String($strDecode)) )
+    param( [string] $Text )
+    return ( [Text.Encoding]::ASCII.GetString([convert]::FromBase64String($Text)) )
 }
 
 #Export-ModuleMember -Function * 
