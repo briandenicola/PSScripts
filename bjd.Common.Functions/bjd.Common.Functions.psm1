@@ -657,13 +657,13 @@ function Get-PlainTextPassword
     return ([System.Runtime.InteropServices.Marshal]::PtrToStringAuto( [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure_string) ) )
 }
 
-function ConvertFrom-Base64EncodedString
+function ConvertTo-Base64EncodedString
 {
     param( [string] $Text )
     return ( [convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($Text)) )
 }
 
-function ConvertTo-Base64EncodedString  
+function ConvertFrom-Base64EncodedString  
 {
     param( [string] $Text )
     return ( [Text.Encoding]::ASCII.GetString([convert]::FromBase64String($Text)) )
