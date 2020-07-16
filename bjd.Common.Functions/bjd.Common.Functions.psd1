@@ -7,7 +7,7 @@
 @{
 
     RootModule = 'bjd.Common.Functions.psm1'
-    ModuleVersion = '1.0.15'
+    ModuleVersion = '1.0.16'
     GUID = 'aa94e99e-72b5-488e-9099-bf0f3859f68d'
     Author = 'Brian Denicola'
     CompanyName = 'Denicolafamily'
