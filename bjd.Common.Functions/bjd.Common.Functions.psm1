@@ -478,7 +478,6 @@ function Set-EnvironmentVariable
         [ValidateSet("User","Machine")]
         [string] $Scope = "User"
     )
-
     [Environment]::SetEnvironmentVariable( $Key, $Value, $Scope )
 }
 
