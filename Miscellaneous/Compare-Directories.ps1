@@ -11,7 +11,7 @@ function Merge-FileHashSet {
     )
     
     begin {
-        $differences = @()
+        $differences = [System.Collections.ArrayList]::new()
         
         function New-FileDifference {
             param(
@@ -31,22 +31,33 @@ function Merge-FileHashSet {
             )
             return ($FileHashes | Select-Object -Unique -ExpandProperty Hash).Count -eq 1
         }
+
+        function Update-FileDifferences {
+            param(
+                [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0)]
+                [Object[]] $InputObject
+            )
+            begin {
+                foreach($Object in $InputObject) {
+                    $t = New-FileDifference -FileObject $Object
+                    $differences.Add($t) | Out-Null
+                }
+            }
+        }
     }
     process {		
         foreach ( $key in $fileHash.Keys ) 
         {
             if ( $fileHash[$key].Count -eq 1 ) {		
-                $differences += New-FileDifference -FileObject $fileHash[$key][0]
+                Update-FileDifferences -InputObject $fileHash[$key][0]
             } 
             elseif (-not(Test-ForUniqueHash -FileHashes $fileHash[$key])) {
-                $differences += foreach ( $diff in $fileHash[$key] ) {
-                    New-FileDifference -FileObject $diff
-                }
+                Update-FileDifferences -InputObject $FileHash[$key]
             }
         } 
     }
     end { 
-        return $differences
+        return $differences | Sort-Object -Property Path -Descending
     }
 }
 
@@ -60,6 +71,7 @@ $map = {
     return $files
 } 
 
-$results = Invoke-Command -ComputerName $computers -ScriptBlock $map -ArgumentList $path | Select-Object Path, Hash, ComputerName
-$differences = $results | Group-Object -Property Path -AsHashTable | Reduce-Set
+#$results = Invoke-Command -ComputerName $computers -ScriptBlock $map -ArgumentList $path | Select-Object Path, Hash, ComputerName
+$results = Import-csv -Path C:\Users\brian\Working\test.csv
+$differences = $results | Group-Object -Property Path -AsHashTable | Merge-FileHashSet
 $differences 
