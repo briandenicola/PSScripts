@@ -71,7 +71,6 @@ $map = {
     return $files
 } 
 
-#$results = Invoke-Command -ComputerName $computers -ScriptBlock $map -ArgumentList $path | Select-Object Path, Hash, ComputerName
-$results = Import-csv -Path C:\Users\brian\Working\test.csv
+$results = Invoke-Command -ComputerName $computers -ScriptBlock $map -ArgumentList $path | Select-Object Path, Hash, ComputerName
 $differences = $results | Group-Object -Property Path -AsHashTable | Merge-FileHashSet
 $differences 
