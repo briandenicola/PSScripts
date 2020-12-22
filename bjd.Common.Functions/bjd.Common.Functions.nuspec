@@ -2,14 +2,14 @@
 <package >
   <metadata>
     <id>bjd.Common.Functions</id>
-    <version>1.0.16</version>
+    <version>1.0.17</version>
     <authors>Brian Denicola</authors>
     <owners>Brian Denicola</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">MIT</license>
     <projectUrl>https://github.com/briandenicola/PSScripts</projectUrl>
     <description>A series of common functions used across all my systems</description>
-    <releaseNotes>Updated Base64 functions to pull from pipeline</releaseNotes>
+    <releaseNotes>Updated Set-EnvironmentalVariable and added Remove-EnvironmentalVariable</releaseNotes>
     <copyright>Copyright 2020</copyright>
     <repository type="git" url="https://github.com/briandenicola/PSScripts.git" />
     <dependencies/>

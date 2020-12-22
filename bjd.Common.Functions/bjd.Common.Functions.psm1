@@ -470,6 +470,20 @@ function Get-EnvironmentVariable
     }
 }
 
+function Remove-EnvironmentVariable 
+{
+    param ( 
+        [string] $Key,
+        [switch] $Force 
+    )
+
+    $confirm = $true 
+    if($Force) {
+        $confirm = $false
+    }
+    Remove-Item -Path ENV:\${key} -Confirm:$confirm
+}
+
 function Set-EnvironmentVariable
 {
     param ( 
@@ -478,6 +492,7 @@ function Set-EnvironmentVariable
         [ValidateSet("User","Machine")]
         [string] $Scope = "User"
     )
+    Set-Item -Path ENV:\${key} -Value $Value    
     [Environment]::SetEnvironmentVariable( $Key, $Value, $Scope )
 }
 
