@@ -2,15 +2,15 @@
 <package >
   <metadata>
     <id>bjd.Common.Functions</id>
-    <version>1.0.17</version>
+    <version>1.0.18</version>
     <authors>Brian Denicola</authors>
     <owners>Brian Denicola</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">MIT</license>
     <projectUrl>https://github.com/briandenicola/PSScripts</projectUrl>
     <description>A series of common functions used across all my systems</description>
-    <releaseNotes>Updated Set-EnvironmentalVariable and added Remove-EnvironmentalVariable</releaseNotes>
-    <copyright>Copyright 2020</copyright>
+    <releaseNotes>Fixed Remove-EnvironmentalVariable</releaseNotes>
+    <copyright>Copyright 2021</copyright>
     <repository type="git" url="https://github.com/briandenicola/PSScripts.git" />
     <dependencies/>
   </metadata>

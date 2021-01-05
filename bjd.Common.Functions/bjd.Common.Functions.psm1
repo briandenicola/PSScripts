@@ -482,6 +482,7 @@ function Remove-EnvironmentVariable
         $confirm = $false
     }
     Remove-Item -Path ENV:\${key} -Confirm:$confirm
+    [Environment]::SetEnvironmentVariable( $Key, [string]::Empty )
 }
 
 function Set-EnvironmentVariable
