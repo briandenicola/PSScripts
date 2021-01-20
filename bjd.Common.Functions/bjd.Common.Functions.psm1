@@ -1,5 +1,17 @@
 $pshistory_file = Join-Path -Path $ENV:USERPROFILE -ChildPath "AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt"
 
+function Get-GitBranchRevision
+{
+    if( !(Get-ExecutablePath -processName git.exe) ) {
+        throw "Could not find git.exe process."
+    }
+
+    if( Test-Path -Path '.\.git' ) {
+        return (git.exe rev-parse HEAD).Substring(0,8)
+    }
+    
+}
+
 function Get-HostFileEntries {
     param(
         [switch] $Raw
