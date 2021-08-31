@@ -2,14 +2,14 @@
 <package >
   <metadata>
     <id>bjd.Common.Functions</id>
-    <version>1.0.19</version>
+    <version>1.0.20</version>
     <authors>Brian Denicola</authors>
     <owners>Brian Denicola</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">MIT</license>
     <projectUrl>https://github.com/briandenicola/PSScripts</projectUrl>
     <description>A series of common functions used across all my systems</description>
-    <releaseNotes>Added Get-GitBranchRevision</releaseNotes>
+    <releaseNotes>Added new parameter on Invoke-GitReposPull</releaseNotes>
     <copyright>Copyright 2021</copyright>
     <repository type="git" url="https://github.com/briandenicola/PSScripts.git" />
     <dependencies/>

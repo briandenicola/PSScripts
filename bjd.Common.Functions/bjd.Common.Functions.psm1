@@ -138,12 +138,13 @@ function Invoke-GitReposPull {
     param( 
       [Parameter(Mandatory=$true)]
       [ValidateScript({Test-Path $_})]
-      [string] $ReposRoot 
+      [string] $ReposRoot,
+      [switch] $IncludeStatus
     )
   
-    if( !(Get-ExecutablePath -processName git.exe) ) {
-        throw "Could not find git.exe process."
-    }
+    #if( !(Get-ExecutablePath -processName git.exe) ) {
+    #    throw "Could not find git.exe process."
+    #}
 
     Set-Variable -Name currentDirectory -Value $PWD.Path
 
@@ -152,6 +153,9 @@ function Invoke-GitReposPull {
       
       Set-Location -Path $repo
       if( Test-Path -Path '.\.git' ) {
+        if($IncludeStatus) {
+            git status
+        }
         git pull
       }
       Set-Location -Path $repo.Parent.FullName
