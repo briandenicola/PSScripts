@@ -720,4 +720,16 @@ function ConvertFrom-Base64EncodedString  {
     }
 }
 
+function Remove-TerraformState {
+    $items = @(
+        'terraform.tfstate'
+        'terraform.tfstate.backup'
+        '.terraform'
+        '.terraform.lock.hcl'
+    )
+    $items | ForEach-Object { 
+        Remove-Item -Path (Join-Path -Path $PWD.Path -ChildPath $_) -Recurse -Force -Confirm:$false -Verbose -ErrorAction SilentlyContinue 
+    }
+}
+
 #Export-ModuleMember -Function * 
