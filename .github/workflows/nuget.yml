@@ -1,5 +1,9 @@
 name: PowerShell Publish Nuget package
-on: [push]
+on:
+  push:
+    paths-ignore:
+    - '.github/workflows/**'
+    
 jobs:
   nuget_publish:
     runs-on: windows-latest
