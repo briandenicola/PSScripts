@@ -55,8 +55,7 @@ $modules = @(
 foreach( $module in $modules ) {
     $release = Find-LatestGithubReleaseVersion -Url $module.Uri
     $location = Get-LatestGithubReleaseVersion -Release $release
-    $module.Name
-    Install-Release -ModuleName $module.Name -ModuleVersion $release.Version -ZipLocation $location
 
+    Install-Release -ModuleName $module.Name -ModuleVersion $release.Version -ZipLocation $location
     Get-Module -Name $module.Name -ListAvailable | Format-Table -Property Name, Version, ModuleBase
 }  
