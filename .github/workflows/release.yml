@@ -27,6 +27,7 @@ jobs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
 
   create_release:
+    needs: create_release_tag
     runs-on: windows-latest
             
     steps:
