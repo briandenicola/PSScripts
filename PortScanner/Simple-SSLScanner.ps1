@@ -1,4 +1,3 @@
-#http://blog.whatsupduck.net/2014/10/checking-ssl-and-tls-versions-with-powershell.html
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
@@ -14,7 +13,7 @@ function Get-SSLProtocols {
     )
 }
 
-$SupportedProtocols = [ordered]@{ }
+$SupportedProtocols = @()
 foreach ( $protocol in (Get-SSLProtocols) ) {
     Write-Verbose -Message ("Testing {0} on {1}:{2} . . . ." -f $protocol, $HostName, $Port)
     try {
@@ -30,10 +29,18 @@ foreach ( $protocol in (Get-SSLProtocols) ) {
 
     try {
         $SslStream.AuthenticateAsClient($HostName, $null, $protocol, $false)
-        $SupportedProtocols.Add($protocol, $true)
+        $SupportedProtocols += New-Object psobject -Property @{
+            Protocol      = $SslStream.SslProtocol
+            CipherSuite   = $SslStream.NegotiatedCipherSuite
+            Supported     = $true
+        }
     }
     catch {
-        $SupportedProtocols.Add($protocol, $false)
+        $SupportedProtocols += New-Object psobject -Property @{
+            Protocol      = $protocol
+            CipherSuite   = "N/A"
+            Supported     = $false
+        }
     }
     finally {
         $TcpClient.Dispose()
