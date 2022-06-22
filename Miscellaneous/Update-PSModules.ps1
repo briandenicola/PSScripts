@@ -3,7 +3,7 @@ Import-Module -Name bjd.Common.Functions
 function Get-PSModuleDirectory { 
     $ps_module_path = Get-EnvironmentVariable -Key PSModulePath
 
-    if(Get-OSType -eq "Unix") {
+    if( (Get-OSType) -eq "Unix") {
         return $ps_module_path.Split(":")[0]
     }
 
@@ -28,11 +28,10 @@ function Get-LatestGithubReleaseVersion {
     param(
         [HashTable] $Release
     )
-    if( Get-OSType -eq "Unix" && $null -eq $ENV:TEMP) {
+
+    $RootPath = $ENV:TEMP
+    if( (Get-OSType) -eq "Unix" -and $null -eq $ENV:TEMP ) {
         $RootPath = "/tmp"
-    }
-    else {
-        $RootPath = $ENV:TEMP
     }
 
     $OutputLocation = Join-Path $RootPath -ChildPath $Release.Name
