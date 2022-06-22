@@ -1,5 +1,13 @@
+Import-Module -Name bjd.Common.Functions
+
 function Get-PSModuleDirectory { 
-    return  (Get-EnvironmentVariable -Key PSModulePath).Split(";")[0]
+    $ps_module_path = Get-EnvironmentVariable -Key PSModulePath
+
+    if(Get-OSType -eq "Unix") {
+        return $ps_module_path.Split(":")[0]
+    }
+
+    return $ps_module_path.Split(";")[0]
 }
 
 function Find-LatestGithubReleaseVersion {
@@ -20,8 +28,14 @@ function Get-LatestGithubReleaseVersion {
     param(
         [HashTable] $Release
     )
+    if( Get-OSType -eq "Unix" && $null -eq $ENV:TEMP) {
+        $RootPath = "/tmp"
+    }
+    else {
+        $RootPath = $ENV:TEMP
+    }
 
-    $OutputLocation = Join-Path $ENV:TEMP -ChildPath $Release.Name
+    $OutputLocation = Join-Path $RootPath -ChildPath $Release.Name
     Invoke-WebRequest -Uri $Release.ZipUri -OutFile $OutputLocation | Out-Null
     
     return $OutputLocation
