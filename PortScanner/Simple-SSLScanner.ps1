@@ -4,6 +4,7 @@ param(
     [string] $HostName,
     [Int]    $Port = 443
 )
+
 function Get-SSLProtocols {
     return(
         [System.Security.Authentication.SslProtocols] | 
@@ -14,8 +15,10 @@ function Get-SSLProtocols {
 }
 
 $SupportedProtocols = @()
-foreach ( $protocol in (Get-SSLProtocols) ) {
+foreach ( $protocol in (Get-SSLProtocols) ) 
+{
     Write-Verbose -Message ("Testing {0} on {1}:{2} . . . ." -f $protocol, $HostName, $Port)
+
     try {
         $TcpClient = New-Object Net.Sockets.TcpClient
         $TcpClient.Connect($HostName, $Port)
@@ -49,4 +52,3 @@ foreach ( $protocol in (Get-SSLProtocols) ) {
 }
 
 return $SupportedProtocols
-
