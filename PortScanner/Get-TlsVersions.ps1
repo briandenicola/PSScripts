@@ -7,16 +7,16 @@ Version - 1.0.0
 The script will test a HostName for supported TLS Alogrithms and provide TLS details
 
 .EXAMPLE
-.\Get-TlsVersions.ps1 HostName www.google.com 
+.\Get-TlsVersions.ps1 -HostName www.google.com 
 
 .EXAMPLE
-.\Get-TlsVersions.ps1 HostName www.google.com -Port 8443
+.\Get-TlsVersions.ps1 -HostName www.google.com -Port 8443
 
 .EXAMPLE
-.\Get-TlsVersions.ps1 HostName www.google.com -TlsVersion Tls13
+.\Get-TlsVersions.ps1 -HostName www.google.com -TlsVersion Tls13
 
 .EXAMPLE
-.\Get-TlsVersions.ps1 HostName www.google.com -TlsVersion Tls13 -Simple
+.\Get-TlsVersions.ps1 -HostName www.google.com -TlsVersion Tls13 -Simple
 
 .PARAMETER HostName
 Name or IP Address of URL to test
