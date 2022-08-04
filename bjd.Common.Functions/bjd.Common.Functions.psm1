@@ -134,6 +134,24 @@ function Get-RunningServicesCommandline {
     return $services
 }
 
+function Get-AllGithubRepositories {
+    param(
+        [string] $Repository
+    )
+
+    $creds = Get-Credential -UserName $Repository -Message ("Please Provide the PAT for {0}. Credentials in Vault" -f $Repository)
+
+    $headers = @{}
+    $headers.Add('Accept', 'application/vnd.github.v3+json')
+    $repos = Invoke-RestMethod -Authentication Basic -Credential $creds -Uri https://api.github.com/users/$Repository/repos?per_page=100 -Headers $headers
+    
+    foreach( $repo in $repos ){
+        if(-not (Test-Path -Path (Join-Path -Path $PWD.Path -ChildPath $repo.name))) {
+            git clone $repo.clone_url
+        }
+    }
+}
+
 function Invoke-GitReposPull {
     param( 
       [Parameter(Mandatory=$true)]
