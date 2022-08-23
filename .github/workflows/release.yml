@@ -2,29 +2,35 @@ name: PowerShell Publish Module
 
 on:
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'The Release tag for this run'
-        required: true
-        default: '3.5.9'
+
 jobs:
   create_release_tag:
     runs-on: windows-latest
             
     steps:
+    - name: Get Latest release
+      id: get_relese
+      shell: pwsh
+      run: | 
+        $release = Invoke-RestMethod "https://api.github.com/repos/briandenicola/psscripts/releases/latest"
+        $current_version = [Version]::New($release.tag_name)
+        $tag_name = [Version]::New($current_version.Major, $current_version.Minor, $current_version.Build + 1).ToString()
+        Write-Output "::set-output name=tag_name::$tag_name"
+
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.event.inputs.tag }}
-        release_name: Release ${{ github.event.inputs.tag }}
+        tag_name: ${{ steps.get_relese.outputs.tag_name }}
+        release_name: Release ${{ steps.get_relese.outputs.tag_name }}
         draft: false
         prerelease: false
     
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
+      tag_name: ${{ steps.get_relese.outputs.tag_name }}
 
   create_release:
     needs: create_release_tag
@@ -36,7 +42,7 @@ jobs:
     - name: Compress module
       shell: pwsh
       run: |
-        Compress-Archive -Path bjd.Common.Functions -DestinationPath bjd.Common.Functions-${{ github.event.inputs.tag }}.zip
+        Compress-Archive -Path bjd.Common.Functions -DestinationPath bjd.Common.Functions-${{ needs.create_release_tag.outputs.tag_name }}.zip
     
     - name: Upload Release Asset
       id: upload-release-asset 
@@ -45,6 +51,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create_release_tag.outputs.upload_url }}
-        asset_path: bjd.Common.Functions-${{ github.event.inputs.tag }}.zip
-        asset_name: bjd.Common.Functions-${{ github.event.inputs.tag }}.zip
+        asset_path: bjd.Common.Functions-${{ needs.create_release_tag.outputs.tag_name }}.zip
+        asset_name: bjd.Common.Functions-${{ needs.create_release_tag.outputs.tag_name }}.zip
         asset_content_type: application/zip
