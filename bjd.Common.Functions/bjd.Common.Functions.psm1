@@ -1,5 +1,3 @@
-$pshistory_file = Join-Path -Path $ENV:USERPROFILE -ChildPath "AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt"
-
 function Get-GitBranchRevision
 {
     if( !(Get-ExecutablePath -processName git.exe) ) {
@@ -281,39 +279,59 @@ function Get-ExecutablePath {
     return $null
 }
 
-function Get-PSHistory {
+function Get-PSHistoryFile 
+{
+    if( (Get-OSType) -eq "Unix" ) { 
+        $pshistory_file = "~/.local/share/powershell/PSReadLine/ConsoleHost_history.txt"
+    } else {
+        $pshistory_file = Join-Path -Path $ENV:USERPROFILE -ChildPath "AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt"
+    }
+
+    if( Test-Path -Path $pshistory_file ) {
+        return $pshistory_file
+    }
+
+    return $null    
+}
+
+function Get-PSHistory 
+{
     param(
         [int] $last = 4096
     )
    
-    if( -not( Test-Path -Path $pshistory_file ) ) {
-        Write-Errror -Message ("History file not fount - {0}" -f $history_file)
-        return $false
+    $history_file = Get-PSHistoryFile
+    if( $null -eq $history_file ) {
+        Write-Error -Message ("History file not found")
+        return
     }
 
     $count = 1
     $lines = [System.Object[]]::new($last+1)
 
-    foreach( $line in (Get-Content -Tail $last -Path $pshistory_file) ) {
-        $lines[$count] = New-Object psobject -Property @{"Id" = $count; "CommandLine" = $line} 
+    foreach( $line in (Get-Content -Tail $last -Path $history_file) ) {
+        $properties = [ordered]@{"Id" = $count; "CommandLine" = $line} 
+        $lines[$count] = New-Object PSObject -Property $properties
         $count++
     }
      
     return $lines
 }
 
-function Clear-PSHistory {
+function Clear-PSHistory 
+{
     param(
         [switch] $Force
     )
 
-    if( -not( Test-Path -Path $pshistory_file ) ) {
-        Write-Errror -Message ("History file not fount - {0}" -f $history_file)
-        return $false
+    $history_file = Get-PSHistoryFile
+    if( $null -eq $history_file ) {
+        Write-Error -Message ("History file not found")
+        return
     }
 
     Clear-History 
-    Out-File -FilePath $pshistory_file -InputObject $Nul -Confirm:(!$Force)
+    Out-File -FilePath $history_file -InputObject $null -Confirm:(!$Force)
 
 }
 
