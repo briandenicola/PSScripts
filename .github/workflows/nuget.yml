@@ -1,8 +1,11 @@
 name: PowerShell Publish Nuget package
 on:
+  workflow_dispatch:
   push:
-    paths-ignore:
-    - '.github/workflows/**'
+    branches:
+      - "master"
+    paths:
+      - 'bjd.Common.Functions/bjd.Common.Functions.nuspec'
     
 jobs:
   nuget_publish:

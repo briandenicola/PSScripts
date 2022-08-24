@@ -2,6 +2,11 @@ name: PowerShell Publish Module
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - "master"
+    paths:
+      - 'bjd.Common.Functions/bjd.Common.Functions.psd1'
 
 jobs:
   create_release_tag:
