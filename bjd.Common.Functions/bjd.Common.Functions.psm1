@@ -1,11 +1,11 @@
 function Get-GitBranchRevision
 {
-    if( !(Get-ExecutablePath -processName git.exe) ) {
-        throw "Could not find git.exe process."
+    if( !(Get-ExecutablePath -processName git) ) {
+     throw "Could not find git process."
     }
 
     if( Test-Path -Path '.\.git' ) {
-        return (git.exe rev-parse HEAD).Substring(0,8)
+        return (git rev-parse HEAD).Substring(0,8)
     }
     
 }
@@ -252,21 +252,31 @@ function Get-ExecutablePath {
     }
 
     $processesToTest = @()
-    if( $TestBatchExtensions -and (Test-ForProcessExtension)) {
-        foreach($extension in @(".exe", ".bat", ".cmd")) {
-            $processesToTest += "{0}{1}" -f $ProcessName, $extension
-        }
-    }
-    else {
-        if( Test-ForProcessExtension )  {
-            $processesToTest += "{0}{1}" -f $ProcessName, ".exe"
+
+    if( (Get-OSType) -eq "Win32NT" ) {
+        if( $TestBatchExtensions -and (Test-ForProcessExtension)) {
+            foreach($extension in @(".exe", ".bat", ".cmd")) {
+                $processesToTest += "{0}{1}" -f $ProcessName, $extension
+            }
         }
         else {
-            $processesToTest += $ProcessName
+            if( Test-ForProcessExtension )  {
+                $processesToTest += "{0}{1}" -f $ProcessName, ".exe"
+            }
+            else {
+                $processesToTest += $ProcessName
+            }
         }
+        $pathKey = "Path"
+        $splitVariable = ";"
     }
-
-    $directories = (Get-EnvironmentVariable -Key Path) -split ";" | Where-Object { ![string]::IsNullOrEmpty($_)}
+    else {
+        $pathKey = "PATH"
+        $splitVariable = ":"
+        $processesToTest += $ProcessName
+    }
+    
+    $directories = (Get-EnvironmentVariable -Key $pathKey) -split $splitVariable | Where-Object { ![string]::IsNullOrEmpty($_)}
     foreach( $directory in $directories ) {
         foreach( $processToTest in $processesToTest ) {
             $processFullName = Join-Path -Path $directory -ChildPath $processToTest 
