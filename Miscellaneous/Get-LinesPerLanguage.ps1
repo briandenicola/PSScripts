@@ -29,6 +29,8 @@ $includedFileTypes = @(
     "*.cs",
     "*.csx",
     "*.ps1",
+    "*.py",
+    "*.java",
     "*.psm1",
     "*.yaml",
     "*.yml",
@@ -36,7 +38,8 @@ $includedFileTypes = @(
     "*.js",
     "*.ts",
     "*.md", 
-    "*.tf"
+    "*.tf",
+    "*.sh"
 )
 
 
