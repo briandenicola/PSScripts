@@ -16,11 +16,13 @@ $excludedPathNames = @(
     "netstandard2.0",
     "lib",
     "gopkg.in",
-    "packages"
+    "packages",
+    ".git",
+    ".terraform"
 )
 
 $excludedFileNames = @(
-    "package.json"
+    "package.json",
     "package-lock.json"
 )
 
