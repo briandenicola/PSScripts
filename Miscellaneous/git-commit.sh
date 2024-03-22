@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Shameless rip off of https://github.com/benc-uk/dotfiles/blob/master/backup.sh
+
 random_fruit() {
   fruits=("🍎" "🍊" "🍋" "🍌" "🍉" "🍇" "🍓" "🍒" "🍑" "🍍" "🥝" "🍅" "🍆" "🥑" "🥦" "🥒" "🥬" "🥭" "🥔" "🥕" "🌽" "🌶" "🍎" "🌶️" "🫐" "🥥" "🍄")
   echo "${fruits[$((RANDOM % ${#fruits[@]}))]}"
