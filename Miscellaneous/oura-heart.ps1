@@ -35,11 +35,9 @@ function Get-OuraHeartRateData {
     $nvCollection = [System.Web.HttpUtility]::ParseQueryString([String]::Empty)
     $nvCollection["start_datetime"] = $start_datetime
     $nvCollection["end_datetime"] = $end_datetime   
-    
-    if ([string]::Empty -ne $continuationToken || $null -ne $continuationToken) {
-        Write-Verbose -Message "Using continuation token: $continuationToken"
-        $nvCollection["next_token"] = $continuationToken
-    }
+
+    Write-Verbose -Message "Using continuation token: $continuationToken"
+    $nvCollection["next_token"] = $continuationToken
   
     $uriRequest = [System.UriBuilder]$apiUrl
     $uriRequest.Query = $nvCollection.ToString()
@@ -67,4 +65,4 @@ $heartRateDataPSObject = [PSCustomObject]@{
     HeartRateData = $allHeartRateData
 }
 
-return $heartRateDataPSObject
+return $heartRateDataPSObject.HeartRateData
