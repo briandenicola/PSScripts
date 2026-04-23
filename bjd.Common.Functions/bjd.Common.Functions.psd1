@@ -7,11 +7,11 @@
 @{
 
     RootModule = 'bjd.Common.Functions.psm1'
-    ModuleVersion = '1.0.24'
+    ModuleVersion = '1.0.25'
     GUID = 'aa94e99e-72b5-488e-9099-bf0f3859f68d'
     Author = 'Brian Denicola'
     CompanyName = 'Denicolafamily'
-    Copyright = '2022'
+    Copyright = '2025'
     FunctionsToExport = '*'
 
 }

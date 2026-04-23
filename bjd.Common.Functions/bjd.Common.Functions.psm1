@@ -1,3 +1,21 @@
+function New-MaskedMail
+{
+    param(
+        [string] $Description 
+
+    )
+    
+    $headers = @{}
+    $headers.Add('Content-Type','application/json')
+
+    $body = ConvertTo-Json( New-Object psobject -Property @{
+        state = "pending"
+        description = $Description
+    })
+ 
+    Invoke-RestMethod -Method Post -Uri $ENV:MASKED_EMAIL_ENDPOINT -Body $body -Header $headers
+}
+
 function Get-GitBranchRevision
 {
     if( !(Get-ExecutablePath -processName git) ) {

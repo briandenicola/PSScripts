@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>bjd.Common.Functions</id>
-    <version>1.0.24</version>
+    <version>1.0.25</version>
     <authors>Brian Denicola</authors>
     <owners>Brian Denicola</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -10,7 +10,7 @@
     <projectUrl>https://github.com/briandenicola/PSScripts</projectUrl>
     <description>A series of common functions used across all my systems</description>
     <releaseNotes>Fixed issue with Get-ExecutablePath on linux</releaseNotes>
-    <copyright>Copyright 2022</copyright>
+    <copyright>Copyright 2025</copyright>
     <repository type="git" url="https://github.com/briandenicola/PSScripts.git" />
     <dependencies/>
   </metadata>

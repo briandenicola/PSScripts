@@ -8,7 +8,7 @@ fi
 
 # Fetch all repositories you own that are NOT forks, and retrieve their SSH URLs
 echo "Fetching repositories you own (excluding forks)..."
-OWNED_REPOS=$(gh repo list --json name,sshUrl,isFork --jq '.[] | select(.isFork | not) | {name: .name, sshUrl: .sshUrl}')
+OWNED_REPOS=$(gh repo list -L 130 --json name,sshUrl --jq '.[] | {name: .name, sshUrl: .sshUrl}')
 
 # Check if any repositories exist
 if [[ -z "$OWNED_REPOS" ]]; then
